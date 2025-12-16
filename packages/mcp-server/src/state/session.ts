@@ -240,3 +240,68 @@ export function getCommandsByOutputHash(
     (entry) => entry.outputHash === outputHash && entry.timestamp.getTime() > cutoff
   );
 }
+
+/**
+ * Tool usage statistics
+ */
+export interface ToolStats {
+  calls: number;
+  tokensIn: number;
+  tokensOut: number;
+  tokensSaved: number;
+  avgDurationMs: number;
+}
+
+/**
+ * Get aggregated statistics by tool
+ */
+export function getToolBreakdown(state: SessionState): Map<string, ToolStats> {
+  const breakdown = new Map<string, ToolStats>();
+
+  for (const cmd of state.commandHistory) {
+    const existing = breakdown.get(cmd.toolName);
+
+    if (existing) {
+      existing.calls++;
+      existing.tokensIn += cmd.tokensIn;
+      existing.tokensOut += cmd.tokensOut;
+      existing.tokensSaved += cmd.tokensSaved;
+      existing.avgDurationMs =
+        (existing.avgDurationMs * (existing.calls - 1) + cmd.durationMs) / existing.calls;
+    } else {
+      breakdown.set(cmd.toolName, {
+        calls: 1,
+        tokensIn: cmd.tokensIn,
+        tokensOut: cmd.tokensOut,
+        tokensSaved: cmd.tokensSaved,
+        avgDurationMs: cmd.durationMs,
+      });
+    }
+  }
+
+  return breakdown;
+}
+
+/**
+ * Get pattern statistics for the session
+ */
+export function getPatternStats(state: SessionState): {
+  retryLoopsDetected: number;
+  uniqueErrors: number;
+  totalErrorOccurrences: number;
+} {
+  const retryLoopsDetected = Array.from(state.retryPatterns.values()).filter(
+    (p) => p.count >= 3
+  ).length;
+
+  const totalErrorOccurrences = Array.from(state.errorCache.values()).reduce(
+    (sum, e) => sum + e.count,
+    0
+  );
+
+  return {
+    retryLoopsDetected,
+    uniqueErrors: state.errorCache.size,
+    totalErrorOccurrences,
+  };
+}
