@@ -4,9 +4,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { analyzeContext, analyzeContextSchema } from "./tools/analyze-context.js";
-import { getStats, getStatsSchema } from "./tools/get-stats.js";
-import { optimizationTips, optimizationTipsSchema } from "./tools/optimization-tips.js";
+import { analyzeContext, analyzeContextSchema } from "./tools/analyze-context";
+import { getStats, getStatsSchema } from "./tools/get-stats";
+import { optimizationTips, optimizationTipsSchema } from "./tools/optimization-tips";
 
 export interface ServerConfig {
   apiKey?: string;

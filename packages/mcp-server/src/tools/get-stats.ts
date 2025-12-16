@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { formatCost, formatNumber } from "@ctxopt/shared";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../server";
 
 export const getStatsSchema = {
   type: "object" as const,

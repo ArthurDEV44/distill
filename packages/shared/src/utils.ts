@@ -1,4 +1,4 @@
-import { ANTHROPIC_MODELS, type AnthropicModel } from "./constants.js";
+import { ANTHROPIC_MODELS, type AnthropicModel } from "./constants";
 
 /**
  * Calculate cost in microdollars for a given number of tokens

@@ -6,7 +6,7 @@ import {
   formatCost,
   calculateContextUsage,
 } from "@ctxopt/shared";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../server";
 
 export const analyzeContextSchema = {
   type: "object" as const,

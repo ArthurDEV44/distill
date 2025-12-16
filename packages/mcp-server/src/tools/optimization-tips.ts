@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../server";
 
 export const optimizationTipsSchema = {
   type: "object" as const,
