@@ -26,6 +26,7 @@ import { analyzeBuildOutputTool } from "./tools/analyze-build-output.js";
 import { detectRetryLoopTool } from "./tools/detect-retry-loop.js";
 import { compressContextTool } from "./tools/compress-context.js";
 import { smartFileReadTool } from "./tools/smart-file-read.js";
+import { deduplicateErrorsTool } from "./tools/deduplicate-errors.js";
 
 // Utils
 import { detectProject } from "./utils/project-detector.js";
@@ -101,6 +102,7 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
   tools.register(detectRetryLoopTool);
   tools.register(compressContextTool);
   tools.register(smartFileReadTool);
+  tools.register(deduplicateErrorsTool);
 
   // Create MCP server
   const server = new Server(
