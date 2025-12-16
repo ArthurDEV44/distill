@@ -15,7 +15,7 @@
 ### 1. Install dependencies
 
 ```bash
-pnpm install
+bun install
 ```
 
 ### 2. Setup environment
@@ -28,14 +28,14 @@ cp apps/web/.env.example apps/web/.env.local
 ### 3. Setup database
 
 ```bash
-pnpm db:generate
-pnpm db:migrate
+bun run db:generate
+bun run db:migrate
 ```
 
 ### 4. Start development
 
 ```bash
-pnpm dev
+bun run dev
 ```
 
 ## Project Structure
