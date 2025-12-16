@@ -10,7 +10,75 @@
 - **MCP Server** - Native integration with Model Context Protocol
 - **Dashboard** - Visualize usage, costs, and optimization opportunities
 
-## Quick Start
+## Installation
+
+### Quick Install (Recommended)
+
+```bash
+# Linux / macOS / WSL
+curl -fsSL https://ctxopt.dev/install.sh | bash
+
+# Windows PowerShell
+irm https://ctxopt.dev/install.ps1 | iex
+```
+
+The installer will:
+1. Install `@ctxopt/mcp-server` globally
+2. Auto-detect and configure your IDEs (Claude Code, Cursor, Windsurf)
+3. Verify the installation
+
+### Manual Install
+
+```bash
+# npm
+npm install -g @ctxopt/mcp-server
+
+# bun
+bun install -g @ctxopt/mcp-server
+
+# Then configure your IDEs
+ctxopt-mcp setup
+```
+
+## CLI Commands
+
+```bash
+ctxopt-mcp setup          # Auto-configure detected IDEs
+ctxopt-mcp setup --claude # Configure Claude Code only
+ctxopt-mcp setup --cursor # Configure Cursor only
+ctxopt-mcp doctor         # Verify installation
+ctxopt-mcp serve          # Start MCP server (used by IDE)
+ctxopt-mcp --help         # Show help
+ctxopt-mcp --version      # Show version
+```
+
+## IDE Configuration
+
+### Claude Code
+
+After running `ctxopt-mcp setup`, your `~/.claude/settings.json` will include:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "ctxopt-mcp",
+      "args": ["serve"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Cursor
+
+Configuration is added to `~/.cursor/mcp.json` (or platform-specific location).
+
+### Windsurf
+
+Configuration is added to `~/.windsurf/settings.json`.
+
+## Development Setup
 
 ### 1. Install dependencies
 
@@ -49,30 +117,6 @@ ctxopt/
 │   ├── mcp-server/       # MCP Server package
 │   └── ...
 ```
-
-## Configuration
-
-### MCP Server
-
-Add CtxOpt to your Claude Code configuration (`~/.claude/settings.json`):
-
-```json
-{
-  "mcpServers": {
-    "ctxopt": {
-      "command": "npx",
-      "args": ["@ctxopt/mcp-server"],
-      "env": {
-        "CTXOPT_API_KEY": "ctx_your_key_here"
-      }
-    }
-  }
-}
-```
-
-### For Cursor/Windsurf
-
-Configure the MCP server in your IDE settings. See documentation for details.
 
 ## Tech Stack
 

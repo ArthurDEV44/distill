@@ -2,23 +2,28 @@
   "name": "@ctxopt/shared",
   "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./types": {
-      "types": "./src/types.ts",
-      "default": "./src/types.ts"
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
     },
     "./constants": {
-      "types": "./src/constants.ts",
-      "default": "./src/constants.ts"
+      "types": "./dist/constants.d.ts",
+      "default": "./dist/constants.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "lint": "eslint ."
   },

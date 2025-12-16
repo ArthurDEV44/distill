@@ -1,53 +1,131 @@
 #!/usr/bin/env node
 
 import { runServer } from "../dist/server.js";
+import { setup, parseSetupArgs } from "../dist/cli/setup.js";
+import { doctor } from "../dist/cli/doctor.js";
+import { getPackageVersion, COLORS, log } from "../dist/cli/utils.js";
 
 const args = process.argv.slice(2);
+const command = args[0];
 
-const config = {
-  apiKey: undefined,
-  apiBaseUrl: "https://app.ctxopt.dev/api",
-};
+function showHelp() {
+  const version = getPackageVersion();
+  console.log(`
+${COLORS.bright}${COLORS.cyan}CtxOpt MCP Server${COLORS.reset} v${version}
+Context Engineering Optimizer for Claude Code, Cursor, and Windsurf
 
-// Parse command line arguments
-for (const arg of args) {
-  if (arg.startsWith("--api-key=")) {
-    config.apiKey = arg.split("=")[1];
-  } else if (arg.startsWith("--api-url=")) {
-    config.apiBaseUrl = arg.split("=")[1];
-  } else if (arg === "--help" || arg === "-h") {
-    console.log(`
-CtxOpt MCP Server - Context Engineering Optimizer
+${COLORS.bright}Usage:${COLORS.reset}
+  ctxopt-mcp <command> [options]
 
-Usage:
-  npx @ctxopt/mcp-server [options]
+${COLORS.bright}Commands:${COLORS.reset}
+  serve             Start the MCP server (stdio mode)
+  setup             Configure IDEs to use CtxOpt
+  doctor            Check installation and configuration
 
-Options:
-  --api-key=KEY    Your CtxOpt API key (optional, enables cloud sync)
-  --api-url=URL    Custom API URL (default: https://app.ctxopt.dev/api)
-  --help, -h       Show this help message
+${COLORS.bright}Setup Options:${COLORS.reset}
+  --claude          Configure Claude Code only
+  --cursor          Configure Cursor only
+  --windsurf        Configure Windsurf only
+  --force, -f       Overwrite existing configuration
 
-Examples:
-  npx @ctxopt/mcp-server
-  npx @ctxopt/mcp-server --api-key=ctx_xxx
+${COLORS.bright}Server Options:${COLORS.reset}
+  --api-key=KEY     Your CtxOpt API key (optional, enables cloud sync)
+  --api-url=URL     Custom API URL (default: https://app.ctxopt.dev/api)
 
-For Claude Code integration, add to your settings.json:
-  {
-    "mcpServers": {
-      "ctxopt": {
-        "command": "npx",
-        "args": ["@ctxopt/mcp-server", "--api-key=YOUR_KEY"]
+${COLORS.bright}Other Options:${COLORS.reset}
+  --version, -v     Show version number
+  --help, -h        Show this help message
+
+${COLORS.bright}Examples:${COLORS.reset}
+  ctxopt-mcp setup                    Auto-detect and configure all IDEs
+  ctxopt-mcp setup --claude           Configure Claude Code only
+  ctxopt-mcp setup --force            Overwrite existing configurations
+  ctxopt-mcp doctor                   Verify installation
+  ctxopt-mcp serve                    Start MCP server (used by IDE)
+  ctxopt-mcp serve --api-key=ctx_xxx  Start with cloud sync enabled
+
+${COLORS.bright}Quick Install:${COLORS.reset}
+  curl -fsSL https://ctxopt.dev/install.sh | bash
+
+${COLORS.bright}Documentation:${COLORS.reset}
+  https://ctxopt.dev/docs
+`);
+}
+
+function showVersion() {
+  console.log(getPackageVersion());
+}
+
+async function main() {
+  // Handle version flag anywhere
+  if (args.includes("--version") || args.includes("-v")) {
+    showVersion();
+    process.exit(0);
+  }
+
+  // Handle help flag anywhere
+  if (args.includes("--help") || args.includes("-h") || args.length === 0) {
+    showHelp();
+    process.exit(0);
+  }
+
+  switch (command) {
+    case "serve": {
+      const config = {
+        apiKey: undefined,
+        apiBaseUrl: "https://app.ctxopt.dev/api",
+      };
+
+      for (const arg of args.slice(1)) {
+        if (arg.startsWith("--api-key=")) {
+          config.apiKey = arg.split("=")[1];
+        } else if (arg.startsWith("--api-url=")) {
+          config.apiBaseUrl = arg.split("=")[1];
+        }
+      }
+
+      await runServer(config);
+      break;
+    }
+
+    case "setup": {
+      const options = parseSetupArgs(args.slice(1));
+      await setup(options);
+      break;
+    }
+
+    case "doctor": {
+      await doctor();
+      break;
+    }
+
+    default: {
+      // Legacy support: if no command, try to run server
+      if (command?.startsWith("--")) {
+        const config = {
+          apiKey: undefined,
+          apiBaseUrl: "https://app.ctxopt.dev/api",
+        };
+
+        for (const arg of args) {
+          if (arg.startsWith("--api-key=")) {
+            config.apiKey = arg.split("=")[1];
+          } else if (arg.startsWith("--api-url=")) {
+            config.apiBaseUrl = arg.split("=")[1];
+          }
+        }
+
+        await runServer(config);
+      } else {
+        console.error(`Unknown command: ${command}`);
+        console.error('Run "ctxopt-mcp --help" for usage information.');
+        process.exit(1);
       }
     }
   }
-
-Learn more: https://ctxopt.dev/docs/mcp
-`);
-    process.exit(0);
-  }
 }
 
-runServer(config).catch((error) => {
-  console.error("Failed to start MCP server:", error);
+main().catch((error) => {
+  console.error("Error:", error.message);
   process.exit(1);
 });
