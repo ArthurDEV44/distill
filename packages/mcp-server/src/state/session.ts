@@ -15,6 +15,10 @@ export interface CommandEntry {
   tokensSaved: number;
   wasFiltered: boolean;
   durationMs: number;
+  // Retry loop detection fields
+  normalizedCommand?: string;
+  outputHash?: string;
+  exitCode?: number;
 }
 
 export interface ErrorEntry {
@@ -206,4 +210,33 @@ export function clearErrorCache(state: SessionState): void {
 
 export function clearRetryPatterns(state: SessionState): void {
   state.retryPatterns.clear();
+}
+
+/**
+ * Get commands matching a normalized command within a time window
+ */
+export function getCommandsByNormalized(
+  state: SessionState,
+  normalizedCommand: string,
+  windowMs: number = 5 * 60 * 1000 // Default: 5 minutes
+): CommandEntry[] {
+  const cutoff = Date.now() - windowMs;
+  return state.commandHistory.filter(
+    (entry) =>
+      entry.normalizedCommand === normalizedCommand && entry.timestamp.getTime() > cutoff
+  );
+}
+
+/**
+ * Get commands with matching output hash within a time window
+ */
+export function getCommandsByOutputHash(
+  state: SessionState,
+  outputHash: string,
+  windowMs: number = 5 * 60 * 1000
+): CommandEntry[] {
+  const cutoff = Date.now() - windowMs;
+  return state.commandHistory.filter(
+    (entry) => entry.outputHash === outputHash && entry.timestamp.getTime() > cutoff
+  );
 }
