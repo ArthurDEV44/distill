@@ -13,12 +13,14 @@ import {
   log,
   COLORS,
 } from "./utils.js";
+import { installHooks } from "./hooks.js";
 
-interface SetupOptions {
+export interface SetupOptions {
   claude?: boolean;
   cursor?: boolean;
   windsurf?: boolean;
   force?: boolean;
+  hooks?: boolean;
 }
 
 function configureIDE(ide: IDE, config: IDEConfig, force: boolean): boolean {
@@ -49,6 +51,13 @@ export async function setup(options: SetupOptions = {}): Promise<void> {
 
   const ideConfigs = detectInstalledIDEs();
   const specificIDEs = options.claude || options.cursor || options.windsurf;
+  const hooksOnly = options.hooks && !specificIDEs;
+
+  // If --hooks only (no IDE specified), just install hooks
+  if (hooksOnly) {
+    await installHooks({ force: options.force });
+    return;
+  }
 
   const idesToConfigure: IDE[] = [];
 
@@ -65,7 +74,7 @@ export async function setup(options: SetupOptions = {}): Promise<void> {
     }
   }
 
-  if (idesToConfigure.length === 0) {
+  if (idesToConfigure.length === 0 && !options.hooks) {
     warn("No supported IDEs detected.");
     log("\nSupported IDEs:");
     log("  • Claude Code");
@@ -78,28 +87,35 @@ export async function setup(options: SetupOptions = {}): Promise<void> {
     return;
   }
 
-  info(`Detected IDEs: ${idesToConfigure.map((ide) => ideConfigs[ide].name).join(", ")}`);
+  if (idesToConfigure.length > 0) {
+    info(`Detected IDEs: ${idesToConfigure.map((ide) => ideConfigs[ide].name).join(", ")}`);
 
-  let successCount = 0;
-  let failCount = 0;
+    let successCount = 0;
+    let failCount = 0;
 
-  for (const ide of idesToConfigure) {
-    const result = configureIDE(ide, ideConfigs[ide], options.force || false);
-    if (result) {
-      successCount++;
+    for (const ide of idesToConfigure) {
+      const result = configureIDE(ide, ideConfigs[ide], options.force || false);
+      if (result) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    log("\n" + "─".repeat(50));
+
+    if (successCount > 0 && failCount === 0) {
+      success(`Setup complete! Configured ${successCount} IDE(s).`);
+    } else if (successCount > 0) {
+      warn(`Partially complete. ${successCount} succeeded, ${failCount} failed.`);
     } else {
-      failCount++;
+      error("Setup failed. No IDEs were configured.");
     }
   }
 
-  log("\n" + "─".repeat(50));
-
-  if (successCount > 0 && failCount === 0) {
-    success(`Setup complete! Configured ${successCount} IDE(s).`);
-  } else if (successCount > 0) {
-    warn(`Partially complete. ${successCount} succeeded, ${failCount} failed.`);
-  } else {
-    error("Setup failed. No IDEs were configured.");
+  // Install hooks if requested
+  if (options.hooks) {
+    await installHooks({ force: options.force });
   }
 
   log(`\n${COLORS.dim}Next steps:${COLORS.reset}`);
@@ -125,6 +141,9 @@ export function parseSetupArgs(args: string[]): SetupOptions {
       case "--force":
       case "-f":
         options.force = true;
+        break;
+      case "--hooks":
+        options.hooks = true;
         break;
     }
   }

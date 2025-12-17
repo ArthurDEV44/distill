@@ -26,6 +26,7 @@ ${COLORS.bright}Setup Options:${COLORS.reset}
   --claude          Configure Claude Code only
   --cursor          Configure Cursor only
   --windsurf        Configure Windsurf only
+  --hooks           Install project hooks (enforces MCP tool usage)
   --force, -f       Overwrite existing configuration
 
 ${COLORS.bright}Server Options:${COLORS.reset}
@@ -40,6 +41,8 @@ ${COLORS.bright}Other Options:${COLORS.reset}
 ${COLORS.bright}Examples:${COLORS.reset}
   ctxopt-mcp setup                    Auto-detect and configure all IDEs
   ctxopt-mcp setup --claude           Configure Claude Code only
+  ctxopt-mcp setup --claude --hooks   Configure Claude Code + install hooks
+  ctxopt-mcp setup --hooks            Install hooks only (current project)
   ctxopt-mcp setup --force            Overwrite existing configurations
   ctxopt-mcp doctor                   Verify installation
   ctxopt-mcp serve                    Start MCP server (used by IDE)
