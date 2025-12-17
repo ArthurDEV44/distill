@@ -16,8 +16,29 @@ export const ApiKeySchema = z.object({
 
 export type ApiKey = z.infer<typeof ApiKeySchema>;
 
+export const ApiKeyPermissionsSchema = z.object({
+  allowedModels: z.array(z.string()).optional(),
+  maxTokensPerRequest: z.number().positive().optional(),
+});
+
+export type ApiKeyPermissions = z.infer<typeof ApiKeyPermissionsSchema>;
+
+export const CreateApiKeySchema = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name must be 100 characters or less"),
+  projectId: z.string().uuid("Invalid project ID"),
+  permissions: ApiKeyPermissionsSchema.optional(),
+  expiresAt: z.string().datetime().optional(),
+});
+
+export type CreateApiKeyInput = z.infer<typeof CreateApiKeySchema>;
+
 export interface ApiKeyCreateResponse {
-  apiKey: Omit<ApiKey, "keyPrefix"> & { keyPrefix: string };
+  apiKey: ApiKey & {
+    projectName?: string;
+    permissions?: ApiKeyPermissions;
+    expiresAt?: Date | null;
+    revokedAt?: Date | null;
+  };
   key: string; // Full key, shown only once
 }
 
