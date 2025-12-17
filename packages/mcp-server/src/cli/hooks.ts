@@ -1,8 +1,8 @@
 /**
  * CtxOpt Hooks Installation Module
  *
- * Installs Claude Code hooks that enforce MCP tool usage:
- * - PreToolUse: Blocks Read on code files, suggests smart_file_read
+ * Installs Claude Code hooks that suggest MCP tool usage:
+ * - PreToolUse: Suggests smart_file_read for code files (non-blocking for Edit compatibility)
  * - PostToolUse: Reminds to use auto_optimize for large Bash outputs
  * - UserPromptSubmit: Injects MCP tool reminders
  */
@@ -17,13 +17,13 @@ import { success, warn, info, error, log, COLORS, readJSONFile, writeJSONFile } 
 
 const PRE_READ_CHECK_SCRIPT = `#!/bin/bash
 # CtxOpt - PreToolUse Hook for Read
-# Blocks Read on code files, suggests smart_file_read instead
+# Suggests smart_file_read for code files (non-blocking to allow Edit to work)
 
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 BASENAME=$(basename "$FILE_PATH")
 
-# Allow configuration files (Read OK)
+# Skip suggestion for configuration files
 if echo "$BASENAME" | grep -qiE "^(CLAUDE|README|CHANGELOG|LICENSE)"; then
   exit 0
 fi
@@ -34,14 +34,13 @@ if echo "$BASENAME" | grep -qiE "^(Dockerfile|Makefile|\\.gitignore|\\.env|\\.pr
   exit 0
 fi
 
-# Block source code files - suggest smart_file_read
+# Suggest smart_file_read for source code files (non-blocking)
 if echo "$FILE_PATH" | grep -qE "\\.(ts|tsx|js|jsx|py|go|rs|java|cpp|c|h|hpp)$"; then
-  echo "BLOCKED: Use mcp__ctxopt__smart_file_read instead of Read for code files." >&2
-  echo "This saves 50-70% tokens by extracting only needed functions/classes." >&2
-  echo "" >&2
-  echo "Example: mcp__ctxopt__smart_file_read filePath=\\"$FILE_PATH\\"" >&2
-  echo "With target: mcp__ctxopt__smart_file_read filePath=\\"$FILE_PATH\\" target={\\"type\\":\\"function\\",\\"name\\":\\"myFunc\\"}" >&2
-  exit 2
+  # Use systemMessage to suggest without blocking (allows Edit to work)
+  cat << EOF
+{"systemMessage": "TIP: Consider using mcp__ctxopt__smart_file_read for '\$BASENAME' to save 50-70% tokens. Example: mcp__ctxopt__smart_file_read filePath=\\"\$FILE_PATH\\" target={\\"type\\":\\"function\\",\\"name\\":\\"myFunc\\"}"}
+EOF
+  exit 0
 fi
 
 # Allow everything else
@@ -87,7 +86,7 @@ const PROMPT_INJECT_SCRIPT = `#!/bin/bash
 cat << 'EOF'
 <user-prompt-submit-hook>
 CTXOPT REMINDER: Use MCP tools for token optimization:
-- Code files: mcp__ctxopt__smart_file_read (Read is BLOCKED for .ts/.js/.py)
+- Code files: mcp__ctxopt__smart_file_read (50-70% savings vs Read)
 - Build/test output: mcp__ctxopt__auto_optimize
 - Session stats: mcp__ctxopt__session_stats
 </user-prompt-submit-hook>
@@ -259,7 +258,7 @@ export async function installHooks(options: InstallHooksOptions = {}): Promise<b
   if (scriptsWritten > 0 || settingsUpdated) {
     success("Hooks installed successfully!");
     log(`\n${COLORS.dim}What the hooks do:${COLORS.reset}`);
-    log(`  • ${COLORS.yellow}PreToolUse[Read]${COLORS.reset}     Blocks Read on .ts/.js/.py files`);
+    log(`  • ${COLORS.yellow}PreToolUse[Read]${COLORS.reset}     Suggests smart_file_read for code files`);
     log(`  • ${COLORS.yellow}PostToolUse[Bash]${COLORS.reset}    Suggests compression for large outputs`);
     log(`  • ${COLORS.yellow}UserPromptSubmit${COLORS.reset}     Reminds to use MCP tools`);
     log(`\n${COLORS.dim}Token savings:${COLORS.reset}`);
