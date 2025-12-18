@@ -11,6 +11,9 @@ mod pty;
 mod stream;
 mod tokens;
 
+#[cfg(test)]
+mod tests;
+
 use config::Config;
 use injector::ContextInjector;
 use pty::{PtyManager, PtySize};

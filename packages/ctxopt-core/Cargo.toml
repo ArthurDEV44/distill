@@ -54,6 +54,14 @@ claude-tokenizer = "0.2"
 [build-dependencies]
 napi-build = "2"
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tokio-test = "0.4"
+
+[[bench]]
+name = "latency"
+harness = false
+
 [profile.release]
 lto = true
 opt-level = "z"

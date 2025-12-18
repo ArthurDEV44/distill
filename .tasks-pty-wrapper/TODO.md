@@ -85,7 +85,7 @@
 ## Phase 3: Integration & Polish
 
 - [x] [P07 - Hooks Integration](./P07-hooks-integration.md) - Auto-config hooks Claude Code
-- [ ] [P08 - Testing & Polish](./P08-testing-polish.md) - Tests cross-platform, métriques
+- [x] [P08 - Testing & Polish](./P08-testing-polish.md) - Tests cross-platform, métriques
 
 ---
 
