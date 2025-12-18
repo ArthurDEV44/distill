@@ -2,6 +2,7 @@
 
 import { program } from 'commander';
 import { CtxOptSession } from '@ctxopt/core';
+import { setupHooks, removeHooks, getHooksStatus, hasCtxoptHooks } from './hooks';
 
 // Version depuis package.json
 const VERSION = '0.1.0';
@@ -13,7 +14,7 @@ interface CliOptions {
   command: string;
 }
 
-// Configuration du CLI
+// Configuration du CLI principal
 program
   .name('ctxopt')
   .description('Terminal wrapper for Claude Code with automatic token optimization')
@@ -25,8 +26,71 @@ program
     await runWrapper(options);
   });
 
+// Commande setup
+program
+  .command('setup')
+  .description('Configure Claude Code hooks for ctxopt')
+  .option('-f, --force', 'Force setup even if already configured')
+  .action((options: { force?: boolean }) => {
+    if (hasCtxoptHooks() && !options.force) {
+      console.log('Hooks already configured. Use --force to reconfigure.');
+      return;
+    }
+
+    const result = setupHooks();
+    if (result.success) {
+      console.log('\x1b[32m✓\x1b[0m ' + result.message);
+      console.log('');
+      console.log('Hooks configured:');
+      console.log('  • PreToolUse: Suggests smart_file_read for code files');
+      console.log('  • PostToolUse: Suggests auto_optimize for large outputs');
+      console.log('  • UserPromptSubmit: Reminder of available tools');
+    } else {
+      console.error('\x1b[31m✗\x1b[0m ' + result.message);
+      process.exit(1);
+    }
+  });
+
+// Commande uninstall
+program
+  .command('uninstall')
+  .description('Remove ctxopt hooks from Claude Code')
+  .action(() => {
+    const result = removeHooks();
+    if (result.success) {
+      console.log('\x1b[32m✓\x1b[0m ' + result.message);
+    } else {
+      console.error('\x1b[31m✗\x1b[0m ' + result.message);
+      process.exit(1);
+    }
+  });
+
+// Commande status
+program
+  .command('status')
+  .description('Show ctxopt hooks status')
+  .action(() => {
+    const status = getHooksStatus();
+    console.log('Hooks Status:');
+    console.log(`  • Configured: ${status.configured ? '\x1b[32mYes\x1b[0m' : '\x1b[33mNo\x1b[0m'}`);
+    console.log(`  • Settings file: ${status.settingsPath}`);
+    console.log(`  • Total hooks: ${status.hookCount}`);
+  });
+
 // Main function
 async function runWrapper(options: CliOptions): Promise<void> {
+  // Auto-setup hooks si pas configures
+  if (!hasCtxoptHooks()) {
+    console.error('[ctxopt] First run detected. Setting up Claude Code hooks...');
+    const result = setupHooks();
+    if (result.success) {
+      console.error('[ctxopt] \x1b[32m✓\x1b[0m Hooks configured');
+    } else {
+      console.error('[ctxopt] \x1b[33m⚠\x1b[0m Could not configure hooks: ' + result.message);
+    }
+    console.error('');
+  }
+
   const { rows, columns } = getTerminalSize();
 
   if (options.verbose) {
