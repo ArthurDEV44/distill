@@ -10,102 +10,82 @@ import {
 
 const commonErrors = [
   {
-    title: "Invalid API Key (401)",
-    symptoms: "Response 401 Unauthorized",
+    title: "MCP Server Not Found",
+    symptoms: "Tools not appearing in Claude Code",
     causes: [
-      "API key was copied incorrectly (check for extra spaces)",
-      "API key has been revoked",
-      "API key has expired",
+      "MCP server not installed globally",
+      "mcp.json file in wrong location",
+      "IDE not restarted after configuration",
     ],
     solutions: [
-      "Verify the key starts with ctx_",
-      "Generate a new key from the dashboard",
-      "Copy the full key (it's only shown once on creation)",
+      "Run: npm install -g @ctxopt/mcp-server",
+      "Verify mcp.json is at ~/.claude/mcp.json",
+      "Restart your IDE completely",
     ],
   },
   {
-    title: "Rate Limit Exceeded (429)",
-    symptoms: "Response 429 Too Many Requests",
+    title: "Permission Denied",
+    symptoms: "npm install fails with EACCES error",
     causes: [
-      "Too many requests per minute",
-      "Monthly token quota exceeded",
+      "Global npm directory not writable",
+      "Node.js installed without proper permissions",
     ],
     solutions: [
-      "Wait for the reset (check Retry-After header)",
-      "Reduce request frequency",
-      "Upgrade your plan for higher limits",
+      "Use sudo: sudo npm install -g @ctxopt/mcp-server",
+      "Use npx instead: npx @ctxopt/mcp-server",
+      "Fix npm permissions: see npm docs for guidance",
     ],
   },
   {
     title: "Connection Timeout",
-    symptoms: "Request times out without response",
+    symptoms: "MCP tools hang or time out",
     causes: [
       "Network connectivity issues",
-      "Very large request taking too long",
-      "Server temporarily unavailable",
+      "File being read is extremely large",
     ],
     solutions: [
       "Check your internet connection",
-      "Increase client-side timeout",
-      "Reduce context size",
-      "Try again in a few moments",
-    ],
-  },
-  {
-    title: "Bad Gateway (502)",
-    symptoms: "Response 502 from the proxy",
-    causes: [
-      "Anthropic API is temporarily unavailable",
-      "Invalid request format passed through",
-    ],
-    solutions: [
-      "Wait and retry the request",
-      "Check Anthropic status page",
-      "Verify request body format",
+      "Try reading a smaller file first",
+      "Use smart_file_read with target parameter for specific functions",
     ],
   },
 ];
 
 const faqItems = [
   {
-    question: "What's the difference with the Anthropic API directly?",
+    question: "What is an MCP server?",
     answer:
-      "CtxOpt adds token tracking, usage analytics, and optimization suggestions. The API is 100% compatible with Anthropic - we simply proxy your requests and add metrics. Your prompts and responses pass through unchanged.",
+      "MCP (Model Context Protocol) is a standard for extending AI assistants with custom tools. The CtxOpt MCP server provides tools for token optimization that integrate directly with Claude Code, Cursor, and other compatible IDEs.",
   },
   {
-    question: "Are my data and prompts secure?",
+    question: "Do I need an account to use CtxOpt?",
     answer:
-      "Yes. Requests are transmitted to Anthropic without modification. We only store metadata (token counts, costs, timing) for analytics. We never store your actual prompts or Claude's responses.",
+      "No, the MCP server works locally without any account. All optimization happens on your machine. You can optionally sync stats to a dashboard in the future.",
   },
   {
-    question: "Can I use multiple API keys?",
+    question: "Which IDEs are supported?",
     answer:
-      "Yes! You can create multiple keys per project for different environments (development, production, CI). Each key tracks usage separately but rolls up to the same project.",
+      "Any IDE that supports the MCP protocol: Claude Code, Cursor, Windsurf, and others. Check the integration guides for setup instructions.",
   },
   {
-    question: "How do I see my usage?",
+    question: "How much can I save with CtxOpt?",
     answer:
-      "Log in to the dashboard at https://app.ctxopt.com/dashboard to see real-time usage metrics, cost breakdowns, and optimization suggestions.",
+      "Savings vary by use case. smart_file_read typically saves 50-70% on code files. auto_optimize can reduce build output by 95%+. Check session_stats to see your actual savings.",
   },
   {
-    question: "What happens if I exceed my quota?",
+    question: "Is the MCP server open source?",
     answer:
-      "You'll receive a 429 error. Free plan users can wait until the next month or upgrade. Pro users can contact support for temporary limit increases.",
+      "Yes! The CtxOpt MCP server is open source. You can view the code, contribute, or report issues on GitHub.",
   },
   {
-    question: "Is the MCP server required?",
+    question: "Can I use CtxOpt with other AI models?",
     answer:
-      "No, the MCP server is optional. You can use CtxOpt just by changing your API base URL. The MCP server provides additional optimization tools but isn't required for basic usage tracking.",
+      "The MCP server tools work with any AI assistant that supports MCP. While we test primarily with Claude, the optimization tools are model-agnostic.",
   },
   {
-    question: "Which Claude models are supported?",
+    question: "What languages does smart_file_read support?",
     answer:
-      "All Claude models available through the Anthropic API are supported: Claude Opus 4, Claude Sonnet 4, Claude 3.5 Haiku, and any future models.",
-  },
-  {
-    question: "Can I use CtxOpt with the Anthropic SDK?",
-    answer:
-      "Yes! Simply set the base URL to https://api.ctxopt.com/v1 and use your CtxOpt API key. The SDK will work exactly the same way.",
+      "Full AST analysis for TypeScript and JavaScript. Regex-based extraction for Python, Go, and Rust. Other languages get basic line-range extraction.",
   },
 ];
 
@@ -171,74 +151,42 @@ export default function TroubleshootingPage() {
         </div>
       </section>
 
-      {/* API Key Issues */}
+      {/* MCP Server Issues */}
       <section>
-        <h2 className="mb-4 text-2xl font-semibold">API Key Checklist</h2>
+        <h2 className="mb-4 text-2xl font-semibold">MCP Server Checklist</h2>
         <p className="mb-4 text-muted-foreground">
-          If your API key isn&apos;t working, verify the following:
+          If the MCP server isn&apos;t working, verify the following:
         </p>
         <div className="rounded-lg border p-6">
           <ul className="space-y-3">
             <li className="flex items-start gap-3">
               <input type="checkbox" className="mt-1" />
               <span>
-                Key starts with{" "}
-                <code className="rounded bg-muted px-1">ctx_</code>
+                mcp.json file exists at the correct location for your IDE
               </span>
             </li>
             <li className="flex items-start gap-3">
               <input type="checkbox" className="mt-1" />
-              <span>Key is marked as &quot;Active&quot; in the dashboard</span>
+              <span>
+                <code className="rounded bg-muted px-1">
+                  npx @ctxopt/mcp-server
+                </code>{" "}
+                runs without errors in terminal
+              </span>
             </li>
             <li className="flex items-start gap-3">
               <input type="checkbox" className="mt-1" />
-              <span>No trailing spaces or newlines when copying</span>
+              <span>IDE was restarted after adding configuration</span>
             </li>
             <li className="flex items-start gap-3">
               <input type="checkbox" className="mt-1" />
-              <span>The associated project still exists</span>
+              <span>Node.js version is 18 or higher</span>
             </li>
             <li className="flex items-start gap-3">
               <input type="checkbox" className="mt-1" />
-              <span>Key hasn&apos;t been revoked</span>
+              <span>No syntax errors in mcp.json (valid JSON)</span>
             </li>
           </ul>
-        </div>
-      </section>
-
-      {/* MCP Server Issues */}
-      <section>
-        <h2 className="mb-4 text-2xl font-semibold">MCP Server Issues</h2>
-        <div className="space-y-4">
-          <div className="rounded-lg border p-4">
-            <h4 className="mb-2 font-medium">MCP tools not appearing</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>- Verify the mcp.json file is in the correct location</li>
-              <li>- Restart your IDE after configuration changes</li>
-              <li>
-                - Check that{" "}
-                <code className="rounded bg-muted px-1">npx @ctxopt/mcp-server</code>{" "}
-                runs without errors
-              </li>
-            </ul>
-          </div>
-
-          <div className="rounded-lg border p-4">
-            <h4 className="mb-2 font-medium">Permission denied errors</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>- Try installing globally with sudo: <code className="rounded bg-muted px-1">sudo npm i -g @ctxopt/mcp-server</code></li>
-              <li>- Or use npx which doesn&apos;t require global installation</li>
-            </ul>
-          </div>
-
-          <div className="rounded-lg border p-4">
-            <h4 className="mb-2 font-medium">Session stats not syncing</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>- Ensure CTXOPT_API_KEY is set in your mcp.json env section</li>
-              <li>- Verify the API key is valid</li>
-              <li>- Check your network connection</li>
-            </ul>
-          </div>
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { projects, users, apiKeys } from "@/lib/db/schema";
-import { eq, and, count } from "drizzle-orm";
+import { projects, users } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { UpdateProjectSchema } from "@ctxopt/shared";
 
 function slugify(text: string): string {
@@ -89,18 +89,7 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    // Get API key count
-    const [keyCount] = await db
-      .select({ count: count() })
-      .from(apiKeys)
-      .where(eq(apiKeys.projectId, project.id));
-
-    return Response.json({
-      project: {
-        ...project,
-        apiKeyCount: keyCount?.count ?? 0,
-      },
-    });
+    return Response.json({ project });
   } catch (error) {
     console.error("Error fetching project:", error);
     return Response.json(
@@ -266,7 +255,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       );
     }
 
-    // Delete project (cascade will delete api_keys, requests, suggestions)
+    // Delete project (cascade will delete suggestions)
     await db.delete(projects).where(eq(projects.id, id));
 
     return new Response(null, { status: 204 });

@@ -13,8 +13,8 @@ const navigation = [
     ],
   },
   {
-    title: "API Reference",
-    items: [{ title: "Messages API", href: "/docs/api" }],
+    title: "MCP Server",
+    items: [{ title: "Installation & Tools", href: "/docs/mcp" }],
   },
   {
     title: "Integration Guides",
@@ -24,10 +24,6 @@ const navigation = [
       { title: "Cursor", href: "/docs/guides/cursor" },
       { title: "Windsurf", href: "/docs/guides/windsurf" },
     ],
-  },
-  {
-    title: "MCP Server",
-    items: [{ title: "Installation & Tools", href: "/docs/mcp" }],
   },
   {
     title: "Support",

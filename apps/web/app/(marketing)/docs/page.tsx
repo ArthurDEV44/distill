@@ -86,32 +86,6 @@ curl -fsSL https://ctxopt.dev/install.sh | bash`}
         <h2 className="mb-6 text-2xl font-semibold">Explore the Docs</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <Link
-            href="/docs/api"
-            className="group rounded-lg border p-6 transition-colors hover:border-primary"
-          >
-            <h3 className="mb-2 font-semibold group-hover:text-primary">
-              API Reference
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Complete documentation of the CtxOpt proxy API, including
-              endpoints, authentication, and response formats.
-            </p>
-          </Link>
-
-          <Link
-            href="/docs/guides"
-            className="group rounded-lg border p-6 transition-colors hover:border-primary"
-          >
-            <h3 className="mb-2 font-semibold group-hover:text-primary">
-              Integration Guides
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Step-by-step guides for integrating CtxOpt with Claude Code,
-              Cursor, Windsurf, and direct API usage.
-            </p>
-          </Link>
-
-          <Link
             href="/docs/mcp"
             className="group rounded-lg border p-6 transition-colors hover:border-primary"
           >
@@ -125,6 +99,19 @@ curl -fsSL https://ctxopt.dev/install.sh | bash`}
           </Link>
 
           <Link
+            href="/docs/guides"
+            className="group rounded-lg border p-6 transition-colors hover:border-primary"
+          >
+            <h3 className="mb-2 font-semibold group-hover:text-primary">
+              Integration Guides
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Step-by-step guides for integrating CtxOpt with Claude Code,
+              Cursor, and Windsurf.
+            </p>
+          </Link>
+
+          <Link
             href="/docs/troubleshooting"
             className="group rounded-lg border p-6 transition-colors hover:border-primary"
           >
@@ -132,8 +119,7 @@ curl -fsSL https://ctxopt.dev/install.sh | bash`}
               Troubleshooting
             </h3>
             <p className="text-sm text-muted-foreground">
-              Solutions to common issues, error codes, and frequently asked
-              questions.
+              Solutions to common issues and frequently asked questions.
             </p>
           </Link>
         </div>

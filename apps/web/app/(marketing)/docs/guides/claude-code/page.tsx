@@ -59,73 +59,29 @@ export default function ClaudeCodeGuidePage() {
                 d="M5 13l4 4L19 7"
               />
             </svg>
-            A CtxOpt account with an API key
+            Node.js 18+ installed
           </li>
         </ul>
       </section>
 
-      {/* Configuration Options */}
+      {/* Installation */}
       <section>
-        <h2 className="mb-6 text-2xl font-semibold">Configuration</h2>
+        <h2 className="mb-6 text-2xl font-semibold">Installation</h2>
         <p className="mb-6 text-muted-foreground">
-          There are two ways to configure Claude Code to use CtxOpt:
-        </p>
-
-        {/* Option 1: Environment Variables */}
-        <div className="mb-8 rounded-lg border p-6">
-          <h3 className="mb-4 text-lg font-semibold">
-            Option 1: Environment Variables (Recommended)
-          </h3>
-          <p className="mb-4 text-muted-foreground">
-            Add these to your shell configuration (
-            <code className="rounded bg-muted px-1">~/.bashrc</code>,{" "}
-            <code className="rounded bg-muted px-1">~/.zshrc</code>, etc.):
-          </p>
-          <CodeBlock
-            code={`export ANTHROPIC_API_KEY="ctx_your_api_key"
-export ANTHROPIC_BASE_URL="https://api.ctxopt.com/v1"`}
-            language="bash"
-          />
-          <p className="mt-4 text-sm text-muted-foreground">
-            After adding, reload your shell or run{" "}
-            <code className="rounded bg-muted px-1">source ~/.zshrc</code>.
-          </p>
-        </div>
-
-        {/* Option 2: Config File */}
-        <div className="rounded-lg border p-6">
-          <h3 className="mb-4 text-lg font-semibold">
-            Option 2: Configuration File
-          </h3>
-          <p className="mb-4 text-muted-foreground">
-            Create or modify{" "}
-            <code className="rounded bg-muted px-1">~/.claude.json</code>:
-          </p>
-          <CodeBlock
-            code={`{
-  "apiKey": "ctx_your_api_key",
-  "baseUrl": "https://api.ctxopt.com/v1"
-}`}
-            language="json"
-          />
-        </div>
-      </section>
-
-      {/* Using MCP Server */}
-      <section>
-        <h2 className="mb-4 text-2xl font-semibold">
-          Using the MCP Server (Optional)
-        </h2>
-        <p className="mb-4 text-muted-foreground">
-          For advanced features like build output analysis and context
-          compression, install the CtxOpt MCP server:
+          Install the CtxOpt MCP server to add token optimization tools to
+          Claude Code:
         </p>
         <CodeBlock
           code={`npm install -g @ctxopt/mcp-server`}
           language="bash"
         />
-        <p className="mt-4 mb-4 text-muted-foreground">
-          Then add it to your MCP configuration at{" "}
+      </section>
+
+      {/* Configuration */}
+      <section>
+        <h2 className="mb-6 text-2xl font-semibold">Configuration</h2>
+        <p className="mb-4 text-muted-foreground">
+          Add the MCP server to your Claude Code configuration at{" "}
           <code className="rounded bg-muted px-1">~/.claude/mcp.json</code>:
         </p>
         <CodeBlock
@@ -140,11 +96,56 @@ export ANTHROPIC_BASE_URL="https://api.ctxopt.com/v1"`}
           language="json"
         />
         <p className="mt-4 text-muted-foreground">
+          Restart Claude Code after adding the configuration.
+        </p>
+      </section>
+
+      {/* Available Tools */}
+      <section>
+        <h2 className="mb-4 text-2xl font-semibold">Available Tools</h2>
+        <p className="mb-4 text-muted-foreground">
+          Once configured, Claude Code will have access to these optimization
+          tools:
+        </p>
+        <div className="space-y-4">
+          <div className="rounded-lg border p-4">
+            <h4 className="mb-2 font-medium">smart_file_read</h4>
+            <p className="text-sm text-muted-foreground">
+              Read files with AST analysis, extracting only what you need.
+              50-70% token savings compared to reading full files.
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <h4 className="mb-2 font-medium">auto_optimize</h4>
+            <p className="text-sm text-muted-foreground">
+              Automatically compress build output, logs, and error messages.
+              95%+ reduction for verbose output.
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <h4 className="mb-2 font-medium">session_stats</h4>
+            <p className="text-sm text-muted-foreground">
+              View real-time token usage statistics and savings for your current
+              session.
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <h4 className="mb-2 font-medium">compress_context</h4>
+            <p className="text-sm text-muted-foreground">
+              Compress large text content like logs, stack traces, or config
+              files. 40-60% reduction.
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-muted-foreground">
           See the{" "}
           <Link href="/docs/mcp" className="text-primary hover:underline">
             MCP Server documentation
           </Link>{" "}
-          for available tools and features.
+          for the complete list of tools.
         </p>
       </section>
 
@@ -152,24 +153,18 @@ export ANTHROPIC_BASE_URL="https://api.ctxopt.com/v1"`}
       <section>
         <h2 className="mb-4 text-2xl font-semibold">Verification</h2>
         <p className="mb-4 text-muted-foreground">
-          Verify your setup by running:
+          Verify your setup by checking the available MCP tools:
         </p>
         <CodeBlock
-          code={`# Check version
-claude --version
+          code={`# Start Claude Code
+claude
 
-# Test with a simple prompt
-claude "Hello, Claude!"`}
+# Ask Claude to check MCP tools
+> What MCP tools are available?
+
+# You should see ctxopt tools listed`}
           language="bash"
         />
-        <p className="mt-4 text-muted-foreground">
-          If configured correctly, your requests will be proxied through CtxOpt
-          and you&apos;ll see usage metrics in your{" "}
-          <Link href="/dashboard" className="text-primary hover:underline">
-            dashboard
-          </Link>
-          .
-        </p>
       </section>
 
       {/* Troubleshooting */}
@@ -177,33 +172,33 @@ claude "Hello, Claude!"`}
         <h2 className="mb-4 text-2xl font-semibold">Troubleshooting</h2>
         <div className="space-y-4">
           <div className="rounded-lg border p-4">
-            <h4 className="mb-2 font-medium">API key not working</h4>
+            <h4 className="mb-2 font-medium">MCP tools not appearing</h4>
             <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>- Verify the key starts with <code className="rounded bg-muted px-1">ctx_</code></li>
-              <li>- Check for trailing spaces when copying</li>
-              <li>- Ensure the key is active in your dashboard</li>
+              <li>
+                - Verify mcp.json is at{" "}
+                <code className="rounded bg-muted px-1">~/.claude/mcp.json</code>
+              </li>
+              <li>- Restart Claude Code after configuration changes</li>
+              <li>
+                - Check that{" "}
+                <code className="rounded bg-muted px-1">
+                  npx @ctxopt/mcp-server
+                </code>{" "}
+                runs without errors
+              </li>
             </ul>
           </div>
 
           <div className="rounded-lg border p-4">
-            <h4 className="mb-2 font-medium">Connection errors</h4>
+            <h4 className="mb-2 font-medium">Permission errors</h4>
             <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>- Check your internet connection</li>
               <li>
-                - Verify the base URL is exactly{" "}
+                - Try installing globally with sudo:{" "}
                 <code className="rounded bg-muted px-1">
-                  https://api.ctxopt.com/v1
+                  sudo npm i -g @ctxopt/mcp-server
                 </code>
               </li>
-              <li>- Try running with debug mode: <code className="rounded bg-muted px-1">claude --debug</code></li>
-            </ul>
-          </div>
-
-          <div className="rounded-lg border p-4">
-            <h4 className="mb-2 font-medium">Environment variables not loaded</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>- Restart your terminal after editing shell config</li>
-              <li>- Verify with <code className="rounded bg-muted px-1">echo $ANTHROPIC_BASE_URL</code></li>
+              <li>- Or use npx which doesn&apos;t require global installation</li>
             </ul>
           </div>
         </div>

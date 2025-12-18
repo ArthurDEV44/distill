@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { projects, users, apiKeys } from "@/lib/db/schema";
+import { projects, users } from "@/lib/db/schema";
 import { eq, count, and } from "drizzle-orm";
 import { CreateProjectSchema } from "@ctxopt/shared";
 import { PLAN_LIMITS } from "@ctxopt/shared";
@@ -77,22 +77,7 @@ export async function GET() {
       .where(eq(projects.userId, user.id))
       .orderBy(projects.createdAt);
 
-    // Get API key counts for each project
-    const projectsWithStats = await Promise.all(
-      userProjects.map(async (project) => {
-        const [keyCount] = await db
-          .select({ count: count() })
-          .from(apiKeys)
-          .where(eq(apiKeys.projectId, project.id));
-
-        return {
-          ...project,
-          apiKeyCount: keyCount?.count ?? 0,
-        };
-      })
-    );
-
-    return Response.json({ projects: projectsWithStats });
+    return Response.json({ projects: userProjects });
   } catch (error) {
     console.error("Error fetching projects:", error);
     return Response.json(

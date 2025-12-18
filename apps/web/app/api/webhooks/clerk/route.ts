@@ -57,7 +57,6 @@ export async function POST(req: Request) {
         name: [first_name, last_name].filter(Boolean).join(" ") || null,
         imageUrl: image_url,
         plan: "free",
-        monthlyTokenLimit: 100000,
       });
 
       break;
