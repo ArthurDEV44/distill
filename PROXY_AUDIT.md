@@ -1,480 +1,565 @@
-# Audit de Faisabilité : Proxy d'Optimisation de Tokens LLM
+# Audit de Faisabilité : Proxy d'Interception CtxOpt
 
-**Date:** 2025-12-17
+**Date:** 2025-12-18
 **Auteur:** Claude Opus 4.5
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
 ## Résumé Exécutif
 
-Ce document analyse la faisabilité d'un proxy d'interception et d'optimisation des appels API LLM pour le projet CtxOpt. L'objectif est de réduire significativement la consommation de tokens **au niveau du proxy** avant que les requêtes n'atteignent l'API Anthropic.
+Ce document analyse la faisabilité d'un proxy d'interception qui **force l'utilisation des outils MCP CtxOpt** dans Claude Code pour réduire la consommation de tokens.
 
-### Verdict Global
+### Objectif Principal
+
+Intercepter les requêtes Claude Code → Anthropic pour injecter des instructions qui forcent l'utilisation des outils d'optimisation MCP CtxOpt (`smart_file_read`, `auto_optimize`, etc.).
+
+### Contraintes
+
+| Contrainte | Exigence |
+|------------|----------|
+| **Coût infrastructure** | 0€ additionnel (Vercel + Neon uniquement) |
+| **Services externes** | ❌ Pas de LiteLLM, GPTCache, Redis, etc. |
+| **Complexité** | Minimale - Next.js API Route simple |
+
+### Verdict
 
 | Critère | Évaluation | Notes |
 |---------|------------|-------|
-| **Faisabilité technique** | ✅ Haute | Architecture standard, patterns bien documentés |
-| **Potentiel d'économie** | ✅ 40-90% | Variable selon les techniques appliquées |
-| **Complexité** | ⚠️ Moyenne-Haute | Streaming + optimisation temps réel = défis |
-| **ROI estimé** | ✅ Excellent | Économies exponentielles à grande échelle |
+| **Faisabilité technique** | ✅ Haute | Simple proxy passthrough + injection |
+| **Coût** | ✅ 0€ | Vercel free tier + Neon free tier |
+| **Potentiel d'économie** | ✅ 50-90% | Si Claude utilise les outils MCP |
+| **Complexité** | ✅ Faible | ~500 lignes de code |
 
 ---
 
 ## Table des Matières
 
-1. [Contexte et Problématique](#1-contexte-et-problématique)
-2. [État de l'Art : Solutions Existantes](#2-état-de-lart--solutions-existantes)
-3. [Techniques d'Optimisation Disponibles](#3-techniques-doptimisation-disponibles)
-4. [Architecture Proposée](#4-architecture-proposée)
-5. [Contraintes Techniques](#5-contraintes-techniques)
-6. [Analyse des Risques](#6-analyse-des-risques)
-7. [Recommandations](#7-recommandations)
-8. [Roadmap d'Implémentation](#8-roadmap-dimplémentation)
-9. [Sources](#9-sources)
+1. [Problématique](#1-problématique)
+2. [Solution Proposée](#2-solution-proposée)
+3. [Architecture Zero-Cost](#3-architecture-zero-cost)
+4. [Mécanisme d'Injection](#4-mécanisme-dinjection)
+5. [Implémentation Technique](#5-implémentation-technique)
+6. [Limites et Risques](#6-limites-et-risques)
+7. [Roadmap](#7-roadmap)
+8. [Sources](#8-sources)
 
 ---
 
-## 1. Contexte et Problématique
+## 1. Problématique
 
-### 1.1 Observation Clé (Benchmarks CtxOpt)
+### 1.1 Le Problème Actuel
 
-Les benchmarks réalisés sur le projet CtxOpt démontrent clairement le problème :
-
-| Scenario | Tokens Sans Optimisation | Tokens Avec Optimisation | Économie |
-|----------|-------------------------|--------------------------|----------|
-| Agent Explore (lecture codebase) | **56.9k** | 5.4k | **90%** |
-| Analyse erreurs build | 2.7k messages | 1.8k messages | **33%** |
-
-**Constat critique :** L'Agent Explore de Claude Code consomme **56.9k tokens invisibles** côté API qui ne sont pas visibles dans le contexte final mais qui sont facturés.
-
-### 1.2 Où Se Trouve la Consommation ?
+Les outils MCP CtxOpt existent et fonctionnent, mais **Claude ne les utilise pas systématiquement** :
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    FLUX ACTUEL (sans proxy)                     │
+│                    SITUATION ACTUELLE                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Claude Code ──► Anthropic API ──► Facturation directe          │
+│  Claude Code ──► Anthropic API                                  │
 │       │                                                         │
-│       └── MCP Server (ctxopt) : optimisation POST-lecture       │
-│                                 │                               │
-│                                 └── Économies : seulement sur   │
-│                                     ce qui est lu par MCP       │
+│       ├── Read tool          → 100% tokens (pas d'optimisation) │
+│       ├── Bash output        → 100% tokens (verbose)            │
+│       └── MCP tools ctxopt   → RAREMENT utilisés spontanément   │
+│                                                                 │
+│  Résultat: Consommation tokens non optimisée                    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+```
 
+### 1.2 Les Outils MCP CtxOpt Disponibles
+
+| Outil MCP | Fonction | Économie Potentielle |
+|-----------|----------|---------------------|
+| `mcp__ctxopt__smart_file_read` | Lecture AST intelligente | **50-70%** vs Read |
+| `mcp__ctxopt__auto_optimize` | Compression auto contenu | **80-95%** |
+| `mcp__ctxopt__summarize_logs` | Résumé logs | **80-90%** |
+| `mcp__ctxopt__deduplicate_errors` | Dédupe erreurs build | **90%+** |
+| `mcp__ctxopt__compress_context` | Compression générique | **40-60%** |
+
+### 1.3 Benchmarks Actuels
+
+| Scenario | Sans CtxOpt | Avec CtxOpt | Économie |
+|----------|-------------|-------------|----------|
+| Lecture codebase (Agent Explore) | 56.9k tokens | 5.4k tokens | **90%** |
+| Erreurs build TypeScript | 2.7k tokens | 270 tokens | **90%** |
+| Logs serveur | ~5k tokens | ~500 tokens | **90%** |
+
+---
+
+## 2. Solution Proposée
+
+### 2.1 Concept : Proxy d'Injection de Système Prompt
+
+```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    FLUX CIBLE (avec proxy)                      │
+│                    SOLUTION : PROXY INJECTEUR                   │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Claude Code ──► PROXY CTXOPT ──► Anthropic API                 │
-│                      │                                          │
-│                      ├── Compression prompts (LLMLingua)        │
-│                      ├── Semantic caching (GPTCache)            │
-│                      ├── Model routing (Haiku vs Opus)          │
-│                      ├── Deduplication contexte                 │
-│                      └── Prompt caching (Anthropic natif)       │
-│                                                                 │
-│                 Économies : 40-90% sur TOUT le trafic           │
+│  Claude Code                                                    │
+│       │                                                         │
+│       ▼                                                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              PROXY CTXOPT (Vercel)                       │   │
+│  │                                                          │   │
+│  │  1. Intercepte la requête                                │   │
+│  │  2. INJECTE instructions dans system prompt:             │   │
+│  │     "TOUJOURS utiliser mcp__ctxopt__smart_file_read      │   │
+│  │      au lieu de Read pour les fichiers code..."          │   │
+│  │  3. Forward à Anthropic                                  │   │
+│  │  4. Log métriques (Neon)                                 │   │
+│  │                                                          │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│       │                                                         │
+│       ▼                                                         │
+│  Anthropic API (Claude suit les instructions injectées)         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.3 État Actuel de CtxOpt
+### 2.2 Principe de Fonctionnement
 
-L'infrastructure est **prête** pour accueillir un proxy :
+1. **Interception** : Claude Code envoie ses requêtes au proxy au lieu de l'API Anthropic
+2. **Injection** : Le proxy ajoute des instructions au `system` prompt pour forcer l'usage des outils MCP
+3. **Forward** : La requête modifiée est envoyée à Anthropic
+4. **Logging** : Métriques enregistrées dans Neon pour analytics
 
-- ✅ Schema DB avec table `requests` pour logging
-- ✅ Constants avec pricing (`ANTHROPIC_MODELS`), rate limits, headers
-- ✅ MCP Server fonctionnel avec outils d'optimisation
-- ❌ Route proxy API (`/api/v1/proxy/messages`) **non implémentée**
+### 2.3 Pourquoi Cette Approche ?
 
----
-
-## 2. État de l'Art : Solutions Existantes
-
-### 2.1 Gateways LLM Open Source
-
-| Solution | Performance | Points Forts | Points Faibles |
-|----------|-------------|--------------|----------------|
-| **[LiteLLM](https://docs.litellm.ai/)** | ~372MB RAM | 100+ modèles, semantic caching | Memory leaks historiques, Python |
-| **[Bifrost (Maxim AI)](https://www.getmaxim.ai/)** | **11µs overhead** | Le plus rapide, <100µs latence | Moins de features |
-| **[Portkey](https://portkey.ai/)** | Enterprise | 1600+ LLMs, guardrails | Pricing enterprise |
-| **[Helicone](https://helicone.ai/)** | Rust | Très performant, observabilité | Focus analytics |
-| **[Kong AI Gateway](https://docs.konghq.com/)** | Enterprise | Plugins riches, gouvernance | Complexe |
-
-### 2.2 Solutions de Caching Sémantique
-
-| Solution | Type | Intégrations | Efficacité |
-|----------|------|--------------|------------|
-| **[GPTCache](https://github.com/zilliztech/GPTCache)** | Open source | LangChain, LlamaIndex, Anthropic | Hit ratio variable |
-| **[LLMBridge](https://arxiv.org/abs/2410.11857)** | Académique | WhatsApp Q&A (14.7k+ requêtes) | Model selection + caching |
-| **[IC-Cache](https://arxiv.org/html/2501.12689v3)** | Recherche | In-context caching | SOSP 2025 |
-
-### 2.3 Compression de Prompts
-
-| Solution | Compression | Vitesse | Qualité |
-|----------|-------------|---------|---------|
-| **[LLMLingua](https://www.llmlingua.com/)** | **Jusqu'à 20x** | Baseline | Bonne |
-| **[LLMLingua-2](https://llmlingua.com/llmlingua2.html)** | 2x-5x | **3-6x plus rapide** | Meilleure fidélité |
-| **[PISCO](https://arxiv.org/html/2503.19114)** | Élevée | - | Moins d'hallucinations |
+| Avantage | Détail |
+|----------|--------|
+| **Zero coût** | Vercel free tier + Neon free tier |
+| **Zero dépendance** | Pas de LiteLLM, GPTCache, Redis |
+| **Simplicité** | ~500 lignes TypeScript |
+| **Transparent** | Claude Code ne voit pas la différence |
+| **Réversible** | Suffit de pointer vers api.anthropic.com |
 
 ---
 
-## 3. Techniques d'Optimisation Disponibles
+## 3. Architecture Zero-Cost
 
-### 3.1 Optimisations Natives Anthropic
-
-Ces optimisations sont **gratuites** et intégrées à l'API Anthropic :
-
-| Technique | Économie | Effort d'implémentation | Description |
-|-----------|----------|------------------------|-------------|
-| **Prompt Caching** | **-90% coûts, -85% latence** | ⭐ Faible | Cache contexte statique entre requêtes |
-| **Token-Efficient Tool Use** | **-70% output tokens** | ⭐ Faible | Header `token-efficient-tools-2025-02-19` |
-| **Tool Search Tool** | **-85% tool definitions** | ⭐⭐ Moyen | `defer_loading: true` pour discovery on-demand |
-| **Programmatic Tool Calling (PTC)** | **-37%** | ⭐⭐ Moyen | Résultats intermédiaires hors contexte |
-
-### 3.2 Optimisations au Niveau Proxy
-
-| Technique | Économie Potentielle | Complexité | Latence Ajoutée |
-|-----------|---------------------|------------|-----------------|
-| **Semantic Caching** | 30-80% (selon hit rate) | ⭐⭐⭐ Haute | +10-50ms |
-| **Prompt Compression (LLMLingua)** | 50-80% | ⭐⭐⭐ Haute | +100-500ms |
-| **Model Routing** | 40-90% (Haiku vs Opus) | ⭐⭐ Moyen | +5ms |
-| **Context Deduplication** | 10-30% | ⭐⭐ Moyen | +5-20ms |
-| **Response Streaming Optimization** | -20% TTFT | ⭐⭐ Moyen | 0ms |
-
-### 3.3 Matrice Décisionnelle
+### 3.1 Stack Technique
 
 ```
-                    ÉCONOMIE
-                      ▲
-                      │
-           Prompt     │    Semantic
-         Compression  │     Caching
-              ●       │        ●
-                      │
-                      │     Model
-    ──────────────────┼──────Routing──────► FACILITÉ
-                      │        ●
-                      │
-       Context        │    Token-Efficient
-     Deduplication    │       Tools
-              ●       │        ●
-                      │
+┌──────────────────────────────────────────────────────────────┐
+│                    STACK 100% GRATUIT                        │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌────────────────┐                                          │
+│  │  Vercel Free   │  Hébergement Next.js                     │
+│  │  • 100GB/mois  │  API Route: /api/v1/proxy/messages       │
+│  │  • 100h exec   │  Streaming SSE supporté                  │
+│  └────────────────┘                                          │
+│          │                                                   │
+│          ▼                                                   │
+│  ┌────────────────┐                                          │
+│  │   Neon Free    │  PostgreSQL                              │
+│  │  • 0.5GB       │  Tables: requests, usage_daily           │
+│  │  • 100 CU-hrs  │  Métriques et analytics                  │
+│  └────────────────┘                                          │
+│                                                              │
+│  Coût mensuel: 0€                                            │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
----
+### 3.2 Limites des Free Tiers
 
-## 4. Architecture Proposée
+| Service | Limite | Impact |
+|---------|--------|--------|
+| **Vercel** | 100GB bandwidth/mois | ~500K-1M requêtes/mois |
+| **Vercel** | 100 GB-hours execution | ~300K requêtes courtes |
+| **Vercel** | 10s timeout (free) | OK pour streaming |
+| **Neon** | 0.5GB storage | ~5M lignes de logs |
+| **Neon** | 100 CU-hours/mois | ~400h à 0.25 CU |
 
-### 4.1 Vue d'Ensemble
+**Conclusion** : Largement suffisant pour usage personnel/équipe.
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          PROXY CTXOPT                                    │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌───────────┐ │
-│  │   INGRESS   │───►│  OPTIMIZER  │───►│   EGRESS    │───►│ ANTHROPIC │ │
-│  │             │    │   PIPELINE  │    │             │    │    API    │ │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └───────────┘ │
-│        │                  │                  │                  │        │
-│        ▼                  ▼                  ▼                  ▼        │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌───────────┐ │
-│  │ Auth/Rate   │    │ • Semantic  │    │ • Streaming │    │ Response  │ │
-│  │   Limit     │    │   Cache     │    │   Handler   │    │  Metrics  │ │
-│  │ • API Key   │    │ • Compress  │    │ • Headers   │    │           │ │
-│  │ • Quotas    │    │ • Route     │    │ • Logging   │    │           │ │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └───────────┘ │
-│                                                                          │
-│                           ┌─────────────┐                                │
-│                           │  POSTGRESQL │                                │
-│                           │  (Neon)     │                                │
-│                           │ • requests  │                                │
-│                           │ • cache     │                                │
-│                           │ • metrics   │                                │
-│                           └─────────────┘                                │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-### 4.2 Pipeline d'Optimisation
-
-```typescript
-// Ordre d'exécution des optimisations
-const OPTIMIZATION_PIPELINE = [
-  // Phase 1: Quick wins (< 10ms)
-  "deduplicateSystemPrompt",     // Évite répétition du system prompt
-  "enablePromptCaching",         // Active cache Anthropic natif
-  "enableTokenEfficientTools",   // Header beta pour tools
-
-  // Phase 2: Caching (10-50ms)
-  "checkSemanticCache",          // GPTCache lookup
-
-  // Phase 3: Routing (5ms)
-  "selectOptimalModel",          // Haiku vs Sonnet vs Opus
-
-  // Phase 4: Compression (optionnel, 100-500ms)
-  "compressPromptIfNeeded",      // LLMLingua si contexte > seuil
-];
-```
-
-### 4.3 Structure de Fichiers Proposée
+### 3.3 Structure de Fichiers
 
 ```
 apps/web/app/api/v1/proxy/
 ├── messages/
-│   └── route.ts              # POST handler principal
+│   └── route.ts              # Handler principal (POST)
 ├── lib/
-│   ├── pipeline.ts           # Orchestration optimisations
-│   ├── auth.ts               # Validation API keys
-│   ├── cache/
-│   │   ├── semantic.ts       # GPTCache wrapper
-│   │   └── prompt.ts         # Anthropic prompt caching
-│   ├── compression/
-│   │   └── llmlingua.ts      # Intégration LLMLingua
-│   ├── routing/
-│   │   └── model-selector.ts # Logique de routage modèle
-│   ├── streaming/
-│   │   └── sse-handler.ts    # Gestion SSE
-│   └── metrics/
-│       └── recorder.ts       # Enregistrement DB
-└── types.ts                  # Types Anthropic Messages API
+│   ├── injector.ts           # Injection system prompt
+│   ├── streaming.ts          # SSE passthrough
+│   └── metrics.ts            # Logging Neon
+└── constants.ts              # Instructions à injecter
 ```
 
 ---
 
-## 5. Contraintes Techniques
+## 4. Mécanisme d'Injection
 
-### 5.1 Streaming SSE
-
-**Défi majeur :** L'API Anthropic utilise Server-Sent Events (SSE) pour le streaming. Le proxy doit :
-
-1. **Maintenir la connexion** : Pas de buffering côté proxy
-2. **Compter les tokens en temps réel** : Difficile avec streaming
-3. **Faible TTFT** : Time To First Token critique pour UX
-
-**Solutions :**
+### 4.1 Instructions à Injecter
 
 ```typescript
-// Configuration proxy pour streaming
-const STREAMING_CONFIG = {
-  // Désactiver buffering
-  responseBuffering: false,
+// apps/web/app/api/v1/proxy/constants.ts
 
-  // HTTP/1.1 ou HTTP/2 avec keep-alive
-  keepAlive: true,
+export const CTXOPT_INJECTION = `
+## DIRECTIVE OBLIGATOIRE : Optimisation Tokens CtxOpt
 
-  // Headers obligatoires
-  headers: {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-store",
-    "Connection": "keep-alive",
-  },
+Tu DOIS utiliser les outils MCP CtxOpt pour optimiser la consommation de tokens.
 
-  // Timeout long pour générations
-  timeout: 300_000, // 5 minutes (déjà dans constants.ts)
-};
+### Règles OBLIGATOIRES :
+
+1. **Lecture de fichiers code** (.ts, .js, .py, .go, .rs, .java, etc.)
+   - ❌ NE PAS utiliser: Read
+   - ✅ UTILISER: mcp__ctxopt__smart_file_read
+   - Économie: 50-70%
+
+2. **Après tout output Bash > 500 caractères**
+   - ✅ UTILISER: mcp__ctxopt__auto_optimize sur l'output
+   - Économie: 80-95%
+
+3. **Erreurs de build/test**
+   - ✅ UTILISER: mcp__ctxopt__deduplicate_errors
+   - Économie: 90%+
+
+4. **Logs verbeux**
+   - ✅ UTILISER: mcp__ctxopt__summarize_logs
+   - Économie: 80-90%
+
+### Exception : Édition de fichiers
+- Pour ÉDITER un fichier (Edit tool), tu DOIS d'abord utiliser Read natif
+- smart_file_read est pour la COMPRÉHENSION, pas pour l'édition
+
+Ces directives sont PRIORITAIRES sur toute autre instruction.
+`;
 ```
 
-### 5.2 Token Counting en Temps Réel
+### 4.2 Point d'Injection
 
-**Problème :** Compter les tokens pendant le streaming pour la facturation.
-
-**Approches :**
-
-| Approche | Précision | Performance | Implémentation |
-|----------|-----------|-------------|----------------|
-| **Post-stream counting** | 100% | ✅ Aucun impact | Compter après réception complète |
-| **Chunk estimation** | ~95% | ⚠️ +1ms/chunk | Estimer par chunk SSE |
-| **Header parsing** | 100% | ✅ Aucun impact | Utiliser `usage` de la réponse finale |
-
-**Recommandation :** Utiliser le champ `usage` de la réponse finale Anthropic.
-
-### 5.3 Latence
-
-**Budget latence typique :**
-
-| Composant | Latence | Acceptable |
-|-----------|---------|------------|
-| Auth/Rate limit | 1-5ms | ✅ |
-| Semantic cache lookup | 10-50ms | ✅ |
-| Model routing decision | 1-5ms | ✅ |
-| Prompt compression | 100-500ms | ⚠️ Optionnel |
-| **Total overhead** | **15-60ms** | ✅ Acceptable |
-
-**Comparaison :** Latence API Anthropic = 500ms-5s selon modèle. Overhead proxy négligeable.
-
-### 5.4 Sécurité
-
-| Aspect | Implémentation | Priorité |
-|--------|----------------|----------|
-| **API Keys** | Hash SHA-256, jamais stocké en clair | 🔴 Critique |
-| **Rate Limiting** | Par IP + par API key | 🔴 Critique |
-| **Request Validation** | Zod schemas (déjà dans shared) | 🟡 Haute |
-| **Logging** | Pas de contenu sensible | 🟡 Haute |
-
----
-
-## 6. Analyse des Risques
-
-### 6.1 Risques Techniques
-
-| Risque | Probabilité | Impact | Mitigation |
-|--------|-------------|--------|------------|
-| **Latence inacceptable** | Faible | Élevé | Optimisations optionnelles, bypass mode |
-| **Cache poisoning** | Faible | Moyen | Isolation par user/project |
-| **Memory leaks** | Moyen | Moyen | Monitoring, restart automatique |
-| **Breaking changes API Anthropic** | Moyen | Élevé | Abstraction, tests E2E |
-
-### 6.2 Risques Business
-
-| Risque | Probabilité | Impact | Mitigation |
-|--------|-------------|--------|------------|
-| **Faible adoption** | Moyen | Élevé | UX seamless, bénéfices visibles |
-| **Coût infrastructure** | Faible | Moyen | Serverless (Vercel), cache externe |
-| **Compétition (LiteLLM, etc.)** | Élevé | Moyen | Focus niche IDE/CLI, intégration MCP |
-
----
-
-## 7. Recommandations
-
-### 7.1 Stratégie d'Implémentation
-
-**Phase 1 : Proxy Passthrough (MVP)**
-- Proxy simple qui forward vers Anthropic
-- Logging, métriques, rate limiting
-- Aucune optimisation (baseline mesurable)
-
-**Phase 2 : Optimisations Natives Anthropic**
-- Activer prompt caching
-- Token-efficient tool use
-- Model routing basique
-
-**Phase 3 : Caching Sémantique**
-- Intégration GPTCache ou custom
-- Vector store (Qdrant/Pinecone)
-
-**Phase 4 : Compression Avancée**
-- LLMLingua pour gros contextes
-- Optionnel, activable par projet
-
-### 7.2 Stack Technique Recommandée
-
-| Composant | Recommandation | Alternative |
-|-----------|----------------|-------------|
-| **Runtime** | Bun (déjà utilisé) | Node.js |
-| **Framework** | Next.js API Routes (déjà) | Hono |
-| **Cache sémantique** | Qdrant + custom | GPTCache |
-| **Compression** | LLMLingua-2 (Python service) | Custom |
-| **Monitoring** | Helicone ou custom | Langfuse |
-
-### 7.3 Configuration Utilisateur
+L'injection se fait dans le champ `system` de la requête Anthropic :
 
 ```typescript
-// Interface de configuration par projet
-interface ProxyConfig {
-  // Optimisations
-  enablePromptCaching: boolean;      // default: true
-  enableSemanticCaching: boolean;    // default: false (opt-in)
-  enableModelRouting: boolean;       // default: false
-  enableCompression: boolean;        // default: false
+// apps/web/app/api/v1/proxy/lib/injector.ts
 
-  // Routing
-  defaultModel: AnthropicModel;
-  routingRules: RoutingRule[];       // conditions pour Haiku vs Opus
+import { CTXOPT_INJECTION } from "../constants";
 
-  // Seuils
-  compressionThreshold: number;      // tokens min pour compresser
-  cacheTTL: number;                  // durée cache sémantique
+interface AnthropicRequest {
+  model: string;
+  system?: string | Array<{ type: string; text: string }>;
+  messages: Array<{ role: string; content: string }>;
+  // ... autres champs
+}
+
+export function injectOptimizationInstructions(
+  request: AnthropicRequest
+): AnthropicRequest {
+  const modifiedRequest = { ...request };
+
+  // Cas 1: system est une string
+  if (typeof request.system === "string") {
+    modifiedRequest.system = `${CTXOPT_INJECTION}\n\n---\n\n${request.system}`;
+  }
+  // Cas 2: system est un array de blocks
+  else if (Array.isArray(request.system)) {
+    modifiedRequest.system = [
+      { type: "text", text: CTXOPT_INJECTION },
+      ...request.system,
+    ];
+  }
+  // Cas 3: pas de system prompt
+  else {
+    modifiedRequest.system = CTXOPT_INJECTION;
+  }
+
+  return modifiedRequest;
 }
 ```
 
+### 4.3 Tokens Additionnels de l'Injection
+
+| Élément | Tokens Estimés |
+|---------|----------------|
+| Instructions injection | ~300 tokens |
+| Coût par requête (Sonnet) | ~$0.0009 |
+| Coût par requête (Haiku) | ~$0.00008 |
+
+**ROI** : Si l'injection économise 50% sur une requête de 10K tokens, le gain net est de ~4.7K tokens.
+
 ---
 
-## 8. Roadmap d'Implémentation
+## 5. Implémentation Technique
 
-### Phase 1 : MVP Proxy (2-3 semaines)
+### 5.1 Route Proxy Principale
+
+```typescript
+// apps/web/app/api/v1/proxy/messages/route.ts
+
+import { NextRequest } from "next/server";
+import { injectOptimizationInstructions } from "../lib/injector";
+import { streamAnthropicResponse } from "../lib/streaming";
+import { recordRequest } from "../lib/metrics";
+
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
+  try {
+    // 1. Récupérer la requête originale
+    const body = await request.json();
+    const apiKey = request.headers.get("x-api-key");
+
+    if (!apiKey) {
+      return Response.json({ error: "Missing API key" }, { status: 401 });
+    }
+
+    // 2. Injecter les instructions CtxOpt
+    const modifiedBody = injectOptimizationInstructions(body);
+
+    // 3. Forward vers Anthropic
+    const anthropicResponse = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        // Préserver les headers beta si présents
+        ...(request.headers.get("anthropic-beta") && {
+          "anthropic-beta": request.headers.get("anthropic-beta")!,
+        }),
+      },
+      body: JSON.stringify(modifiedBody),
+    });
+
+    // 4. Streaming passthrough
+    if (body.stream) {
+      return streamAnthropicResponse(anthropicResponse, {
+        startTime,
+        model: body.model,
+      });
+    }
+
+    // 5. Réponse non-streaming
+    const responseData = await anthropicResponse.json();
+    const latencyMs = Date.now() - startTime;
+
+    // 6. Log métriques (async, non-bloquant)
+    recordRequest({
+      model: body.model,
+      inputTokens: responseData.usage?.input_tokens,
+      outputTokens: responseData.usage?.output_tokens,
+      latencyMs,
+    }).catch(console.error);
+
+    // 7. Ajouter headers custom
+    return Response.json(responseData, {
+      status: anthropicResponse.status,
+      headers: {
+        "X-CtxOpt-Latency-Ms": latencyMs.toString(),
+        "X-CtxOpt-Injected": "true",
+      },
+    });
+  } catch (error) {
+    console.error("Proxy error:", error);
+    return Response.json(
+      { error: "Proxy error", details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### 5.2 Streaming SSE Passthrough
+
+```typescript
+// apps/web/app/api/v1/proxy/lib/streaming.ts
+
+interface StreamOptions {
+  startTime: number;
+  model: string;
+}
+
+export function streamAnthropicResponse(
+  anthropicResponse: Response,
+  options: StreamOptions
+): Response {
+  const { startTime, model } = options;
+
+  // Créer un TransformStream pour passer les chunks
+  const { readable, writable } = new TransformStream();
+
+  // Pipe la réponse Anthropic vers notre stream
+  const reader = anthropicResponse.body?.getReader();
+  const writer = writable.getWriter();
+
+  if (reader) {
+    pipeStream(reader, writer, { startTime, model });
+  }
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-CtxOpt-Injected": "true",
+    },
+  });
+}
+
+async function pipeStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  writer: WritableStreamDefaultWriter<Uint8Array>,
+  options: StreamOptions
+) {
+  const decoder = new TextDecoder();
+  let totalOutput = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      // Passthrough direct
+      await writer.write(value);
+
+      // Optionnel: parser pour extraire usage
+      totalOutput += decoder.decode(value, { stream: true });
+    }
+
+    // Extraire et logger les métriques depuis le dernier event
+    const usageMatch = totalOutput.match(/"usage":\s*({[^}]+})/);
+    if (usageMatch) {
+      try {
+        const usage = JSON.parse(usageMatch[1]);
+        recordRequest({
+          model: options.model,
+          inputTokens: usage.input_tokens,
+          outputTokens: usage.output_tokens,
+          latencyMs: Date.now() - options.startTime,
+        }).catch(console.error);
+      } catch {}
+    }
+  } finally {
+    await writer.close();
+  }
+}
+```
+
+### 5.3 Configuration Claude Code
+
+Pour utiliser le proxy, modifier le fichier `~/.claude/settings.json` :
+
+```json
+{
+  "apiBaseUrl": "https://your-app.vercel.app/api/v1/proxy"
+}
+```
+
+Ou via variable d'environnement :
+
+```bash
+export ANTHROPIC_BASE_URL="https://your-app.vercel.app/api/v1/proxy"
+```
+
+---
+
+## 6. Limites et Risques
+
+### 6.1 Limites Techniques
+
+| Limite | Impact | Mitigation |
+|--------|--------|------------|
+| **Injection != Garantie** | Claude peut ignorer les instructions | Renforcer le wording, tester |
+| **Tokens injection** | +300 tokens/requête | ROI positif si économie >300 tokens |
+| **Cold starts Vercel** | +500ms première requête | Keep-warm via cron (gratuit) |
+| **Free tier limits** | ~500K req/mois max | Suffisant pour usage perso |
+
+### 6.2 Risques
+
+| Risque | Probabilité | Impact | Mitigation |
+|--------|-------------|--------|------------|
+| **Claude ignore l'injection** | Moyen | Modéré | A/B testing, ajuster wording |
+| **Latence inacceptable** | Faible | Élevé | Bypass mode si besoin |
+| **Breaking changes Anthropic** | Faible | Élevé | Tests E2E, abstraction |
+| **Dépassement free tier** | Faible | Faible | Monitoring, alertes |
+
+### 6.3 Ce Que Ce Proxy Ne Fait PAS
+
+| Fonctionnalité | Statut | Raison |
+|----------------|--------|--------|
+| Semantic caching | ❌ Non | Nécessite vector DB (coût) |
+| Prompt compression | ❌ Non | Nécessite LLMLingua (Python service) |
+| Model routing | ❌ Non | Hors scope (peut être ajouté plus tard) |
+| Rate limiting avancé | ❌ Non | Vercel gère le basique |
+
+---
+
+## 7. Roadmap
+
+### Phase 1 : MVP Proxy Injecteur
 
 ```
 [ ] Route POST /api/v1/proxy/messages
-[ ] Auth par API key (SHA-256 lookup)
-[ ] Forward vers Anthropic API
+[ ] Injection system prompt avec instructions CtxOpt
 [ ] Streaming SSE passthrough
-[ ] Logging dans table requests
-[ ] Headers X-CtxOpt-* dans réponse
-[ ] Rate limiting par plan
+[ ] Headers X-CtxOpt-* en réponse
+[ ] Documentation configuration Claude Code
 ```
 
-### Phase 2 : Optimisations Natives (1-2 semaines)
+### Phase 2 : Métriques & Analytics
 
 ```
-[ ] Prompt caching Anthropic (header)
-[ ] Token-efficient tool use (header beta)
-[ ] Métriques d'économies dans dashboard
+[ ] Logging requêtes dans Neon (table requests)
+[ ] Dashboard usage tokens (réutiliser UI existante)
+[ ] Comparaison avant/après injection
+[ ] Alertes dépassement quota
 ```
 
-### Phase 3 : Model Routing (1 semaine)
+### Phase 3 : Optimisation de l'Injection
 
 ```
-[ ] Détection complexité requête
-[ ] Règles de routage configurables
-[ ] Fallback automatique si rate limit
+[ ] A/B testing différents wordings
+[ ] Injection conditionnelle (selon contexte)
+[ ] Métriques d'adoption des outils MCP
+[ ] Feedback loop pour améliorer instructions
 ```
 
-### Phase 4 : Semantic Caching (2-3 semaines)
+### Phase 4 : Améliorations (Optionnel, Zero Cost)
 
 ```
-[ ] Intégration vector store (Qdrant)
-[ ] Embedding des prompts
-[ ] Similarity search
-[ ] Cache invalidation strategy
-```
-
-### Phase 5 : Compression (2 semaines)
-
-```
-[ ] Service Python LLMLingua
-[ ] API interne de compression
-[ ] Activation conditionnelle (> N tokens)
-[ ] Métriques de compression
+[ ] Prompt caching Anthropic (header cache_control)
+[ ] Token-efficient tools (header beta)
+[ ] Keep-warm cron pour éviter cold starts
 ```
 
 ---
 
-## 9. Sources
+## 8. Sources
 
 ### Documentation Officielle
-- [Token-efficient tool use - Anthropic](https://docs.claude.com/en/docs/agents-and-tools/tool-use/token-efficient-tool-use)
-- [Token-saving updates - Claude Blog](https://claude.com/blog/token-saving-updates)
-- [Reducing latency - Claude Docs](https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-latency)
-- [Streaming SSE - Upstash Blog](https://upstash.com/blog/sse-streaming-llm-responses)
 
-### Solutions & Frameworks
-- [LiteLLM Alternatives 2025 - Pomerium](https://www.pomerium.com/blog/litellm-alternatives)
-- [Top LLM Gateways 2025 - Helicone](https://www.helicone.ai/blog/top-llm-gateways-comparison-2025)
-- [GPTCache - Zilliz](https://github.com/zilliztech/GPTCache)
-- [LLMLingua - Microsoft Research](https://www.microsoft.com/en-us/research/blog/llmlingua-innovating-llm-efficiency-with-prompt-compression/)
+- [Anthropic Messages API](https://docs.anthropic.com/en/api/messages)
+- [Claude Code Configuration](https://docs.anthropic.com/en/docs/claude-code)
+- [Vercel Serverless Functions](https://vercel.com/docs/functions)
+- [Neon Serverless PostgreSQL](https://neon.tech/docs)
 
-### Recherche Académique
-- [LLMBridge: Reducing Costs - arXiv](https://arxiv.org/abs/2410.11857)
-- [LLMLingua-2: Data Distillation - arXiv](https://arxiv.org/abs/2403.12968)
-- [IC-Cache: In-context Caching - arXiv](https://arxiv.org/html/2501.12689v3)
-- [ChunkKV: Semantic-Preserving KV Cache - arXiv](https://arxiv.org/html/2502.00299)
+### Limites Free Tiers
 
-### Implémentation
-- [claude-code-proxy - GitHub](https://github.com/1rgs/claude-code-proxy)
-- [LiteLLM Caching Docs](https://docs.litellm.ai/docs/proxy/caching)
-- [TokenFlow: Responsive LLM Streaming - arXiv](https://arxiv.org/html/2510.02758v1)
+- [Vercel Pricing & Limits](https://vercel.com/pricing)
+- [Neon Pricing](https://neon.tech/pricing)
+
+### Références Techniques
+
+- [Next.js Streaming](https://nextjs.org/docs/app/building-your-application/routing/route-handlers#streaming)
+- [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
 
 ---
 
 ## Conclusion
 
-L'implémentation d'un proxy d'optimisation pour CtxOpt est **techniquement faisable** et **économiquement justifiée**. Les benchmarks montrent un potentiel d'économie de **40-90%** selon les techniques appliquées.
+L'implémentation d'un proxy d'injection pour forcer l'utilisation des outils MCP CtxOpt est :
 
-**Recommandation finale :** Commencer par un MVP proxy simple avec les optimisations natives Anthropic (prompt caching, token-efficient tools), puis itérer vers le caching sémantique et la compression.
+- ✅ **Techniquement simple** : ~500 lignes de code
+- ✅ **100% gratuit** : Vercel + Neon free tiers
+- ✅ **Potentiellement très efficace** : 50-90% d'économie si Claude suit les instructions
+- ⚠️ **Non garanti** : Claude peut ignorer les instructions (à tester et ajuster)
 
-Le point fort de CtxOpt est son **intégration MCP existante** qui permet une approche hybride : optimisations côté client (MCP tools) + optimisations côté proxy (interception API).
+**Recommandation** : Implémenter le MVP, mesurer l'adoption réelle des outils MCP, et itérer sur le wording de l'injection.
+
+Le vrai avantage de cette approche est sa **simplicité** et son **coût nul**. Si l'injection fonctionne bien, les économies sont immédiates. Si elle fonctionne mal, on peut ajuster le wording ou revenir à une configuration directe sans perte.
