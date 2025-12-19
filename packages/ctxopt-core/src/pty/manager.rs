@@ -11,6 +11,12 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio::task;
 
+// Unix-specific imports for raw mode
+#[cfg(unix)]
+use nix::sys::termios::{self, InputFlags, LocalFlags, OutputFlags, SetArg, Termios};
+#[cfg(unix)]
+use std::os::unix::io::{BorrowedFd, RawFd};
+
 /// Erreurs du module PTY
 #[derive(Error, Debug)]
 pub enum PtyError {
@@ -31,6 +37,82 @@ pub enum PtyError {
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Failed to configure terminal: {0}")]
+    TermiosError(String),
+}
+
+/// Guard that restores terminal settings on drop
+#[cfg(unix)]
+pub struct RawModeGuard {
+    fd: RawFd,
+    original: Termios,
+}
+
+#[cfg(unix)]
+impl RawModeGuard {
+    /// Enter raw mode on the given file descriptor
+    /// Returns a guard that will restore the original settings on drop
+    pub fn new(fd: RawFd) -> Result<Self, PtyError> {
+        // SAFETY: We're borrowing stdin which is valid for the lifetime of this function
+        let borrowed_fd = unsafe { BorrowedFd::borrow_raw(fd) };
+
+        let original = termios::tcgetattr(&borrowed_fd)
+            .map_err(|e| PtyError::TermiosError(format!("tcgetattr failed: {}", e)))?;
+
+        let mut raw = original.clone();
+
+        // Disable echo and canonical mode (cfmakeraw equivalent)
+        raw.local_flags.remove(LocalFlags::ECHO); // Don't echo input
+        raw.local_flags.remove(LocalFlags::ECHOE); // Don't echo erase
+        raw.local_flags.remove(LocalFlags::ECHOK); // Don't echo kill
+        raw.local_flags.remove(LocalFlags::ECHONL); // Don't echo newline
+        raw.local_flags.remove(LocalFlags::ICANON); // Disable canonical mode
+        raw.local_flags.remove(LocalFlags::ISIG); // Don't send signals
+        raw.local_flags.remove(LocalFlags::IEXTEN); // Disable extended functions
+
+        // Disable output processing
+        raw.output_flags.remove(OutputFlags::OPOST); // Don't post-process output
+
+        // Disable input processing
+        raw.input_flags.remove(InputFlags::ICRNL); // Don't convert CR to NL
+        raw.input_flags.remove(InputFlags::INLCR); // Don't convert NL to CR
+        raw.input_flags.remove(InputFlags::IXON); // Disable XON/XOFF flow control
+        raw.input_flags.remove(InputFlags::IXOFF);
+        raw.input_flags.remove(InputFlags::IGNBRK);
+        raw.input_flags.remove(InputFlags::BRKINT);
+        raw.input_flags.remove(InputFlags::PARMRK);
+        raw.input_flags.remove(InputFlags::ISTRIP);
+        raw.input_flags.remove(InputFlags::INPCK);
+
+        termios::tcsetattr(&borrowed_fd, SetArg::TCSANOW, &raw)
+            .map_err(|e| PtyError::TermiosError(format!("tcsetattr failed: {}", e)))?;
+
+        Ok(Self { fd, original })
+    }
+}
+
+#[cfg(unix)]
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        // SAFETY: We're borrowing the fd we stored which should still be valid (stdin)
+        let borrowed_fd = unsafe { BorrowedFd::borrow_raw(self.fd) };
+        // Restore original terminal settings
+        let _ = termios::tcsetattr(&borrowed_fd, SetArg::TCSANOW, &self.original);
+    }
+}
+
+/// Enter raw mode on stdin (Unix only)
+/// Returns a guard that will restore settings on drop
+#[cfg(unix)]
+pub fn enter_raw_mode() -> Result<RawModeGuard, PtyError> {
+    RawModeGuard::new(libc::STDIN_FILENO)
+}
+
+/// No-op on non-Unix platforms
+#[cfg(not(unix))]
+pub fn enter_raw_mode() -> Result<(), PtyError> {
+    Ok(())
 }
 
 /// Taille du PTY en lignes/colonnes
@@ -65,8 +147,8 @@ pub struct PtyManager {
     /// Writer pour envoyer des données au PTY
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
 
-    /// Reader pour lire les données du PTY
-    reader: Arc<Mutex<Box<dyn Read + Send>>>,
+    /// Channel receiver pour les données lues du PTY
+    read_rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Vec<u8>>>>,
 
     /// Child process (Claude Code)
     child: Arc<Mutex<Box<dyn Child + Send + Sync>>>,
@@ -124,15 +206,44 @@ impl PtyManager {
             .take_writer()
             .map_err(|e| PtyError::CreateError(e.to_string()))?;
 
-        let reader = pair
+        let mut reader = pair
             .master
             .try_clone_reader()
             .map_err(|e| PtyError::CreateError(e.to_string()))?;
 
+        // Créer un channel pour la communication avec le thread de lecture
+        let (read_tx, read_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(100);
+
+        // Spawner un thread dédié pour la lecture du PTY
+        std::thread::spawn(move || {
+            let mut buffer = vec![0u8; 4096];
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => {
+                        // EOF - le PTY est fermé
+                        break;
+                    }
+                    Ok(n) => {
+                        let data = buffer[..n].to_vec();
+                        // Envoyer les données via le channel (ignore si le receiver est fermé)
+                        if read_tx.blocking_send(data).is_err() {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        // Erreur de lecture - logger et continuer ou break selon le type
+                        if e.kind() != std::io::ErrorKind::Interrupted {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
         Ok(Self {
             master: Arc::new(Mutex::new(pair.master)),
             writer: Arc::new(Mutex::new(writer)),
-            reader: Arc::new(Mutex::new(reader)),
+            read_rx: Arc::new(Mutex::new(read_rx)),
             child: Arc::new(Mutex::new(child)),
             size,
         })
@@ -148,48 +259,51 @@ impl PtyManager {
         Self::new("claude", &["--profile", profile], size)
     }
 
-    /// Lit les données disponibles du PTY (bloquant)
+    /// Lit les données disponibles du PTY (non-bloquant)
     ///
-    /// Retourne les bytes lus ou un vecteur vide si EOF.
+    /// Retourne les bytes disponibles ou un vecteur vide si rien n'est prêt.
     pub async fn read(&self) -> Result<Vec<u8>, PtyError> {
-        let mut reader = self.reader.lock().await;
-        let mut buffer = vec![0u8; 8192];
+        let mut rx = self.read_rx.lock().await;
 
-        match reader.read(&mut buffer) {
-            Ok(0) => Ok(Vec::new()), // EOF
-            Ok(n) => {
-                buffer.truncate(n);
-                Ok(buffer)
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(Vec::new()),
-            Err(e) => Err(PtyError::ReadError(e.to_string())),
+        // Essayer de recevoir sans bloquer
+        match rx.try_recv() {
+            Ok(data) => Ok(data),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => Ok(Vec::new()),
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => Ok(Vec::new()),
         }
     }
 
-    /// Lecture asynchrone non-bloquante
+    /// Lecture asynchrone avec timeout court
     ///
-    /// Exécute la lecture dans un thread dédié pour ne pas bloquer le runtime Tokio.
+    /// Attend les données pendant un court délai puis retourne.
     pub async fn read_async(&self) -> Result<Vec<u8>, PtyError> {
-        let reader = Arc::clone(&self.reader);
+        let mut rx = self.read_rx.lock().await;
 
-        // Exécuter la lecture bloquante dans un thread dédié
-        let result = task::spawn_blocking(move || {
-            let mut reader = reader.blocking_lock();
-            let mut buffer = vec![0u8; 8192];
+        // Collecter toutes les données disponibles avec un petit timeout
+        let mut all_data = Vec::new();
 
-            match reader.read(&mut buffer) {
-                Ok(0) => Ok(Vec::new()),
-                Ok(n) => {
-                    buffer.truncate(n);
-                    Ok(buffer)
-                }
-                Err(e) => Err(PtyError::ReadError(e.to_string())),
+        // D'abord, récupérer tout ce qui est déjà disponible
+        loop {
+            match rx.try_recv() {
+                Ok(data) => all_data.extend(data),
+                Err(_) => break,
             }
-        })
-        .await
-        .map_err(|e| PtyError::ReadError(e.to_string()))??;
+        }
 
-        Ok(result)
+        // Si on a déjà des données, les retourner immédiatement
+        if !all_data.is_empty() {
+            return Ok(all_data);
+        }
+
+        // Sinon, attendre un peu pour de nouvelles données (max 10ms)
+        match tokio::time::timeout(
+            std::time::Duration::from_millis(10),
+            rx.recv()
+        ).await {
+            Ok(Some(data)) => Ok(data),
+            Ok(None) => Ok(Vec::new()), // Channel fermé
+            Err(_) => Ok(Vec::new()),   // Timeout
+        }
     }
 
     /// Écrit des données dans le PTY (stdin du child)

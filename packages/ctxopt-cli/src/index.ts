@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { program } from 'commander';
-import { CtxOptSession } from '@ctxopt/core';
+import { CtxOptSession, enterRawMode, exitRawMode } from '@ctxopt/core';
 import { setupHooks, removeHooks, getHooksStatus, hasCtxoptHooks } from './hooks';
 
 // Version depuis package.json
@@ -114,9 +114,21 @@ async function runWrapper(options: CliOptions): Promise<void> {
     process.exit(1);
   }
 
-  // Configurer stdin en raw mode
+  // Configurer stdin en raw mode (utilise termios natif sur Unix)
+  // Cette configuration désactive ECHO et le mode canonique pour un passthrough propre
   if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
+    // Utiliser le raw mode natif Rust qui configure termios correctement
+    const rawModeEnabled = enterRawMode();
+    if (options.verbose && rawModeEnabled) {
+      console.error('[ctxopt] Native raw mode enabled (termios configured)');
+    }
+    // Fallback sur Node.js si le raw mode natif échoue
+    if (!rawModeEnabled) {
+      process.stdin.setRawMode(true);
+      if (options.verbose) {
+        console.error('[ctxopt] Using Node.js raw mode fallback');
+      }
+    }
   }
   process.stdin.resume();
 
@@ -184,10 +196,8 @@ async function readLoop(session: CtxOptSession, verbose: boolean): Promise<void>
         process.stderr.write(suggestion);
       }
 
-      // Si pas d'output, attendre un peu
-      if (!result.output) {
-        await sleep(10);
-      }
+      // Pas de sleep - le read a déjà un timeout de 50ms
+      // Cela permet une meilleure réactivité
     } catch (error) {
       if (verbose) {
         console.error(`[ctxopt] Read error: ${error}`);
@@ -199,7 +209,8 @@ async function readLoop(session: CtxOptSession, verbose: boolean): Promise<void>
 
 // Cleanup et affichage stats
 async function cleanup(session: CtxOptSession, verbose: boolean): Promise<void> {
-  // Restaurer stdin
+  // Restaurer stdin (exit raw mode natif + Node.js fallback)
+  exitRawMode(); // Restaure les settings termios originaux
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(false);
   }

@@ -5,4 +5,7 @@
 
 pub mod manager;
 
-pub use manager::{PtyError, PtyManager, PtySize};
+pub use manager::{enter_raw_mode, PtyError, PtyManager, PtySize};
+
+#[cfg(unix)]
+pub use manager::RawModeGuard;

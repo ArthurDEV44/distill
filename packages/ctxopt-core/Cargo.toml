@@ -23,6 +23,11 @@ napi-derive = "2"
 # PTY cross-platform
 portable-pty = "0.9"
 
+# Unix terminal control (for raw mode)
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.29", features = ["term"] }
+libc = "0.2"
+
 # Async runtime
 tokio = { version = "1", features = [
     "rt-multi-thread",

@@ -36,8 +36,11 @@ pub fn ping() -> String {
 #[napi(object)]
 #[derive(Clone)]
 pub struct ReadResult {
-    /// Output brut du PTY (nettoyé des codes ANSI)
+    /// Output brut du PTY (avec codes ANSI pour affichage correct)
     pub output: String,
+
+    /// Output nettoyé des codes ANSI (pour analyse)
+    pub clean_output: String,
 
     /// Suggestions générées (si applicable)
     pub suggestions: Vec<String>,
@@ -141,7 +144,7 @@ impl CtxOptSession {
 
     /// Lit les données disponibles du PTY
     ///
-    /// Retourne l'output, les suggestions générées et les statistiques.
+    /// Retourne l'output brut (avec ANSI), l'output nettoyé, les suggestions et les statistiques.
     #[napi]
     pub async fn read(&self) -> Result<ReadResult> {
         let pty = self.pty.lock().await;
@@ -150,12 +153,13 @@ impl CtxOptSession {
             .await
             .map_err(|e| Error::from_reason(format!("Read error: {}", e)))?;
 
-        // Conversion en string
-        let output = String::from_utf8_lossy(&output_bytes).to_string();
+        // Conversion en string - garde l'output brut avec ANSI
+        let raw_output = String::from_utf8_lossy(&output_bytes).to_string();
 
-        if output.is_empty() {
+        if raw_output.is_empty() {
             return Ok(ReadResult {
                 output: String::new(),
+                clean_output: String::new(),
                 suggestions: Vec::new(),
                 token_estimate: 0,
                 detected_types: vec!["empty".to_string()],
@@ -163,9 +167,9 @@ impl CtxOptSession {
             });
         }
 
-        // Analyse
+        // Analyse (utilise le texte pour détecter patterns et estimer tokens)
         let mut analyzer = self.analyzer.lock().await;
-        let analysis = analyzer.analyze(&output);
+        let analysis = analyzer.analyze(&raw_output);
 
         // Génération de suggestions
         let mut suggestions = Vec::new();
@@ -187,7 +191,8 @@ impl CtxOptSession {
             .collect();
 
         Ok(ReadResult {
-            output: analysis.clean_text,
+            output: raw_output,              // Output brut avec ANSI pour affichage
+            clean_output: analysis.clean_text, // Output nettoyé pour analyse
             suggestions,
             token_estimate: analysis.token_estimate as u32,
             detected_types,
@@ -302,5 +307,67 @@ pub mod utils {
     #[napi]
     pub fn strip_ansi(text: String) -> String {
         stream::PATTERNS.ansi_escape.replace_all(&text, "").to_string()
+    }
+}
+
+/// Raw mode handle for terminal configuration
+/// Stores the original terminal state ID for restoration
+#[cfg(unix)]
+static RAW_MODE_GUARD: std::sync::Mutex<Option<pty::RawModeGuard>> = std::sync::Mutex::new(None);
+
+/// Enter raw mode on stdin
+/// This disables echo and line buffering for proper PTY passthrough
+/// Returns true if successful, false if already in raw mode or failed
+#[napi]
+pub fn enter_raw_mode() -> bool {
+    #[cfg(unix)]
+    {
+        let mut guard = RAW_MODE_GUARD.lock().unwrap();
+        if guard.is_some() {
+            return false; // Already in raw mode
+        }
+        match pty::enter_raw_mode() {
+            Ok(g) => {
+                *guard = Some(g);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        true // No-op on Windows, Node.js handles it
+    }
+}
+
+/// Exit raw mode and restore original terminal settings
+/// Returns true if successful
+#[napi]
+pub fn exit_raw_mode() -> bool {
+    #[cfg(unix)]
+    {
+        let mut guard = RAW_MODE_GUARD.lock().unwrap();
+        if guard.is_none() {
+            return false; // Not in raw mode
+        }
+        *guard = None; // Drop the guard, which restores settings
+        true
+    }
+    #[cfg(not(unix))]
+    {
+        true
+    }
+}
+
+/// Check if currently in raw mode
+#[napi]
+pub fn is_raw_mode() -> bool {
+    #[cfg(unix)]
+    {
+        RAW_MODE_GUARD.lock().unwrap().is_some()
+    }
+    #[cfg(not(unix))]
+    {
+        false
     }
 }
