@@ -10,6 +10,5 @@ pub mod analyzer;
 pub mod buffer;
 pub mod patterns;
 
-pub use analyzer::{AnalysisResult, StreamAnalyzer};
-pub use buffer::RingBuffer;
-pub use patterns::{BuildTool, ContentType, PATTERNS};
+pub use analyzer::StreamAnalyzer;
+pub use patterns::PATTERNS;

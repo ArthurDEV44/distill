@@ -26,12 +26,6 @@ pub struct Suggestion {
 
     /// Message à afficher (pas injecté dans stdin)
     pub display_message: String,
-
-    /// Commande à injecter (optionnel)
-    pub inject_command: Option<String>,
-
-    /// Priorité (plus haut = plus important)
-    pub priority: u8,
 }
 
 impl Suggestion {
@@ -45,8 +39,6 @@ impl Suggestion {
                 error_count,
                 tool.as_str()
             ),
-            inject_command: None, // On n'injecte pas automatiquement
-            priority: 10,
         }
     }
 
@@ -60,8 +52,6 @@ impl Suggestion {
                  Use \x1b[36mmcp__ctxopt__compress_context\x1b[0m for 40-60% savings.",
                 size_kb
             ),
-            inject_command: None,
-            priority: 8,
         }
     }
 
@@ -72,8 +62,6 @@ impl Suggestion {
             display_message:
                 "\x1b[90m[ctxopt] MCP tools: smart_file_read, auto_optimize, compress_context\x1b[0m"
                     .to_string(),
-            inject_command: None,
-            priority: 1, // Basse priorité
         }
     }
 
@@ -86,8 +74,6 @@ impl Suggestion {
                  Consider \x1b[36mmcp__ctxopt__smart_file_read\x1b[0m for 50-70% savings.",
                 file_path
             ),
-            inject_command: None,
-            priority: 5,
         }
     }
 
@@ -95,21 +81,6 @@ impl Suggestion {
     pub fn format_for_display(&self) -> String {
         format!("\n{}\n", self.display_message)
     }
-}
-
-/// Messages pré-formatés pour injection rapide
-pub mod quick_messages {
-    /// Message court pour erreurs build
-    pub const BUILD_HINT: &str =
-        "\n\x1b[33m[ctxopt]\x1b[0m TIP: Use auto_optimize for build errors\n";
-
-    /// Message court pour output volumineux
-    pub const LARGE_HINT: &str =
-        "\n\x1b[33m[ctxopt]\x1b[0m TIP: Use compress_context for large output\n";
-
-    /// Message court pour fichiers
-    pub const FILE_HINT: &str =
-        "\n\x1b[33m[ctxopt]\x1b[0m TIP: Use smart_file_read for code files\n";
 }
 
 #[cfg(test)]
@@ -122,7 +93,6 @@ mod tests {
         assert_eq!(suggestion.suggestion_type, SuggestionType::BuildErrors);
         assert!(suggestion.display_message.contains("42"));
         assert!(suggestion.display_message.contains("tsc"));
-        assert_eq!(suggestion.priority, 10);
     }
 
     #[test]
@@ -130,7 +100,6 @@ mod tests {
         let suggestion = Suggestion::large_output(10240);
         assert_eq!(suggestion.suggestion_type, SuggestionType::LargeOutput);
         assert!(suggestion.display_message.contains("10KB"));
-        assert_eq!(suggestion.priority, 8);
     }
 
     #[test]
@@ -138,7 +107,6 @@ mod tests {
         let suggestion = Suggestion::prompt_reminder();
         assert_eq!(suggestion.suggestion_type, SuggestionType::PromptReminder);
         assert!(suggestion.display_message.contains("smart_file_read"));
-        assert_eq!(suggestion.priority, 1);
     }
 
     #[test]
@@ -146,7 +114,6 @@ mod tests {
         let suggestion = Suggestion::file_read("src/main.ts");
         assert_eq!(suggestion.suggestion_type, SuggestionType::FileRead);
         assert!(suggestion.display_message.contains("src/main.ts"));
-        assert_eq!(suggestion.priority, 5);
     }
 
     #[test]
@@ -155,12 +122,5 @@ mod tests {
         let formatted = suggestion.format_for_display();
         assert!(formatted.starts_with('\n'));
         assert!(formatted.ends_with('\n'));
-    }
-
-    #[test]
-    fn test_quick_messages() {
-        assert!(quick_messages::BUILD_HINT.contains("auto_optimize"));
-        assert!(quick_messages::LARGE_HINT.contains("compress_context"));
-        assert!(quick_messages::FILE_HINT.contains("smart_file_read"));
     }
 }

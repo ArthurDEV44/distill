@@ -9,7 +9,6 @@ use std::io::{Read, Write};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
-use tokio::task;
 
 // Unix-specific imports for raw mode
 #[cfg(unix)]
@@ -19,6 +18,7 @@ use std::os::unix::io::{BorrowedFd, RawFd};
 
 /// Erreurs du module PTY
 #[derive(Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum PtyError {
     #[error("Failed to create PTY: {0}")]
     CreateError(String),
@@ -26,14 +26,8 @@ pub enum PtyError {
     #[error("Failed to spawn command: {0}")]
     SpawnError(String),
 
-    #[error("Failed to read from PTY: {0}")]
-    ReadError(String),
-
     #[error("Failed to write to PTY: {0}")]
     WriteError(String),
-
-    #[error("PTY process has exited")]
-    ProcessExited,
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
@@ -57,7 +51,7 @@ impl RawModeGuard {
         // SAFETY: We're borrowing stdin which is valid for the lifetime of this function
         let borrowed_fd = unsafe { BorrowedFd::borrow_raw(fd) };
 
-        let original = termios::tcgetattr(&borrowed_fd)
+        let original = termios::tcgetattr(borrowed_fd)
             .map_err(|e| PtyError::TermiosError(format!("tcgetattr failed: {}", e)))?;
 
         let mut raw = original.clone();
@@ -85,7 +79,7 @@ impl RawModeGuard {
         raw.input_flags.remove(InputFlags::ISTRIP);
         raw.input_flags.remove(InputFlags::INPCK);
 
-        termios::tcsetattr(&borrowed_fd, SetArg::TCSANOW, &raw)
+        termios::tcsetattr(borrowed_fd, SetArg::TCSANOW, &raw)
             .map_err(|e| PtyError::TermiosError(format!("tcsetattr failed: {}", e)))?;
 
         Ok(Self { fd, original })
@@ -98,7 +92,7 @@ impl Drop for RawModeGuard {
         // SAFETY: We're borrowing the fd we stored which should still be valid (stdin)
         let borrowed_fd = unsafe { BorrowedFd::borrow_raw(self.fd) };
         // Restore original terminal settings
-        let _ = termios::tcsetattr(&borrowed_fd, SetArg::TCSANOW, &self.original);
+        let _ = termios::tcsetattr(borrowed_fd, SetArg::TCSANOW, &self.original);
     }
 }
 
@@ -152,9 +146,6 @@ pub struct PtyManager {
 
     /// Child process (Claude Code)
     child: Arc<Mutex<Box<dyn Child + Send + Sync>>>,
-
-    /// Taille du PTY
-    size: PtySize,
 }
 
 impl PtyManager {
@@ -245,32 +236,7 @@ impl PtyManager {
             writer: Arc::new(Mutex::new(writer)),
             read_rx: Arc::new(Mutex::new(read_rx)),
             child: Arc::new(Mutex::new(child)),
-            size,
         })
-    }
-
-    /// Crée un PTY pour Claude Code avec les bonnes options
-    pub fn spawn_claude(size: PtySize) -> Result<Self, PtyError> {
-        Self::new("claude", &[], size)
-    }
-
-    /// Crée un PTY pour Claude Code avec un profil spécifique
-    pub fn spawn_claude_with_profile(profile: &str, size: PtySize) -> Result<Self, PtyError> {
-        Self::new("claude", &["--profile", profile], size)
-    }
-
-    /// Lit les données disponibles du PTY (non-bloquant)
-    ///
-    /// Retourne les bytes disponibles ou un vecteur vide si rien n'est prêt.
-    pub async fn read(&self) -> Result<Vec<u8>, PtyError> {
-        let mut rx = self.read_rx.lock().await;
-
-        // Essayer de recevoir sans bloquer
-        match rx.try_recv() {
-            Ok(data) => Ok(data),
-            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => Ok(Vec::new()),
-            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => Ok(Vec::new()),
-        }
     }
 
     /// Lecture asynchrone avec timeout court
@@ -283,11 +249,8 @@ impl PtyManager {
         let mut all_data = Vec::new();
 
         // D'abord, récupérer tout ce qui est déjà disponible
-        loop {
-            match rx.try_recv() {
-                Ok(data) => all_data.extend(data),
-                Err(_) => break,
-            }
+        while let Ok(data) = rx.try_recv() {
+            all_data.extend(data);
         }
 
         // Si on a déjà des données, les retourner immédiatement
@@ -348,11 +311,6 @@ impl PtyManager {
         Ok(())
     }
 
-    /// Retourne la taille actuelle du PTY
-    pub fn size(&self) -> PtySize {
-        self.size
-    }
-
     /// Termine le child process
     pub async fn kill(&self) -> Result<(), PtyError> {
         let mut child = self.child.lock().await;
@@ -378,7 +336,7 @@ mod tests {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // Lire la sortie
-        let output = pty.read().await.expect("Failed to read");
+        let output = pty.read_async().await.expect("Failed to read");
         let output_str = String::from_utf8_lossy(&output);
 
         assert!(output_str.contains("hello"));
@@ -397,7 +355,7 @@ mod tests {
 
         // Attendre et lire
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        let output = pty.read().await.expect("Failed to read");
+        let output = pty.read_async().await.expect("Failed to read");
         let output_str = String::from_utf8_lossy(&output);
 
         assert!(output_str.contains("test input"));

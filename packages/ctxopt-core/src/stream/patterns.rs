@@ -44,7 +44,9 @@ pub enum BuildTool {
     Rust,       // cargo, rustc
     Go,         // go build
     Python,     // python, pytest
+    #[allow(dead_code)] // TODO: implement webpack pattern detection (O05)
     Webpack,    // webpack
+    #[allow(dead_code)] // TODO: implement vite pattern detection (O05)
     Vite,       // vite
     Generic,    // autre
 }

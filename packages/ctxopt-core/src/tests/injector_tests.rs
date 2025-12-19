@@ -1,8 +1,8 @@
 //! Tests pour ContextInjector
 
-use crate::injector::{ContextInjector, Suggestion, SuggestionType};
-use crate::stream::ContentType;
-use crate::stream::patterns::BuildTool;
+use crate::injector::ContextInjector;
+use crate::injector::templates::{Suggestion, SuggestionType};
+use crate::stream::patterns::{BuildTool, ContentType};
 use std::time::Duration;
 
 #[test]

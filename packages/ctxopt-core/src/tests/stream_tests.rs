@@ -1,7 +1,7 @@
 //! Tests pour StreamAnalyzer
 
-use crate::stream::{StreamAnalyzer, ContentType};
-use crate::stream::patterns::BuildTool;
+use crate::stream::StreamAnalyzer;
+use crate::stream::patterns::{BuildTool, ContentType};
 
 #[test]
 fn test_detect_typescript_errors() {

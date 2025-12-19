@@ -37,7 +37,7 @@ packages/ctxopt-core/src/
 
 ## Phase 0: Dead Code Cleanup (Priorité: Critique)
 
-- [ ] [O00 - Dead Code Cleanup](./O00-dead-code-cleanup.md) - Supprimer code mort, résoudre 17 warnings
+- [x] [O00 - Dead Code Cleanup](./O00-dead-code-cleanup.md) - Supprimer code mort, résoudre 17 warnings
 
 ---
 

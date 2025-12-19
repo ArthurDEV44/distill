@@ -206,7 +206,8 @@ impl StreamAnalyzer {
         self.error_count
     }
 
-    /// Retourne la taille actuelle du buffer
+    /// Retourne la taille actuelle du buffer (utilisé dans les tests)
+    #[allow(dead_code)]
     pub fn buffer_size(&self) -> usize {
         self.buffer.len()
     }

@@ -10,7 +10,7 @@ async fn test_pty_spawn_and_read() {
     // Attendre que le process demarre
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    let output = pty.read().await.expect("Failed to read");
+    let output = pty.read_async().await.expect("Failed to read");
     let text = String::from_utf8_lossy(&output);
 
     assert!(text.contains("hello") || text.contains("world"),
@@ -27,7 +27,7 @@ async fn test_pty_write_and_read() {
 
     // Attendre et lire
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    let output = pty.read().await.expect("Failed to read");
+    let output = pty.read_async().await.expect("Failed to read");
     let text = String::from_utf8_lossy(&output);
 
     assert!(text.contains("test input"), "Expected 'test input', got: {}", text);

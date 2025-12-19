@@ -48,7 +48,8 @@ impl ContextInjector {
         }
     }
 
-    /// Crée un injecteur avec intervalle personnalisé
+    /// Crée un injecteur avec intervalle personnalisé (utilisé dans les tests)
+    #[allow(dead_code)]
     pub fn with_interval(interval_ms: u64) -> Self {
         let mut injector = Self::new();
         injector.min_interval = Duration::from_millis(interval_ms);
@@ -60,7 +61,8 @@ impl ContextInjector {
         self.enabled = enabled;
     }
 
-    /// Retourne si les suggestions sont activées
+    /// Retourne si les suggestions sont activées (utilisé dans les tests)
+    #[allow(dead_code)]
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
@@ -161,7 +163,8 @@ impl ContextInjector {
         self.suggestions_count
     }
 
-    /// Retourne le nombre de prompt reminders utilisés
+    /// Retourne le nombre de prompt reminders utilisés (utilisé dans les tests)
+    #[allow(dead_code)]
     pub fn prompt_reminders_used(&self) -> usize {
         self.prompt_reminder_count
     }
@@ -174,7 +177,8 @@ impl ContextInjector {
         self.last_injection = Instant::now() - Duration::from_secs(60);
     }
 
-    /// Retourne le temps restant avant prochaine injection possible (en ms)
+    /// Retourne le temps restant avant prochaine injection possible (en ms, utilisé dans les tests)
+    #[allow(dead_code)]
     pub fn time_until_next_injection(&self) -> u64 {
         let elapsed = self.last_injection.elapsed();
         if elapsed >= self.min_interval {
