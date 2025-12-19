@@ -81,7 +81,7 @@ pub struct CtxOptSession {
     /// Analyseur de flux
     analyzer: Arc<Mutex<StreamAnalyzer>>,
 
-    /// Injecteur de contexte
+    /// Injecteur de contexte (pour suggestions basées sur l'output)
     injector: Arc<Mutex<ContextInjector>>,
 
     /// Configuration
