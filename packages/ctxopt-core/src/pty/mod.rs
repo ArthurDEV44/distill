@@ -3,11 +3,13 @@
 //! Ce module gère la création et manipulation des pseudo-terminaux
 //! cross-platform (Unix PTY, Windows ConPTY).
 
-pub mod manager;
+pub(crate) mod manager;
 
-// PtyError is used in tests and may be used by consumers
-#[allow(unused_imports)]
-pub use manager::{enter_raw_mode, PtyError, PtyManager, PtySize};
+// enter_raw_mode doit rester pub car utilisé dans lib.rs #[napi]
+pub use manager::enter_raw_mode;
+pub(crate) use manager::{PtyManager, PtySize};
+#[cfg(test)]
+pub(crate) use manager::PtyError;
 
 #[cfg(unix)]
-pub use manager::RawModeGuard;
+pub(crate) use manager::RawModeGuard;

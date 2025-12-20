@@ -55,7 +55,7 @@ packages/ctxopt-core/src/
 
 ## Phase 3: API Surface Cleanup (Priorité: Moyenne)
 
-- [ ] [O03 - API Cleanup](./O03-api-cleanup.md) - Nettoyer les exports de modules
+- [x] [O03 - API Cleanup](./O03-api-cleanup.md) - Nettoyer les exports de modules
 
 ---
 

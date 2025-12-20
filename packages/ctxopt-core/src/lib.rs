@@ -1,4 +1,10 @@
 #![deny(clippy::all)]
+#![warn(missing_docs)]
+
+//! ctxopt-core: Native PTY wrapper for Claude Code optimization
+//!
+//! This crate provides a native module for managing pseudo-terminals (PTY)
+//! and analyzing output streams to generate token optimization suggestions.
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -73,6 +79,7 @@ pub struct SessionStats {
 }
 
 /// Session PTY principale exposée à Node.js
+#[allow(missing_docs)] // Supprime warnings pour les types générés par napi macro
 #[napi]
 pub struct CtxOptSession {
     /// Gestionnaire PTY
@@ -283,6 +290,7 @@ impl CtxOptSession {
 }
 
 /// Utilitaires exposés à Node.js
+#[allow(missing_docs)] // Supprime warnings pour les types générés par napi macro
 #[napi]
 pub mod utils {
     use super::*;

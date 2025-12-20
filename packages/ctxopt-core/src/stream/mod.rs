@@ -6,9 +6,9 @@
 //! - Outputs volumineux
 //! - Prompts ready
 
-pub mod analyzer;
-pub mod buffer;
-pub mod patterns;
+pub(crate) mod analyzer;
+pub(crate) mod buffer;
+pub(crate) mod patterns;
 
-pub use analyzer::StreamAnalyzer;
-pub use patterns::PATTERNS;
+pub(crate) use analyzer::StreamAnalyzer;
+pub(crate) use patterns::PATTERNS;
