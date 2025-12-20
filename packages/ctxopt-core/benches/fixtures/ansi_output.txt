@@ -1,0 +1,31 @@
+[31mError[0m: Something went wrong!
+[32mSuccess[0m: Operation completed
+[33mWarning[0m: This is deprecated
+[34mInfo[0m: Processing started
+[35mDebug[0m: Variable value = 42
+[36mTrace[0m: Entering function
+
+[1m[31merror[E0425][0m[1m: cannot find value `foo` in this scope[0m
+  [34m-->[0m src/main.rs:10:5
+   [34m|[0m
+[34m10[0m [34m|[0m     foo();
+   [34m|[0m     [31m^^^[0m [31mnot found in this scope[0m
+
+[1mRunning tests...[0m
+[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[33mS[0m[32m.[0m
+
+[1m[31mFAILED[0m tests/integration_test.rs::test_something
+
+[1m[32mPassed:[0m 6
+[1m[31mFailed:[0m 1
+[1m[33mSkipped:[0m 1
+
+[38;5;208mOrange colored text[0m
+[48;5;21mBlue background[0m
+[1;4;31mBold underlined red[0m
+
+[2K[1G> Processing item 1/100
+[2K[1G> Processing item 2/100
+[2K[1G> Processing item 3/100
+
+[?25l[?25h

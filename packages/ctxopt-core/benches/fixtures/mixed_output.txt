@@ -1,0 +1,58 @@
+$ npm run build
+
+> project@1.0.0 build
+> tsc && vite build
+
+src/index.ts:10:5 - error TS2304: Cannot find name 'foo'.
+
+10     foo();
+       ~~~
+
+src/utils.ts:25:3 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+
+25   calculate('invalid');
+          ~~~~~~~~~
+
+Found 2 errors in 2 files.
+
+$ cargo build --release
+
+   Compiling ctxopt-core v0.1.0
+error[E0425]: cannot find value `bar` in this scope
+ --> src/lib.rs:25:5
+  |
+25|     bar.process();
+  |     ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+$ npm run lint
+
+> project@1.0.0 lint
+> eslint src/
+
+/home/user/project/src/index.ts
+  10:5  error  'foo' is not defined       no-undef
+  15:1  error  Unexpected console statement  no-console
+  20:10 warning  'x' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/user/project/src/utils.ts
+  5:1   error  Missing return type on function  @typescript-eslint/explicit-function-return-type
+
+4 problems (3 errors, 1 warning)
+
+$ Reading file: src/components/Button.tsx
+$ Reading file: src/hooks/useAuth.ts
+$ Reading file: src/api/client.ts
+
+[32mSuccess[0m: All tests passed
+[33mWarning[0m: Deprecated API usage detected
+[31mError[0m: Connection timeout
+
+This is some normal output that doesn't match any specific pattern.
+It could be regular log messages or informational output from various commands.
+
+The quick brown fox jumps over the lazy dog.
+Pack my box with five dozen liquor jugs.
+
+$

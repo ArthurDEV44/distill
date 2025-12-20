@@ -1,0 +1,113 @@
+src/index.ts:10:5 - error TS2304: Cannot find name 'foo'.
+
+10     foo();
+       ~~~
+
+src/index.ts:15:10 - error TS2339: Property 'bar' does not exist on type 'User'.
+
+15     user.bar = 'value';
+            ~~~
+
+src/index.ts:20:1 - error TS2322: Type 'string' is not assignable to type 'number'.
+
+20 const count: number = 'hello';
+   ~~~~~
+
+src/utils.ts:25:3 - error TS2304: Cannot find name 'something'.
+
+25   something();
+     ~~~~~~~~~
+
+src/utils.ts:30:7 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+
+30       calculate('invalid');
+               ~~~~~~~~~
+
+src/components/Button.tsx:12:5 - error TS2741: Property 'onClick' is missing in type '{}' but required in type 'ButtonProps'.
+
+12     <Button />
+       ~~~~~~~~
+
+src/components/Button.tsx:18:15 - error TS2322: Type 'null' is not assignable to type 'string'.
+
+18     const name: string = null;
+                   ~~~~~~
+
+src/api/client.ts:5:1 - error TS2307: Cannot find module 'axios' or its corresponding type declarations.
+
+5 import axios from 'axios';
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/api/client.ts:10:20 - error TS2339: Property 'data' does not exist on type 'unknown'.
+
+10     return response.data;
+                       ~~~~
+
+src/api/client.ts:15:5 - error TS2454: Variable 'result' is used before being assigned.
+
+15     return result;
+       ~~~~~~
+
+src/hooks/useAuth.ts:8:3 - error TS2322: Type 'undefined' is not assignable to type 'User'.
+
+8   const [user, setUser] = useState<User>(undefined);
+    ~~~~
+
+src/hooks/useAuth.ts:12:10 - error TS2339: Property 'token' does not exist on type 'AuthState'.
+
+12     state.token = newToken;
+            ~~~~~
+
+src/services/database.ts:20:5 - error TS2304: Cannot find name 'prisma'.
+
+20     prisma.user.create({ data: userData });
+       ~~~~~~
+
+src/services/database.ts:25:15 - error TS2571: Object is of type 'unknown'.
+
+25     const id = error.id;
+                  ~~~~~
+
+src/types/index.ts:10:3 - error TS2320: Interface 'Config' cannot simultaneously extend types 'BaseConfig' and 'ExtendedConfig'.
+
+10   interface Config extends BaseConfig, ExtendedConfig {}
+     ~~~~~~~~~
+
+src/types/index.ts:15:10 - error TS2304: Cannot find name 'CustomType'.
+
+15   type MyType = CustomType;
+            ~~~~~~~~~~
+
+src/pages/Home.tsx:5:1 - error TS2307: Cannot find module './styles.css' or its corresponding type declarations.
+
+5 import './styles.css';
+  ~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/Home.tsx:12:20 - error TS2339: Property 'items' does not exist on type 'Props'.
+
+12     const { items } = props;
+                  ~~~~~
+
+src/pages/Dashboard.tsx:8:5 - error TS2322: Type '() => void' is not assignable to type 'MouseEventHandler'.
+
+8     <button onClick={handleClick}>
+      ~~~~~~~
+
+src/pages/Dashboard.tsx:15:10 - error TS2345: Argument of type 'Event' is not assignable to parameter of type 'MouseEvent'.
+
+15     handler(event);
+            ~~~~~
+
+
+Found 20 errors in 10 files.
+
+Errors  Files
+     3  src/index.ts:10
+     2  src/utils.ts:25
+     2  src/components/Button.tsx:12
+     3  src/api/client.ts:5
+     2  src/hooks/useAuth.ts:8
+     2  src/services/database.ts:20
+     2  src/types/index.ts:10
+     2  src/pages/Home.tsx:5
+     2  src/pages/Dashboard.tsx:8

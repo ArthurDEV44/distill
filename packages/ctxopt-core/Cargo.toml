@@ -8,7 +8,10 @@ repository = "https://github.com/ctxopt/ctxopt"
 keywords = ["pty", "terminal", "claude", "tokens", "optimization"]
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+bench = []
 
 [dependencies]
 # NAPI bindings
@@ -60,12 +63,18 @@ claude-tokenizer = "0.2"
 napi-build = "2"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 tokio-test = "0.4"
 
 [[bench]]
 name = "latency"
 harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "lock_benchmarks"
+harness = false
+required-features = ["bench"]
 
 [profile.release]
 lto = true

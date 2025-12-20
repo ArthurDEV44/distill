@@ -1,6 +1,7 @@
 //! Module de tests
 
-#[cfg(test)]
+// PTY tests only run when not in bench mode (PTY module is excluded)
+#[cfg(all(test, not(feature = "bench")))]
 mod pty_tests;
 
 #[cfg(test)]

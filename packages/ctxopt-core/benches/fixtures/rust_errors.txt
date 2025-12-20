@@ -1,0 +1,79 @@
+error[E0425]: cannot find value `foo` in this scope
+ --> src/main.rs:10:5
+  |
+10|     foo();
+  |     ^^^ not found in this scope
+
+error[E0308]: mismatched types
+ --> src/main.rs:15:20
+  |
+15|     let count: i32 = "hello";
+  |                ---- ^^^^^^^ expected `i32`, found `&str`
+  |                |
+  |                expected due to this
+
+error[E0425]: cannot find value `bar` in this scope
+ --> src/lib.rs:25:5
+  |
+25|     bar.process();
+  |     ^^^ not found in this scope
+
+error[E0599]: no method named `process` found for type `String` in the current scope
+ --> src/lib.rs:30:10
+  |
+30|     data.process();
+  |          ^^^^^^^ method not found in `String`
+
+error[E0277]: the trait bound `MyStruct: Debug` is not satisfied
+ --> src/types.rs:12:5
+  |
+12|     println!("{:?}", my_struct);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `MyStruct` doesn't implement `Debug`
+
+error[E0382]: borrow of moved value: `data`
+ --> src/handlers.rs:20:10
+  |
+18|     let data = get_data();
+  |         ---- move occurs because `data` has type `Vec<String>`
+19|     process(data);
+  |             ---- value moved here
+20|     println!("{:?}", data);
+  |                      ^^^^ value borrowed here after move
+
+error[E0502]: cannot borrow `vec` as mutable because it is also borrowed as immutable
+ --> src/utils.rs:15:5
+  |
+14|     let first = &vec[0];
+  |                  --- immutable borrow occurs here
+15|     vec.push(4);
+  |     ^^^ mutable borrow occurs here
+16|     println!("{}", first);
+  |                    ----- immutable borrow later used here
+
+error[E0433]: failed to resolve: use of undeclared crate or module `serde`
+ --> src/config.rs:1:5
+  |
+1 | use serde::{Deserialize, Serialize};
+  |     ^^^^^ use of undeclared crate or module `serde`
+
+error[E0412]: cannot find type `HashMap` in this scope
+ --> src/cache.rs:5:15
+  |
+5 |     data: HashMap<String, Value>,
+  |           ^^^^^^^ not found in this scope
+  |
+help: consider importing this struct
+  |
+1 | use std::collections::HashMap;
+  |
+
+error[E0277]: `Rc<RefCell<Data>>` cannot be sent between threads safely
+ --> src/async.rs:10:5
+  |
+10|     tokio::spawn(async move {
+  |     ^^^^^^^^^^^^ `Rc<RefCell<Data>>` cannot be sent between threads safely
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0382, E0412, E0425, E0433, E0502, E0599.
+For more information about an error, try `rustc --explain E0277`.

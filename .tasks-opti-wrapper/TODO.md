@@ -73,7 +73,7 @@ packages/ctxopt-core/src/
 
 ## Phase 6: Performance Benchmarks (Priorité: Basse)
 
-- [ ] [O06 - Benchmarks](./O06-benchmarks.md) - Ajouter benchmarks pour mesurer les optimisations
+- [x] [O06 - Benchmarks](./O06-benchmarks.md) - Ajouter benchmarks pour mesurer les optimisations
 
 ---
 

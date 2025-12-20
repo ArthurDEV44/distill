@@ -1,0 +1,26 @@
+This is a medium-sized text file used for benchmarking token estimation and text processing.
+It contains approximately 1KB of content to simulate typical output from CLI commands.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt
+ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in
+reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+How vexingly quick daft zebras jump! The five boxing wizards jump quickly.
+
+function processData(input: string): Result {
+    const parsed = JSON.parse(input);
+    return transform(parsed);
+}
+
+async function fetchData(url: string): Promise<Response> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+}
+
+This benchmark fixture represents typical terminal output that would be analyzed
+by the ctxopt-core stream analyzer for token optimization suggestions.
