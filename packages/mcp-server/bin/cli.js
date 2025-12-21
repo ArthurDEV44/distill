@@ -4,6 +4,7 @@ import { runServer } from "../dist/server.js";
 import { setup, parseSetupArgs } from "../dist/cli/setup.js";
 import { doctor } from "../dist/cli/doctor.js";
 import { getPackageVersion, COLORS, log } from "../dist/cli/utils.js";
+import { readConfig } from "../dist/cli/config.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -75,12 +76,16 @@ async function main() {
 
   switch (command) {
     case "serve": {
+      // Read config file as base (can be overridden by CLI args)
+      const fileConfig = readConfig();
+
       const config = {
-        apiKey: undefined,
-        apiBaseUrl: "https://app.ctxopt.dev/api",
+        apiKey: fileConfig.apiKey,
+        apiBaseUrl: fileConfig.apiBaseUrl ?? "https://app.ctxopt.dev/api",
         verbose: false,
       };
 
+      // CLI arguments override config file
       for (const arg of args.slice(1)) {
         if (arg.startsWith("--api-key=")) {
           config.apiKey = arg.split("=")[1];
@@ -109,16 +114,23 @@ async function main() {
     default: {
       // Legacy support: if no command, try to run server
       if (command?.startsWith("--")) {
+        // Read config file as base
+        const fileConfig = readConfig();
+
         const config = {
-          apiKey: undefined,
-          apiBaseUrl: "https://app.ctxopt.dev/api",
+          apiKey: fileConfig.apiKey,
+          apiBaseUrl: fileConfig.apiBaseUrl ?? "https://app.ctxopt.dev/api",
+          verbose: false,
         };
 
+        // CLI arguments override config file
         for (const arg of args) {
           if (arg.startsWith("--api-key=")) {
             config.apiKey = arg.split("=")[1];
           } else if (arg.startsWith("--api-url=")) {
             config.apiBaseUrl = arg.split("=")[1];
+          } else if (arg === "--verbose") {
+            config.verbose = true;
           }
         }
 

@@ -38,6 +38,9 @@ import { autoOptimizeTool } from "./tools/auto-optimize.js";
 // Utils
 import { detectProject } from "./utils/project-detector.js";
 
+// Reporting
+import { reportUsage } from "./reporting/usage-reporter.js";
+
 export interface ServerConfig {
   apiKey?: string;
   apiBaseUrl?: string;
@@ -152,9 +155,11 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
 }
 
 /**
- * Cleanup session state before exit
+ * Cleanup session state and report usage before exit
  */
 function setupCleanupHooks(state: SessionState, verbose: boolean): void {
+  let isCleaningUp = false;
+
   const cleanup = () => {
     const { errorsRemoved, patternsRemoved } = cleanupStaleEntries(state);
     if (verbose && (errorsRemoved > 0 || patternsRemoved > 0)) {
@@ -164,15 +169,36 @@ function setupCleanupHooks(state: SessionState, verbose: boolean): void {
     }
   };
 
+  const cleanupAndReport = async () => {
+    // Prevent double cleanup
+    if (isCleaningUp) return;
+    isCleaningUp = true;
+
+    cleanup();
+
+    // Report usage if API key is configured
+    if (state.apiKey && state.apiBaseUrl) {
+      try {
+        await reportUsage(state, state.apiKey, state.apiBaseUrl, verbose);
+      } catch (error) {
+        if (verbose) {
+          console.error("[ctxopt] Failed to report usage:", error);
+        }
+      }
+    }
+  };
+
   // Run cleanup on process exit
-  process.on("beforeExit", cleanup);
-  process.on("SIGINT", () => {
+  process.on("beforeExit", () => {
     cleanup();
-    process.exit(0);
   });
+
+  process.on("SIGINT", () => {
+    cleanupAndReport().finally(() => process.exit(0));
+  });
+
   process.on("SIGTERM", () => {
-    cleanup();
-    process.exit(0);
+    cleanupAndReport().finally(() => process.exit(0));
   });
 }
 

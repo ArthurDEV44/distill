@@ -7,6 +7,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -106,6 +107,89 @@ export const suggestions = pgTable(
 );
 
 // ============================================
+// API KEYS (for CLI/MCP authentication)
+// ============================================
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+
+    keyHash: text("key_hash").notNull(), // SHA256 hash of the key
+    keyPrefix: text("key_prefix").notNull(), // First 12 chars for identification (e.g., "ctxopt_proj_")
+    name: text("name").notNull().default("Default"),
+
+    lastUsedAt: timestamp("last_used_at"),
+    revokedAt: timestamp("revoked_at"), // NULL = active, set = revoked
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("api_keys_project_id_idx").on(table.projectId),
+    uniqueIndex("api_keys_hash_idx").on(table.keyHash),
+  ]
+);
+
+// ============================================
+// USAGE RECORDS (session metrics from MCP)
+// ============================================
+export const usageRecords = pgTable(
+  "usage_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    apiKeyId: uuid("api_key_id").references(() => apiKeys.id, {
+      onDelete: "set null",
+    }),
+
+    // Session info
+    sessionId: text("session_id").notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    endedAt: timestamp("ended_at").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+
+    // Token metrics
+    tokensUsed: integer("tokens_used").notNull().default(0),
+    tokensSaved: integer("tokens_saved").notNull().default(0),
+    savingsPercent: real("savings_percent").notNull().default(0),
+
+    // Cost estimation (microdollars: 1 = $0.000001)
+    estimatedCostMicros: integer("estimated_cost_micros").notNull().default(0),
+    estimatedSavingsMicros: integer("estimated_savings_micros")
+      .notNull()
+      .default(0),
+
+    // Breakdown
+    commandsCount: integer("commands_count").notNull().default(0),
+    toolsBreakdown: jsonb("tools_breakdown").$type<
+      Record<
+        string,
+        {
+          calls: number;
+          tokensIn: number;
+          tokensOut: number;
+          tokensSaved: number;
+        }
+      >
+    >(),
+
+    // Metadata
+    model: text("model"), // e.g., "claude-sonnet-4"
+    projectType: text("project_type"), // e.g., "node", "python", "rust"
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("usage_records_project_id_idx").on(table.projectId),
+    index("usage_records_created_at_idx").on(table.createdAt),
+  ]
+);
+
+// ============================================
 // RELATIONS
 // ============================================
 export const usersRelations = relations(users, ({ many }) => ({
@@ -116,11 +200,35 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const projectsRelations = relations(projects, ({ one, many }) => ({
   user: one(users, { fields: [projects.userId], references: [users.id] }),
   suggestions: many(suggestions),
+  apiKeys: many(apiKeys),
+  usageRecords: many(usageRecords),
 }));
 
 export const suggestionsRelations = relations(suggestions, ({ one }) => ({
-  project: one(projects, { fields: [suggestions.projectId], references: [projects.id] }),
+  project: one(projects, {
+    fields: [suggestions.projectId],
+    references: [projects.id],
+  }),
   user: one(users, { fields: [suggestions.userId], references: [users.id] }),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [apiKeys.projectId],
+    references: [projects.id],
+  }),
+  usageRecords: many(usageRecords),
+}));
+
+export const usageRecordsRelations = relations(usageRecords, ({ one }) => ({
+  project: one(projects, {
+    fields: [usageRecords.projectId],
+    references: [projects.id],
+  }),
+  apiKey: one(apiKeys, {
+    fields: [usageRecords.apiKeyId],
+    references: [apiKeys.id],
+  }),
 }));
 
 // ============================================

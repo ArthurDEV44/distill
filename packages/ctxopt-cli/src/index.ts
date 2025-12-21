@@ -3,6 +3,7 @@
 import { program } from 'commander';
 import { CtxOptSession, enterRawMode, exitRawMode } from '@ctxopt/core';
 import { setupHooks, removeHooks, getHooksStatus, hasCtxoptHooks } from './hooks';
+import { handleConfigCommand, readConfig } from './config';
 
 // Version depuis package.json
 const VERSION = '0.1.0';
@@ -75,6 +76,19 @@ program
     console.log(`  • Configured: ${status.configured ? '\x1b[32mYes\x1b[0m' : '\x1b[33mNo\x1b[0m'}`);
     console.log(`  • Settings file: ${status.settingsPath}`);
     console.log(`  • Total hooks: ${status.hookCount}`);
+  });
+
+// Commande config
+program
+  .command('config')
+  .description('Manage ctxopt configuration')
+  .argument('[subcommand]', 'Subcommand: show, set, get, unset')
+  .argument('[key]', 'Config key: api-key, api-url')
+  .argument('[value]', 'Value to set')
+  .allowUnknownOption()
+  .action((subcommand?: string, key?: string, value?: string) => {
+    const args = [subcommand, key, value].filter((a): a is string => a !== undefined);
+    handleConfigCommand(args);
   });
 
 // Main function
