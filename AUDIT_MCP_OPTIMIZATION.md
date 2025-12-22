@@ -1,7 +1,7 @@
 # AUDIT: Optimisation du Serveur MCP CtxOpt
 
-**Date**: 22 Décembre 2025
-**Version**: 1.0
+**Date**: 23 Décembre 2025
+**Version**: 1.1
 **Auteur**: Claude Code (Audit automatisé)
 
 ---
@@ -201,6 +201,251 @@ Le raisonnement Chain-of-Thought peut être compressé en incluant un budget de 
 LazyLLM sélectionne dynamiquement différents sous-ensembles de tokens selon l'étape de génération, contrairement au pruning statique qui élague une seule fois.
 
 **Applicabilité**: Inspiration pour une analyse d'importance des tokens en temps réel.
+
+### 3.8 Modèles Open Source pour Compression Sémantique
+
+**Question clé**: Peut-on implémenter la compression sémantique avec des modèles gratuits/open source ?
+
+**Réponse**: **OUI**, plusieurs options viables existent.
+
+#### Modèles Recommandés
+
+| Modèle | Taille | Type | Source | Licence |
+|--------|--------|------|--------|---------|
+| `all-MiniLM-L6-v2` | **22MB** | Embeddings | [HuggingFace](https://huggingface.co/Xenova/all-MiniLM-L6-v2) | Apache 2.0 |
+| `llmlingua-2-xlm-roberta` | 1.3GB | Token Classification | [Microsoft](https://huggingface.co/microsoft/llmlingua-2-xlm-roberta-large-meetingbank) | MIT |
+| `bge-small-en-v1.5` | 33MB | Embeddings | [BAAI](https://huggingface.co/BAAI/bge-small-en-v1.5) | MIT |
+| `Qwen2.5-0.5B` | 395MB | LLM Léger | [Qwen](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) | Apache 2.0 |
+
+#### APIs Cloud Gratuites
+
+| Provider | Modèles Disponibles | Limite Gratuite | Latence |
+|----------|---------------------|-----------------|---------|
+| **HuggingFace Inference** | Tous modèles publics | ~100 req/h | ~200ms |
+| **Cloudflare Workers AI** | BGE, EmbeddingGemma | Généreux | ~50ms |
+| **Groq** | Llama 3.1, Qwen 3 | Rate limited | ~10ms |
+| **Mistral (Puter.js)** | Mistral Small | Illimité* | ~100ms |
+
+#### Outils d'Intégration Node.js/TypeScript
+
+| Outil | Usage | Lien |
+|-------|-------|------|
+| **Transformers.js** | Inférence locale ONNX | [GitHub](https://github.com/huggingface/transformers.js/) |
+| **node-llama-cpp** | LLMs locaux (GGUF) | [GitHub](https://github.com/withcatai/node-llama-cpp) |
+| **ONNX Runtime Web** | Inférence browser/Node | [npm](https://www.npmjs.com/package/onnxruntime-web) |
+| **Ollama** | Serveur local LLM | [ollama.com](https://ollama.com/) |
+
+---
+
+### 3.9 Architecture d'Hébergement des Modèles
+
+**Problème**: Le serveur MCP s'exécute côté utilisateur. Où héberger le modèle de compression sémantique ?
+
+#### Options d'Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    OPTIONS D'HÉBERGEMENT                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  OPTION A: API Cloud (Recommandée)                                      │
+│  ┌─────────────────┐         ┌─────────────────────────┐               │
+│  │  User Machine   │  HTTP   │  Cloud Backend          │               │
+│  │  MCP Server ────┼────────►│  (apps/web ou Workers)  │               │
+│  │                 │         │  Modèle chargé 1x       │               │
+│  └─────────────────┘         └─────────────────────────┘               │
+│                                                                         │
+│  OPTION B: Lazy Download (Offline-first)                                │
+│  ┌─────────────────┐         ┌─────────────────────────┐               │
+│  │  User Machine   │  1er    │  HuggingFace Hub        │               │
+│  │  MCP Server ────┼─lancement─►│  (téléchargement)    │               │
+│  │       │         │         └─────────────────────────┘               │
+│  │       ▼         │                                                   │
+│  │  ~/.cache/      │  ← Cache local (~22MB)                            │
+│  │  ctxopt/models/ │    Utilisé ensuite sans réseau                    │
+│  └─────────────────┘                                                   │
+│                                                                         │
+│  OPTION C: Hybrid (Production)                                          │
+│  ┌─────────────────┐                                                   │
+│  │  MCP Server     │                                                   │
+│  │       │         │                                                   │
+│  │  ┌────▼────┐    │         ┌─────────────────────────┐               │
+│  │  │ Router  │────┼─Cloud──►│  API Backend            │               │
+│  │  └────┬────┘    │         └─────────────────────────┘               │
+│  │       │         │                                                   │
+│  │       └─Local──►│  ~/.cache/ctxopt/ (fallback)                      │
+│  └─────────────────┘                                                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Comparaison des Options
+
+| Critère | A: Cloud API | B: Lazy Download | C: Hybrid |
+|---------|--------------|------------------|-----------|
+| **Téléchargement user** | Non | Oui (1x, ~22MB) | Optionnel |
+| **Fonctionne offline** | Non | Oui | Partiel |
+| **Latence** | ~50-100ms | ~20-50ms | Variable |
+| **Coût infra** | Gratuit* | Aucun | Gratuit* |
+| **Maintenance** | Centralisée | Aucune | Mixte |
+| **Complexité** | Faible | Moyenne | Moyenne |
+
+#### Option A: API Cloud (Recommandée pour CtxOpt)
+
+**Implémentation via apps/web (Next.js existant)**:
+
+```typescript
+// apps/web/app/api/semantic/route.ts
+import { pipeline } from '@huggingface/transformers';
+
+let embedder: any = null;
+
+export async function POST(request: Request) {
+  // Lazy init du modèle côté serveur (chargé 1x pour tous les users)
+  if (!embedder) {
+    embedder = await pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2'  // 22MB, très rapide
+    );
+  }
+
+  const { texts } = await request.json();
+  const embeddings = await embedder(texts, { pooling: 'mean' });
+
+  return Response.json({ embeddings: embeddings.tolist() });
+}
+```
+
+```typescript
+// packages/mcp-server/src/tools/semantic-compress.ts
+const CTXOPT_API = process.env.CTXOPT_API_URL || 'https://ctxopt.com/api/semantic';
+
+async function getEmbeddings(texts: string[]): Promise<number[][]> {
+  const response = await fetch(`${CTXOPT_API}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts }),
+  });
+  return (await response.json()).embeddings;
+}
+```
+
+**Avantages**:
+- Aucun téléchargement côté utilisateur
+- Modèle partagé entre tous les users
+- Intégré à l'infrastructure existante
+- Monitoring centralisé
+
+**Alternatives Cloud gratuites**:
+
+```typescript
+// Option: HuggingFace Inference API (gratuit)
+const HF_API = 'https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2';
+
+// Option: Cloudflare Workers AI (gratuit)
+// Déployer un Worker qui appelle @cf/baai/bge-small-en-v1.5
+```
+
+#### Option B: Lazy Download (Mode Offline)
+
+```typescript
+// packages/mcp-server/src/lib/model-loader.ts
+import { pipeline, env } from '@huggingface/transformers';
+import { homedir } from 'os';
+import { join } from 'path';
+
+const CACHE_DIR = join(homedir(), '.cache', 'ctxopt', 'models');
+env.cacheDir = CACHE_DIR;
+
+let embedder: any = null;
+
+export async function getLocalEmbedder() {
+  if (!embedder) {
+    console.log('📦 Loading model (first time downloads ~22MB)...');
+    embedder = await pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+      {
+        progress_callback: (p) => {
+          if (p.status === 'downloading') {
+            process.stdout.write(`\r⬇️  ${Math.round(p.progress)}%`);
+          }
+        }
+      }
+    );
+    console.log('\n✅ Model loaded!');
+  }
+  return embedder;
+}
+```
+
+**Commande optionnelle pour pré-télécharger**:
+```bash
+npx @ctxopt/mcp-server download-models
+# Télécharge all-MiniLM-L6-v2 (~22MB) dans ~/.cache/ctxopt/
+```
+
+#### Option C: Hybrid (Recommandée pour Production)
+
+```typescript
+// packages/mcp-server/src/lib/semantic-engine.ts
+class SemanticEngine {
+  private localEmbedder: any = null;
+  private config: { mode: 'auto' | 'local' | 'cloud'; cloudEndpoint?: string };
+
+  async getEmbeddings(texts: string[]): Promise<number[][]> {
+    if (this.config.mode === 'auto') {
+      try {
+        return await this.cloudEmbeddings(texts);
+      } catch {
+        console.log('☁️ Cloud unavailable, using local model...');
+        return await this.localEmbeddings(texts);
+      }
+    }
+    return this.config.mode === 'cloud'
+      ? this.cloudEmbeddings(texts)
+      : this.localEmbeddings(texts);
+  }
+
+  private async cloudEmbeddings(texts: string[]): Promise<number[][]> {
+    const response = await fetch(this.config.cloudEndpoint!, {
+      method: 'POST',
+      body: JSON.stringify({ texts }),
+      signal: AbortSignal.timeout(5000),
+    });
+    return (await response.json()).embeddings;
+  }
+
+  private async localEmbeddings(texts: string[]): Promise<number[][]> {
+    if (!this.localEmbedder) {
+      const { pipeline, env } = await import('@huggingface/transformers');
+      env.cacheDir = join(homedir(), '.cache', 'ctxopt', 'models');
+      this.localEmbedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    }
+    return (await this.localEmbedder(texts, { pooling: 'mean' })).tolist();
+  }
+}
+```
+
+**Configuration utilisateur**:
+```json
+// ~/.config/ctxopt/config.json
+{
+  "semantic": {
+    "mode": "auto",
+    "cloudEndpoint": "https://ctxopt.com/api/semantic",
+    "offlineOnly": false
+  }
+}
+```
+
+#### Recommandation Finale pour CtxOpt
+
+| Phase | Architecture | Raison |
+|-------|--------------|--------|
+| **Phase 1** | Cloud API (apps/web) | Simple, aucun téléchargement user |
+| **Phase 2** | Hybrid avec fallback local | Support offline optionnel |
+| **Phase 3** | Config utilisateur | Flexibilité maximale |
 
 ---
 
@@ -727,6 +972,19 @@ interface OptimizationMetrics {
 - [AST-Transformer](https://arxiv.org/pdf/2112.01184) - 90-95% réduction complexité
 - [AST for Code Understanding](https://arxiv.org/html/2312.00413v1) - Survey
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) - Parsers multi-langages
+
+### Modèles Open Source et Hébergement
+
+- [Transformers.js](https://huggingface.co/docs/transformers.js/en/tutorials/node) - Inférence ML en Node.js
+- [LLMLingua-2 XLM-RoBERTa](https://huggingface.co/microsoft/llmlingua-2-xlm-roberta-large-meetingbank) - Modèle Microsoft pour compression
+- [all-MiniLM-L6-v2 ONNX](https://huggingface.co/Xenova/all-MiniLM-L6-v2) - Embeddings légers (22MB)
+- [node-llama-cpp](https://github.com/withcatai/node-llama-cpp) - LLMs locaux en Node.js
+- [Ollama Embedding Models](https://ollama.com/blog/embedding-models) - Modèles d'embeddings locaux
+- [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/models/) - API gratuite pour embeddings
+- [HuggingFace Inference API](https://huggingface.co/docs/api-inference/en/index) - Inférence serverless gratuite
+- [Groq API](https://groq.com/pricing) - Inférence ultra-rapide (276 tok/s)
+- [Qwen2.5-0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) - LLM léger (395MB)
+- [ONNX Runtime Web](https://onnxruntime.ai/docs/get-started/with-javascript/web.html) - Inférence ONNX en JS
 
 ---
 
