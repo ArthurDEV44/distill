@@ -15,12 +15,6 @@ interface CostBreakdownProps {
   isLoading?: boolean;
 }
 
-const MODEL_COLORS: Record<string, string> = {
-  "claude-opus-4-20250514": "#8B5CF6",
-  "claude-sonnet-4-20250514": "#3B82F6",
-  "claude-3-5-haiku-20241022": "#10B981",
-};
-
 const MODEL_NAMES: Record<string, string> = {
   "claude-opus-4-20250514": "Opus 4",
   "claude-sonnet-4-20250514": "Sonnet 4",

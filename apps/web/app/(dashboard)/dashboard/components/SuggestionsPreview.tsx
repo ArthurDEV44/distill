@@ -62,7 +62,7 @@ export function SuggestionsPreview({ suggestions, isLoading = false }: Suggestio
       <div className="rounded-lg border p-6">
         <h2 className="mb-4 text-xl font-semibold">Optimization Suggestions</h2>
         <p className="text-muted-foreground">
-          No suggestions yet. We'll analyze your usage and provide recommendations.
+          No suggestions yet. We&apos;ll analyze your usage and provide recommendations.
         </p>
       </div>
     );

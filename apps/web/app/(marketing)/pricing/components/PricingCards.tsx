@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { PlanCard } from "./PlanCard";
 
 interface PricingCardsProps {
@@ -56,7 +55,6 @@ const PLANS = [
 ];
 
 export function PricingCards({ isAnnual }: PricingCardsProps) {
-  const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   const handleProCheckout = async () => {

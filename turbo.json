@@ -1,6 +1,14 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "DATABASE_URL",
+    "CLERK_WEBHOOK_SECRET",
+    "POLAR_ACCESS_TOKEN",
+    "POLAR_PRO_MONTHLY_PRODUCT_ID",
+    "POLAR_PRO_YEARLY_PRODUCT_ID",
+    "POLAR_WEBHOOK_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

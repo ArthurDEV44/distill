@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 interface PricingHeroProps {
   isAnnual: boolean;
   onToggle: (annual: boolean) => void;

@@ -23,7 +23,7 @@ export function ApiKeysContent({ projects }: ApiKeysContentProps) {
   const [newKey, setNewKey] = useState<{ key: string; name: string } | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const { apiKeys, isLoading, error, createKey, revokeKey, refresh } = useApiKeys({
+  const { apiKeys, isLoading, error, createKey, revokeKey } = useApiKeys({
     projectId: selectedProjectId,
   });
 

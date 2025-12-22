@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { projects, users, usageRecords } from "@/lib/db/schema";
-import { eq, and, gte, sql, count, sum } from "drizzle-orm";
+import { eq, and, gte, count, sum } from "drizzle-orm";
 import { UsagePeriodEnum, type UsageStats, type ToolBreakdown } from "@ctxopt/shared";
 
 type RouteContext = { params: Promise<{ id: string }> };
