@@ -31,6 +31,15 @@ const EXTENSION_MAP: Record<string, SupportedLanguage> = {
   // Rust
   ".rs": "rust",
 
+  // PHP
+  ".php": "php",
+  ".phtml": "php",
+  ".php3": "php",
+  ".php4": "php",
+  ".php5": "php",
+  ".php7": "php",
+  ".phps": "php",
+
   // Config files
   ".json": "json",
   ".yaml": "yaml",
@@ -83,6 +92,8 @@ export function getLanguageDisplayName(language: SupportedLanguage): string {
       return "Go";
     case "rust":
       return "Rust";
+    case "php":
+      return "PHP";
     case "json":
       return "JSON";
     case "yaml":

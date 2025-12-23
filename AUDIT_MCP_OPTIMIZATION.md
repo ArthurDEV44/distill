@@ -847,7 +847,7 @@ interface SmartFileReadV2Input {
 | Tests et benchmarks | Haute | 2 jours | Validation performance | **FAIT** |
 | Ajouter Tree-sitter pour Rust | Haute | 2 jours | AST précis Rust | **FAIT** |
 | Ajouter Tree-sitter pour TypeScript | Haute | 2 jours | AST précis TypeScript | **N/A** (déjà natif) |
-| Ajouter Tree-sitter pour PHP | Haute | 2 jours | AST précis PHP |
+| Ajouter Tree-sitter pour PHP | Haute | 2 jours | AST précis PHP | **FAIT** |
 | Ajouter Tree-sitter pour Swift | Haute | 2 jours | AST précis Swift |
 
 ### Phase 2: Compression Avancée (Semaine 3-4)

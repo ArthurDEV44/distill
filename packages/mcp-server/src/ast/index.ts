@@ -31,6 +31,7 @@ import { typescriptParser, parseTypeScript } from "./typescript.js";
 import { pythonTreeSitterParser } from "./python/index.js";
 import { goTreeSitterParser } from "./go/index.js";
 import { rustTreeSitterParser } from "./rust/index.js";
+import { phpTreeSitterParser } from "./php/index.js";
 
 /**
  * Registry of language parsers
@@ -41,6 +42,7 @@ const parserRegistry: Map<SupportedLanguage, LanguageParser> = new Map([
   ["python", pythonTreeSitterParser], // Tree-sitter based parser
   ["go", goTreeSitterParser], // Tree-sitter based parser
   ["rust", rustTreeSitterParser], // Tree-sitter based parser
+  ["php", phpTreeSitterParser], // Tree-sitter based parser
 ]);
 
 /**
@@ -242,6 +244,7 @@ function formatLanguageName(language: SupportedLanguage): string {
     python: "Python",
     go: "Go",
     rust: "Rust",
+    php: "PHP",
     json: "JSON",
     yaml: "YAML",
     unknown: "Unknown",
