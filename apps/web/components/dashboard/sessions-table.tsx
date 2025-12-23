@@ -56,9 +56,11 @@ function formatDate(isoDate: string): string {
   });
 }
 
+const MIN_TABLE_HEIGHT = "min-h-[280px]";
+
 function TableSkeleton() {
   return (
-    <div className="rounded-lg border">
+    <div className={`rounded-lg border ${MIN_TABLE_HEIGHT}`}>
       <div className="p-4 border-b">
         <div className="h-6 w-40 bg-muted rounded animate-pulse" />
       </div>
@@ -90,9 +92,9 @@ export function SessionsTable({
 
   if (sessions.length === 0) {
     return (
-      <div className="rounded-lg border p-6">
+      <div className={`rounded-lg border p-6 ${MIN_TABLE_HEIGHT}`}>
         <h3 className="text-lg font-semibold mb-4">Recent Sessions</h3>
-        <div className="h-32 flex items-center justify-center text-muted-foreground">
+        <div className="flex items-center justify-center text-muted-foreground h-[180px]">
           No sessions recorded yet
         </div>
       </div>
@@ -100,7 +102,7 @@ export function SessionsTable({
   }
 
   return (
-    <div className="rounded-lg border">
+    <div className={`rounded-lg border ${MIN_TABLE_HEIGHT}`}>
       <div className="p-4 border-b flex items-center justify-between">
         <h3 className="text-lg font-semibold">Recent Sessions</h3>
         <span className="text-sm text-muted-foreground">

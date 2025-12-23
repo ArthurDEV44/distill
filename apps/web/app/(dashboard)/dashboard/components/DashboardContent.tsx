@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useProjectUsage } from "@/lib/hooks/useProjectUsage";
+import { useProjects } from "@/lib/hooks/useProjects";
 import { useSessions, useAllProjectsSessions } from "@/lib/hooks/useSessions";
 import {
   ScopeSelector,
@@ -10,6 +11,7 @@ import {
   ModelBreakdown,
   SessionsTable,
 } from "@/components/dashboard";
+import { DashboardEmptyState } from "./DashboardEmptyState";
 import Link from "next/link";
 import type { UsagePeriod } from "@ctxopt/shared";
 
@@ -28,6 +30,9 @@ export function DashboardContent({ userName }: DashboardContentProps) {
   const router = useRouter();
   const scope = searchParams.get("project") ?? "all";
 
+  // Check if user has any projects
+  const { projects, isLoading: projectsLoading } = useProjects();
+
   const handleScopeChange = (newScope: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (newScope === "all") {
@@ -42,6 +47,11 @@ export function DashboardContent({ userName }: DashboardContentProps) {
   const usageStats = useProjectUsage({
     projectId: scope === "all" ? undefined : scope,
   });
+
+  // Show empty state if user has no projects
+  if (!projectsLoading && projects.length === 0) {
+    return <DashboardEmptyState userName={userName} />;
+  }
 
   // Fetch sessions based on scope
   const allProjectsSessions = useAllProjectsSessions({ period: usageStats.period });

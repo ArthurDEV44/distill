@@ -94,12 +94,12 @@ Métriques disponibles via `/api/usage`:
 ### Phase 5: Polish UX
 
 #### 5.1 Empty State
-- [ ] Dashboard vide → CTA "Create your first project"
-- [ ] Wizard rapide: Project → API Key → Copy snippet
+- [x] Dashboard vide → CTA "Create your first project"
+- [x] Wizard rapide: Project → API Key → Copy snippet
 
 #### 5.2 Loading States
-- [ ] Skeletons pour cards et charts
-- [ ] Pas de layout shift
+- [x] Skeletons pour cards et charts
+- [x] Pas de layout shift
 
 ---
 

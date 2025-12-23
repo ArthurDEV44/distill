@@ -26,12 +26,14 @@ export default function NewProjectPage() {
         body: JSON.stringify({ name, description: description || undefined }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        router.push("/dashboard/projects");
+        // Redirect to project detail page for onboarding (API key creation)
+        router.push(`/dashboard/projects/${data.id}`);
         router.refresh();
       } else {
-        const data = await response.json();
-        setError(data.error || "Failed to create project");
+        setError(data.error?.message || data.error || "Failed to create project");
       }
     } catch {
       setError("Failed to create project");
