@@ -124,8 +124,12 @@ const LOG_LINE_PATTERNS = [
   /^{"(level|time|timestamp|msg)":/, // JSON logs
   /^\[[A-Z]+\]\s*\d{4}-\d{2}-\d{2}/, // [INFO] 2025-12-23
   /^\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/, // syslog: Dec 23 10:15:23
-  /^<\d+>/, // syslog priority
+  /^\w{3}\s{1,2}\d{1,2}\s+\d{2}:\d{2}:\d{2}/, // syslog with padding: Dec  3 10:15:23
+  /^<\d+>\w{3}\s+\d{1,2}/, // syslog with priority: <134>Dec 23
+  /^<\d+>\d/, // syslog priority with timestamp
   /\|\s*(INFO|WARN|ERROR|DEBUG|TRACE)\s*\|/i, // | INFO | format
+  /\s(INFO|WARN|WARNING|ERROR|DEBUG|TRACE|FATAL):\s/i, // embedded log level: "app: ERROR: msg"
+  /^\S+\s+\S+\[\d+\]:/, // daemon format: app[1234]:
 ];
 
 /**
