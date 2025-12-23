@@ -84,12 +84,12 @@ Métriques disponibles via `/api/usage`:
 ### Phase 4: Hooks & Data
 
 #### 4.1 Nouveau Hook Unifié
-- [ ] `useProjectUsage(projectId?: string)` - retourne usage (global si undefined)
-- [ ] Agrégation côté serveur pour vue "All Projects"
+- [x] `useProjectUsage(projectId?: string)` - retourne usage (global si undefined)
+- [x] Agrégation côté serveur pour vue "All Projects"
 
 #### 4.2 API Endpoint
-- [ ] `GET /api/usage?projectId=xxx&period=30d`
-- [ ] Si `projectId` absent → agrège tous les projets de l'user
+- [x] `GET /api/usage?projectId=xxx&period=30d`
+- [x] Si `projectId` absent → agrège tous les projets de l'user
 
 ### Phase 5: Polish UX
 

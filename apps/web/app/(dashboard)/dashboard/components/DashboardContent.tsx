@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useUsageStats, useAllProjectsUsage } from "@/lib/hooks/useUsageStats";
+import { useProjectUsage } from "@/lib/hooks/useProjectUsage";
 import { useSessions, useAllProjectsSessions } from "@/lib/hooks/useSessions";
 import {
   ScopeSelector,
@@ -38,13 +38,10 @@ export function DashboardContent({ userName }: DashboardContentProps) {
     router.push(`/dashboard?${params.toString()}`);
   };
 
-  // Fetch usage stats based on scope
-  const allProjectsUsage = useAllProjectsUsage();
-  const singleProjectUsage = useUsageStats({
-    projectId: scope !== "all" ? scope : "",
+  // Fetch usage stats based on scope (unified hook with server-side aggregation)
+  const usageStats = useProjectUsage({
+    projectId: scope === "all" ? undefined : scope,
   });
-
-  const usageStats = scope === "all" ? allProjectsUsage : singleProjectUsage;
 
   // Fetch sessions based on scope
   const allProjectsSessions = useAllProjectsSessions({ period: usageStats.period });
