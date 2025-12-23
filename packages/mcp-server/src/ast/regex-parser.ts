@@ -1,8 +1,9 @@
 /**
- * Regex-based Parser for Python, Go, Rust
+ * Regex-based Parser for Go, Rust
  *
  * Fallback parser using regex patterns for languages
  * where full AST parsing would require native bindings.
+ * Note: Python has been moved to tree-sitter in ./python/
  */
 
 import type {
@@ -22,36 +23,6 @@ import { createEmptyStructure } from "./types.js";
 function getLineFromIndex(content: string, index: number): number {
   const lines = content.slice(0, index).split("\n");
   return lines.length;
-}
-
-/**
- * Find the end of a Python block (based on indentation)
- */
-function findPythonBlockEnd(lines: string[], startLine: number): number {
-  if (startLine >= lines.length) return startLine;
-
-  const startMatch = lines[startLine]?.match(/^(\s*)/);
-  const startIndent = startMatch?.[1]?.length ?? 0;
-  let endLine = startLine;
-
-  for (let i = startLine + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line || line.trim() === "") {
-      // Empty lines don't end blocks
-      continue;
-    }
-
-    const currentMatch = line.match(/^(\s*)/);
-    const currentIndent = currentMatch?.[1]?.length ?? 0;
-
-    // If we find a line with same or less indentation (and not empty), block ends
-    if (currentIndent <= startIndent && line.trim() !== "") {
-      break;
-    }
-    endLine = i;
-  }
-
-  return endLine + 1; // 1-indexed
 }
 
 /**
@@ -101,94 +72,6 @@ function findBraceBlockEnd(content: string, startIndex: number): number {
   }
 
   return content.length - 1;
-}
-
-// ============================================================================
-// Python Parser
-// ============================================================================
-
-const PYTHON_IMPORT_PATTERN = /^(?:from\s+[\w.]+\s+)?import\s+.+$/gm;
-const PYTHON_FUNCTION_PATTERN = /^(\s*)(async\s+)?def\s+(\w+)\s*\([^)]*\).*?:/gm;
-const PYTHON_CLASS_PATTERN = /^(\s*)class\s+(\w+)(?:\([^)]*\))?:/gm;
-
-function extractPythonDocstring(lines: string[], startLine: number): string | undefined {
-  const nextLine = lines[startLine]?.trim();
-  if (nextLine?.startsWith('"""') || nextLine?.startsWith("'''")) {
-    const quote = nextLine.slice(0, 3);
-    let docstring = nextLine.slice(3);
-
-    // Single-line docstring
-    if (docstring.endsWith(quote)) {
-      return docstring.slice(0, -3).trim();
-    }
-
-    // Multi-line docstring
-    for (let i = startLine + 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (line?.includes(quote)) {
-        docstring += "\n" + line.slice(0, line.indexOf(quote));
-        return docstring.trim();
-      }
-      docstring += "\n" + line;
-    }
-  }
-  return undefined;
-}
-
-export function parsePython(content: string): FileStructure {
-  const lines = content.split("\n");
-  const structure = createEmptyStructure("python", lines.length);
-
-  // Parse imports
-  let match;
-  while ((match = PYTHON_IMPORT_PATTERN.exec(content)) !== null) {
-    const lineNum = getLineFromIndex(content, match.index);
-    structure.imports.push({
-      type: "import",
-      name: match[0].replace(/^from\s+\S+\s+/, "").replace(/^import\s+/, "").split(",")[0]?.trim() ?? "",
-      startLine: lineNum,
-      endLine: lineNum,
-      signature: match[0],
-    });
-  }
-
-  // Parse functions
-  PYTHON_FUNCTION_PATTERN.lastIndex = 0;
-  while ((match = PYTHON_FUNCTION_PATTERN.exec(content)) !== null) {
-    const startLine = getLineFromIndex(content, match.index);
-    const endLine = findPythonBlockEnd(lines, startLine - 1);
-    const isAsync = !!match[2];
-    const name = match[3] ?? "";
-
-    structure.functions.push({
-      type: "function",
-      name,
-      startLine,
-      endLine,
-      signature: `${isAsync ? "async " : ""}def ${name}(...)`,
-      documentation: extractPythonDocstring(lines, startLine),
-      isAsync,
-    });
-  }
-
-  // Parse classes
-  PYTHON_CLASS_PATTERN.lastIndex = 0;
-  while ((match = PYTHON_CLASS_PATTERN.exec(content)) !== null) {
-    const startLine = getLineFromIndex(content, match.index);
-    const endLine = findPythonBlockEnd(lines, startLine - 1);
-    const name = match[2] ?? "";
-
-    structure.classes.push({
-      type: "class",
-      name,
-      startLine,
-      endLine,
-      signature: `class ${name}`,
-      documentation: extractPythonDocstring(lines, startLine),
-    });
-  }
-
-  return structure;
 }
 
 // ============================================================================
@@ -526,28 +409,6 @@ function searchElements(structure: FileStructure, query: string): CodeElement[] 
 // ============================================================================
 // Language Parsers
 // ============================================================================
-
-export const pythonParser: LanguageParser = {
-  languages: ["python"],
-
-  parse(content: string): FileStructure {
-    return parsePython(content);
-  },
-
-  extractElement(
-    content: string,
-    target: ExtractionTarget,
-    options: ExtractionOptions
-  ): ExtractedContent | null {
-    const structure = parsePython(content);
-    return extractElement(content, structure, target, options);
-  },
-
-  searchElements(content: string, query: string): CodeElement[] {
-    const structure = parsePython(content);
-    return searchElements(structure, query);
-  },
-};
 
 export const goParser: LanguageParser = {
   languages: ["go"],

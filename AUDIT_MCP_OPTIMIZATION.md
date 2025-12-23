@@ -842,7 +842,7 @@ interface SmartFileReadV2Input {
 | Tâche | Priorité | Effort | Impact | Statut |
 |-------|----------|--------|--------|--------|
 | Implémenter `smart-cache` | Haute | 3 jours | Cache pour tous les outils | **FAIT** |
-| Ajouter Tree-sitter pour Python | Haute | 2 jours | AST précis Python | |
+| Ajouter Tree-sitter pour Python | Haute | 2 jours | AST précis Python | **FAIT** |
 | Ajouter Tree-sitter pour Go | Haute | 2 jours | AST précis Go | |
 | Tests et benchmarks | Haute | 2 jours | Validation performance | |
 
