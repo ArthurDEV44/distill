@@ -40,6 +40,7 @@ import { contextBudgetTool } from "./tools/context-budget.js";
 import { codeSkeletonTool } from "./tools/code-skeleton.js";
 import { conversationCompressTool } from "./tools/conversation-compress.js";
 import { diffCompressTool } from "./tools/diff-compress.js";
+import { smartPipelineTool } from "./tools/smart-pipeline.js";
 
 // Utils
 import { detectProject } from "./utils/project-detector.js";
@@ -127,6 +128,7 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
   tools.register(codeSkeletonTool);
   tools.register(conversationCompressTool);
   tools.register(diffCompressTool);
+  tools.register(smartPipelineTool);
 
   // Create MCP server
   const server = new Server(

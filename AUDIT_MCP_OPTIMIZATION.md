@@ -865,7 +865,7 @@ interface SmartFileReadV2Input {
 |-------|----------|--------|--------|--------|
 | Implémenter `conversation-compress` | Moyenne | 4 jours | Conversations longues | **FAIT** |
 | Implémenter `diff-compress` | Basse | 2 jours | Git diffs | **FAIT** |
-| Pipeline automatique | Moyenne | 3 jours | Chaînage intelligent | |
+| Pipeline automatique (`smart-pipeline`) | Moyenne | 3 jours | Chaînage intelligent | **FAIT** |
 | Dashboard métriques avancées | Basse | 3 jours | Visibilité | |
 
 ### Phase 4: Optimisations ML (Futur)
