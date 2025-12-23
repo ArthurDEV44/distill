@@ -844,7 +844,7 @@ interface SmartFileReadV2Input {
 | Implémenter `smart-cache` | Haute | 3 jours | Cache pour tous les outils | **FAIT** |
 | Ajouter Tree-sitter pour Python | Haute | 2 jours | AST précis Python | **FAIT** |
 | Ajouter Tree-sitter pour Go | Haute | 2 jours | AST précis Go | **FAIT** |
-| Tests et benchmarks | Haute | 2 jours | Validation performance | |
+| Tests et benchmarks | Haute | 2 jours | Validation performance | **FAIT** |
 
 ### Phase 2: Compression Avancée (Semaine 3-4)
 

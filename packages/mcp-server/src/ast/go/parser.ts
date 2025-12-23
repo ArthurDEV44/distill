@@ -4,10 +4,15 @@
  * AST parser for Go using Tree-sitter for accurate code analysis.
  */
 
-import { Parser, Language, type Tree, type Node } from "web-tree-sitter";
+import Parser from "web-tree-sitter";
+import { readFileSync } from "fs";
 import { createRequire } from "module";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+
+type Language = Parser.Language;
+type Tree = Parser.Tree;
+type Node = Parser.SyntaxNode;
 import type {
   CodeElement,
   FileStructure,
@@ -64,7 +69,9 @@ async function initParser(): Promise<void> {
     await Parser.init();
     parserInstance = new Parser();
     const wasmPath = getGoWasmPath();
-    goLanguage = await Language.load(wasmPath);
+    // Read WASM file as buffer for reliable loading in all environments
+    const wasmBuffer = readFileSync(wasmPath);
+    goLanguage = await Parser.Language.load(wasmBuffer);
     parserInstance.setLanguage(goLanguage);
   })();
 

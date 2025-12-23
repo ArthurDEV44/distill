@@ -5,7 +5,8 @@
  * and extracting Python-specific constructs.
  */
 
-import type { Node } from "web-tree-sitter";
+import type Parser from "web-tree-sitter";
+type Node = Parser.SyntaxNode;
 import type { CodeElement, ElementType } from "../types.js";
 
 /**

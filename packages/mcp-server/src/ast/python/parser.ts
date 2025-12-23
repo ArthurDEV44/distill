@@ -4,10 +4,15 @@
  * AST parser for Python using Tree-sitter for accurate code analysis.
  */
 
-import { Parser, Language, type Tree, type Node } from "web-tree-sitter";
+import Parser from "web-tree-sitter";
+import { readFileSync } from "fs";
 import { createRequire } from "module";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+
+type Language = Parser.Language;
+type Tree = Parser.Tree;
+type Node = Parser.SyntaxNode;
 import type {
   CodeElement,
   FileStructure,
@@ -63,7 +68,9 @@ async function initParser(): Promise<void> {
     await Parser.init();
     parserInstance = new Parser();
     const wasmPath = getPythonWasmPath();
-    pythonLanguage = await Language.load(wasmPath);
+    // Read WASM file as buffer for reliable loading in all environments
+    const wasmBuffer = readFileSync(wasmPath);
+    pythonLanguage = await Parser.Language.load(wasmBuffer);
     parserInstance.setLanguage(pythonLanguage);
   })();
 
@@ -99,22 +106,10 @@ function isModuleLevel(node: Node): boolean {
  * Check if a function is async
  */
 function isAsyncFunction(node: Node): boolean {
-  // Check if there's an async keyword before def
-  let sibling = node.previousSibling;
-  while (sibling) {
-    if (sibling.type === "async") return true;
-    sibling = sibling.previousSibling;
+  // In Tree-sitter Python, 'async' is a child of function_definition
+  for (const child of node.children) {
+    if (child.type === "async") return true;
   }
-
-  // Also check parent for decorated_definition
-  if (node.parent?.type === "decorated_definition") {
-    let decoratedSibling = node.parent.previousSibling;
-    while (decoratedSibling) {
-      if (decoratedSibling.type === "async") return true;
-      decoratedSibling = decoratedSibling.previousSibling;
-    }
-  }
-
   return false;
 }
 
