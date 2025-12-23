@@ -101,3 +101,4 @@ export { logsCompressor } from "./logs.js";
 export { stacktraceCompressor } from "./stacktrace.js";
 export { configCompressor } from "./config.js";
 export { genericCompressor } from "./generic.js";
+export { semanticCompressor } from "./semantic.js";
