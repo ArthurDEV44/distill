@@ -11,6 +11,7 @@ export type SupportedLanguage =
   | "go"
   | "rust"
   | "php"
+  | "swift"
   | "json"
   | "yaml"
   | "unknown";

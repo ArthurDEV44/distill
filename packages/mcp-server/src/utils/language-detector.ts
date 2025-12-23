@@ -40,6 +40,9 @@ const EXTENSION_MAP: Record<string, SupportedLanguage> = {
   ".php7": "php",
   ".phps": "php",
 
+  // Swift
+  ".swift": "swift",
+
   // Config files
   ".json": "json",
   ".yaml": "yaml",
@@ -94,6 +97,8 @@ export function getLanguageDisplayName(language: SupportedLanguage): string {
       return "Rust";
     case "php":
       return "PHP";
+    case "swift":
+      return "Swift";
     case "json":
       return "JSON";
     case "yaml":
