@@ -22,6 +22,38 @@ import {
 } from "../ast/index.js";
 import { detectLanguageFromPath } from "../utils/language-detector.js";
 import type { ToolDefinition } from "./registry.js";
+import { getGlobalCache } from "../cache/smart-cache.js";
+import type { FileStructure, SupportedLanguage } from "../ast/types.js";
+
+// Parseable languages (excluding json, yaml, unknown)
+const PARSEABLE_LANGUAGES: SupportedLanguage[] = [
+  "typescript",
+  "javascript",
+  "python",
+  "go",
+  "rust",
+  "php",
+  "swift",
+];
+
+/**
+ * Validate and normalize a language string
+ */
+function validateLanguage(lang: string): SupportedLanguage | null {
+  const normalized = lang.toLowerCase().trim() as SupportedLanguage;
+  if (PARSEABLE_LANGUAGES.includes(normalized)) {
+    return normalized;
+  }
+  // Handle common aliases
+  const aliases: Record<string, SupportedLanguage> = {
+    ts: "typescript",
+    js: "javascript",
+    py: "python",
+    golang: "go",
+    rs: "rust",
+  };
+  return aliases[normalized] || null;
+}
 
 // Sensitive file patterns that should never be read
 const BLOCKED_PATTERNS = [
@@ -126,6 +158,21 @@ export const smartFileReadSchema = {
       required: ["start", "end"],
       description: "Extract a specific line range",
     },
+    skeleton: {
+      type: "boolean",
+      description:
+        "Extract only function/class signatures without bodies (skeleton mode). Great for getting an overview of a large file.",
+    },
+    cache: {
+      type: "boolean",
+      description:
+        "Use smart cache for parsed results (default: true). Set to false to bypass cache.",
+    },
+    language: {
+      type: "string",
+      description:
+        "Force language detection instead of auto-detecting from file extension. Values: typescript, javascript, python, go, rust, php, swift (or aliases: ts, js, py, golang, rs)",
+    },
   },
   required: ["filePath"],
 };
@@ -147,6 +194,9 @@ const inputSchema = z.object({
       end: z.number(),
     })
     .optional(),
+  skeleton: z.boolean().optional().default(false),
+  cache: z.boolean().optional().default(true),
+  language: z.string().optional(),
 });
 
 function formatExtractedContent(
@@ -244,6 +294,103 @@ function formatSearchResults(
   return parts.join("\n");
 }
 
+/**
+ * Format file structure as a skeleton (signatures only, no bodies)
+ * This provides a compact overview of a file's API surface.
+ */
+function formatSkeletonOutput(
+  structure: FileStructure,
+  filePath: string,
+  languageId: string,
+  totalLines: number
+): string {
+  const parts: string[] = [];
+  parts.push(`## File Skeleton: ${filePath}`);
+  parts.push("");
+  parts.push(`**Language:** ${languageId}`);
+  parts.push(`**Total Lines:** ${totalLines}`);
+  parts.push("");
+
+  let elementCount = 0;
+
+  // Imports summary (collapsed)
+  if (structure.imports?.length) {
+    parts.push(`### Imports (${structure.imports.length})`);
+    // Show first 5 imports, summarize rest
+    const displayImports = structure.imports.slice(0, 5);
+    for (const imp of displayImports) {
+      parts.push(`- \`${imp}\``);
+    }
+    if (structure.imports.length > 5) {
+      parts.push(`- ... and ${structure.imports.length - 5} more`);
+    }
+    parts.push("");
+  }
+
+  // Types and Interfaces
+  if (structure.types?.length) {
+    parts.push("### Types/Interfaces");
+    for (const t of structure.types) {
+      const exported = t.isExported ? "export " : "";
+      parts.push(`- \`${exported}${t.signature || t.name}\``);
+      elementCount++;
+    }
+    parts.push("");
+  }
+
+  // Functions (signatures only)
+  const functions = structure.functions?.filter((f) => !f.parent) || [];
+  if (functions.length) {
+    parts.push("### Functions");
+    for (const fn of functions) {
+      const exported = fn.isExported ? "export " : "";
+      const asyncMod = fn.isAsync ? "async " : "";
+      const sig = fn.signature || `${fn.name}()`;
+      parts.push(`- \`${exported}${asyncMod}${sig}\` (lines ${fn.startLine}-${fn.endLine})`);
+      elementCount++;
+    }
+    parts.push("");
+  }
+
+  // Classes with method signatures
+  if (structure.classes?.length) {
+    parts.push("### Classes");
+    for (const cls of structure.classes) {
+      const exported = cls.isExported ? "export " : "";
+      parts.push(`- \`${exported}class ${cls.name}\` (lines ${cls.startLine}-${cls.endLine})`);
+      elementCount++;
+
+      // Methods
+      const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
+      for (const m of methods) {
+        const asyncMod = m.isAsync ? "async " : "";
+        const sig = m.signature || `${m.name}()`;
+        parts.push(`  - \`${asyncMod}${sig}\``);
+      }
+    }
+    parts.push("");
+  }
+
+  // Variables (exported only for skeleton)
+  const exportedVars = structure.variables?.filter((v) => v.isExported) || [];
+  if (exportedVars.length) {
+    parts.push("### Exported Variables");
+    for (const v of exportedVars) {
+      parts.push(`- \`${v.signature || v.name}\``);
+      elementCount++;
+    }
+    parts.push("");
+  }
+
+  // Skeleton summary
+  parts.push("---");
+  parts.push(
+    `**Skeleton:** ${elementCount} elements extracted (use \`target\` to get full implementation)`
+  );
+
+  return parts.join("\n");
+}
+
 export async function executeSmartFileRead(
   args: unknown,
   _state: SessionState
@@ -274,11 +421,54 @@ export async function executeSmartFileRead(
   const content = await fs.readFile(resolvedPath, "utf-8");
   const totalLines = content.split("\n").length;
 
-  // Detect language
-  const language = detectLanguageFromPath(resolvedPath);
-  const languageId = language === "typescript" ? "typescript" : language === "javascript" ? "javascript" : language;
+  // Detect or force language
+  let language: SupportedLanguage;
+  if (input.language) {
+    const forcedLang = validateLanguage(input.language);
+    if (!forcedLang) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Unsupported language: '${input.language}'. Supported: ${PARSEABLE_LANGUAGES.join(", ")} (or aliases: ts, js, py, golang, rs)`,
+          },
+        ],
+      };
+    }
+    language = forcedLang;
+  } else {
+    language = detectLanguageFromPath(resolvedPath);
+  }
+  const languageId =
+    language === "typescript" ? "typescript" : language === "javascript" ? "javascript" : language;
 
-  // Priority 1: Extract specific line range
+  // Cache setup
+  const cache = getGlobalCache();
+  const cacheKey = `smart-read:${resolvedPath}:${JSON.stringify({
+    target: input.target,
+    query: input.query,
+    skeleton: input.skeleton,
+    lines: input.lines,
+    language: input.language,
+  })}`;
+
+  // Check cache if enabled
+  if (input.cache !== false) {
+    const cached = await cache.get<string>(cacheKey);
+    if (cached.hit && cached.value) {
+      return { content: [{ type: "text", text: cached.value + "\n\n_📦 (from cache)_" }] };
+    }
+  }
+
+  // Helper to cache and return result
+  const cacheAndReturn = async (result: string) => {
+    if (input.cache !== false) {
+      await cache.set(cacheKey, result, { filePath: resolvedPath });
+    }
+    return { content: [{ type: "text" as const, text: result }] };
+  };
+
+  // Priority 1: Extract specific line range (no caching - simple operation)
   if (input.lines) {
     const extracted = extractLines(content, input.lines.start, input.lines.end);
     const result = formatExtractedContent(
@@ -307,7 +497,14 @@ export async function executeSmartFileRead(
     return { content: [{ type: "text", text: parts.join("\n") }] };
   }
 
-  // Priority 2: Extract specific target element
+  // Priority 2: Skeleton mode - signatures only overview
+  if (input.skeleton) {
+    const structure = parseFile(content, language);
+    const skeleton = formatSkeletonOutput(structure, input.filePath, languageId, totalLines);
+    return cacheAndReturn(skeleton);
+  }
+
+  // Priority 3: Extract specific target element
   if (input.target) {
     const extracted = extractElement(content, language, input.target, {
       includeImports: input.includeImports,
@@ -332,21 +529,21 @@ export async function executeSmartFileRead(
       totalLines,
       input.includeImports
     );
-    return { content: [{ type: "text", text: result }] };
+    return cacheAndReturn(result);
   }
 
-  // Priority 3: Search by query
+  // Priority 4: Search by query
   if (input.query) {
     const results = searchElements(content, language, input.query);
     const result = formatSearchResults(results, input.filePath, input.query);
-    return { content: [{ type: "text", text: result }] };
+    return cacheAndReturn(result);
   }
 
   // Default: Return file structure summary
   const structure = parseFile(content, language);
   const summary = formatStructureSummary(structure, input.filePath);
 
-  return { content: [{ type: "text", text: summary }] };
+  return cacheAndReturn(summary);
 }
 
 export const smartFileReadTool: ToolDefinition = {
@@ -358,14 +555,17 @@ Instead of reading entire files, extract only what you need:
 - **With target**: Extract a specific function, class, or type by name
 - **With query**: Search for code elements matching a pattern
 - **With lines**: Extract a specific line range
+- **With skeleton**: Get signatures only (no implementation bodies)
 
-Supports: TypeScript, JavaScript (full AST), Python, Go, Rust (regex-based).
+Supports: TypeScript, JavaScript (full AST), Python, Go, Rust, PHP, Swift.
 
 Examples:
 - Structure: { "filePath": "src/utils.ts" }
 - Extract function: { "filePath": "src/utils.ts", "target": { "type": "function", "name": "parseConfig" } }
 - Search: { "filePath": "src/utils.ts", "query": "parse" }
-- Lines: { "filePath": "src/utils.ts", "lines": { "start": 10, "end": 50 } }`,
+- Lines: { "filePath": "src/utils.ts", "lines": { "start": 10, "end": 50 } }
+- Skeleton: { "filePath": "src/utils.ts", "skeleton": true }
+- Force language: { "filePath": "src/utils.ts", "language": "typescript" }`,
   inputSchema: smartFileReadSchema,
   execute: executeSmartFileRead,
 };

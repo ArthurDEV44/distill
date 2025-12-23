@@ -856,7 +856,7 @@ interface SmartFileReadV2Input {
 |-------|----------|--------|--------|--------|
 | Implémenter `semantic-compress` (rule-based) | Haute | 4 jours | 60%+ compression | **FAIT** |
 | Implémenter `context-budget` | Moyenne | 3 jours | Pré-estimation | **FAIT** |
-| Améliorer `smart-file-read` v2 | Moyenne | 3 jours | Nouvelles features |
+| Améliorer `smart-file-read` v2 | Moyenne | 3 jours | Nouvelles features | **FAIT** |
 | Implémenter `code-skeleton` | Moyenne | 2 jours | Vue d'ensemble code |
 
 ### Phase 3: Contexte Intelligent (Semaine 5-6)
