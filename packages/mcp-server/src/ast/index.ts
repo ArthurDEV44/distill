@@ -28,6 +28,7 @@ import type {
 } from "./types.js";
 import { createEmptyStructure } from "./types.js";
 import { typescriptParser, parseTypeScript } from "./typescript.js";
+import { quickScan } from "./quick-scan.js";
 import { pythonTreeSitterParser } from "./python/index.js";
 import { goTreeSitterParser } from "./go/index.js";
 import { rustTreeSitterParser } from "./rust/index.js";
@@ -63,8 +64,18 @@ export function hasParserSupport(language: SupportedLanguage): boolean {
 
 /**
  * Parse file content and return structure
+ * @param mode 'full' for AST parsing, 'quick' for regex-based scan (faster, less detail)
  */
-export function parseFile(content: string, language: SupportedLanguage): FileStructure {
+export function parseFile(
+  content: string,
+  language: SupportedLanguage,
+  mode: "full" | "quick" = "full"
+): FileStructure {
+  // Quick mode: use regex-based scan (90% faster, no endLine/signatures)
+  if (mode === "quick") {
+    return quickScan(content, language);
+  }
+
   const parser = parserRegistry.get(language);
 
   if (parser) {

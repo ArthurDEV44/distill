@@ -118,12 +118,22 @@ FUNCTIONS: createServer (46-121), runServer (126-142)
 
 ### 3.1 Lazy Parsing
 
-**Fichier concerné**: `src/ast/typescript.ts`
+**Fichiers concernés**: `src/ast/quick-scan.ts` (nouveau), `src/ast/index.ts`, `src/tools/smart-file-read.ts`
 
 **Actions**:
-- [ ] Implémenter un mode "scan" qui ne parse que les déclarations de premier niveau
-- [ ] Parser le contenu d'une fonction uniquement si elle est ciblée
-- [ ] Utiliser des regex pour la détection rapide avant le parsing complet
+- [x] Implémenter un mode "scan" qui ne parse que les déclarations de premier niveau
+- [x] Parser le contenu d'une fonction uniquement si elle est ciblée
+- [x] Utiliser des regex pour la détection rapide avant le parsing complet
+
+**Implémenté le 2025-12-24**:
+- `src/ast/quick-scan.ts` - Scanner regex pour TypeScript, Python et Go
+- `src/ast/index.ts` - `parseFile()` accepte `mode: 'full' | 'quick'`
+- `src/tools/smart-file-read.ts` - Skeleton mode utilise quick scan
+- `formatSkeletonOutput` - Mode quick affiche uniquement la ligne de début
+
+**Trade-off accepté**: Mode quick n'a pas `endLine`, affiche `(46)` au lieu de `(46-121)`
+
+**Impact estimé**: -90% temps de parsing pour skeleton mode
 
 ### 3.2 Réduire la Structure CodeElement
 

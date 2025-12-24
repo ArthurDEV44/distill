@@ -318,16 +318,21 @@ function formatSearchResults(
 /**
  * Format file structure as a skeleton (signatures only, no bodies)
  * This provides a compact overview of a file's API surface.
+ * @param quickMode When true, only shows start line (from quick scan mode)
  */
 function formatSkeletonOutput(
   structure: FileStructure,
   filePath: string,
   languageId: string,
   totalLines: number,
-  format: OutputFormat = "plain"
+  format: OutputFormat = "plain",
+  quickMode: boolean = false
 ): string {
   const parts: string[] = [];
   const md = format === "markdown";
+  // Format line reference: quick mode shows only start line, full mode shows range
+  const lineRef = (el: { startLine: number; endLine: number }) =>
+    quickMode || el.startLine === el.endLine ? `(${el.startLine})` : `(${el.startLine}-${el.endLine})`;
 
   parts.push(md ? `## File Skeleton: ${filePath}` : `${filePath} (${languageId}, ${totalLines} lines)`);
   if (md) {
@@ -384,12 +389,12 @@ function formatSkeletonOutput(
         const exported = fn.isExported ? "export " : "";
         const asyncMod = fn.isAsync ? "async " : "";
         const sig = fn.signature || `${fn.name}()`;
-        parts.push(`- \`${exported}${asyncMod}${sig}\` (lines ${fn.startLine}-${fn.endLine})`);
+        parts.push(`- \`${exported}${asyncMod}${sig}\` (lines ${lineRef(fn).slice(1, -1)})`);
         elementCount++;
       }
       parts.push("");
     } else {
-      const fnList = functions.map(fn => `${fn.name} (${fn.startLine}-${fn.endLine})`).join(", ");
+      const fnList = functions.map(fn => `${fn.name} ${lineRef(fn)}`).join(", ");
       parts.push(`FUNCTIONS: ${fnList}`);
       elementCount += functions.length;
     }
@@ -401,7 +406,7 @@ function formatSkeletonOutput(
       parts.push("### Classes");
       for (const cls of structure.classes) {
         const exported = cls.isExported ? "export " : "";
-        parts.push(`- \`${exported}class ${cls.name}\` (lines ${cls.startLine}-${cls.endLine})`);
+        parts.push(`- \`${exported}class ${cls.name}\` (lines ${lineRef(cls).slice(1, -1)})`);
         elementCount++;
 
         const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
@@ -416,7 +421,7 @@ function formatSkeletonOutput(
       const clsList = structure.classes.map(cls => {
         const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
         const methodNames = methods.length > 0 ? ` [${methods.map(m => m.name).join(", ")}]` : "";
-        return `${cls.name} (${cls.startLine}-${cls.endLine})${methodNames}`;
+        return `${cls.name} ${lineRef(cls)}${methodNames}`;
       }).join(", ");
       parts.push(`CLASSES: ${clsList}`);
       elementCount += structure.classes.length;
@@ -563,10 +568,10 @@ export async function executeSmartFileRead(
     return { content: [{ type: "text", text: parts.join("\n") }] };
   }
 
-  // Priority 2: Skeleton mode - signatures only overview
+  // Priority 2: Skeleton mode - signatures only overview (uses quick regex scan)
   if (input.skeleton) {
-    const structure = parseFile(content, language);
-    const skeleton = formatSkeletonOutput(structure, input.filePath, languageId, totalLines, input.format);
+    const structure = parseFile(content, language, "quick");
+    const skeleton = formatSkeletonOutput(structure, input.filePath, languageId, totalLines, input.format, true);
     return cacheAndReturn(skeleton);
   }
 
