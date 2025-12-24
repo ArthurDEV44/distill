@@ -1,0 +1,15 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "---Getting Started---",
+    "installation",
+    "mcp-tools",
+    "---Guides---",
+    "guides/claude-code",
+    "guides/cursor",
+    "guides/windsurf",
+    "---Reference---",
+    "troubleshooting"
+  ]
+}

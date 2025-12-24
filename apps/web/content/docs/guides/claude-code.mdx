@@ -1,0 +1,139 @@
+---
+title: Claude Code Integration
+description: Step-by-step guide to integrate CtxOpt with Claude Code
+---
+
+# Claude Code Integration
+
+This guide walks you through setting up CtxOpt with Claude Code.
+
+## Prerequisites
+
+- Claude Code installed ([download](https://claude.ai/code))
+- Node.js 18+ installed
+
+## Step 1: Install CtxOpt
+
+```bash
+npm install -g @ctxopt/mcp-server
+```
+
+## Step 2: Configure MCP
+
+Edit your Claude Code MCP configuration file at `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"]
+    }
+  }
+}
+```
+
+Or if you installed globally:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "ctxopt-mcp",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+## Step 3: Restart Claude Code
+
+Close and reopen Claude Code. You should see "CtxOpt MCP Server running on stdio" in the logs.
+
+## Step 4: Verify
+
+Ask Claude to run `session_stats`:
+
+```
+Run the session_stats tool
+```
+
+You should see session statistics including tokens used and saved.
+
+## Using CtxOpt Tools
+
+### Smart File Reading
+
+Instead of reading entire files, use smart_file_read:
+
+```
+Use smart_file_read to get the structure of src/server.ts
+```
+
+### Compressing Build Output
+
+When you get build errors:
+
+```
+Use auto_optimize to compress this build output: [paste output]
+```
+
+### Session Statistics
+
+Check your savings:
+
+```
+Show my session stats with detailed breakdown
+```
+
+## Recommended CLAUDE.md Setup
+
+Add this to your project's `CLAUDE.md` to enforce CtxOpt usage:
+
+```markdown
+## MCP Tool Usage
+
+When reading source code files for exploration, use:
+- `smart_file_read` instead of `Read` for .ts/.js/.py files
+
+When you see large command output (>500 chars):
+- Use `auto_optimize` to compress it
+
+At session start:
+- Call `register_model` with your model ID
+```
+
+## Installing Project Hooks
+
+CtxOpt can install hooks that remind you to use optimization tools:
+
+```bash
+ctxopt-mcp setup --hooks
+```
+
+This adds hooks to your project that:
+- Suggest `smart_file_read` when reading code files
+- Suggest `auto_optimize` for large bash outputs
+- Remind about MCP tools on each prompt
+
+## Troubleshooting
+
+### MCP Server Not Starting
+
+1. Check Node.js version: `node --version` (needs 18+)
+2. Run doctor: `ctxopt-mcp doctor`
+3. Check logs in Claude Code's output panel
+
+### Tools Not Appearing
+
+1. Restart Claude Code completely
+2. Verify `mcp.json` syntax is valid JSON
+3. Try running `npx @ctxopt/mcp-server serve` manually to check for errors
+
+### Permission Issues
+
+On macOS/Linux, you may need to make the command executable:
+
+```bash
+chmod +x $(which ctxopt-mcp)
+```

@@ -1,0 +1,99 @@
+---
+title: Cursor Integration
+description: Step-by-step guide to integrate CtxOpt with Cursor
+---
+
+# Cursor Integration
+
+This guide walks you through setting up CtxOpt with Cursor IDE.
+
+## Prerequisites
+
+- Cursor installed ([download](https://cursor.sh))
+- Node.js 18+ installed
+
+## Step 1: Install CtxOpt
+
+```bash
+npm install -g @ctxopt/mcp-server
+```
+
+## Step 2: Configure MCP in Cursor
+
+1. Open Cursor Settings (Cmd/Ctrl + ,)
+2. Search for "MCP" or navigate to Features > MCP Servers
+3. Add a new MCP server with this configuration:
+
+```json
+{
+  "ctxopt": {
+    "command": "npx",
+    "args": ["@ctxopt/mcp-server"]
+  }
+}
+```
+
+Alternatively, edit the config file directly at:
+- **macOS**: `~/Library/Application Support/Cursor/mcp.json`
+- **Windows**: `%APPDATA%\Cursor\mcp.json`
+- **Linux**: `~/.config/Cursor/mcp.json`
+
+## Step 3: Restart Cursor
+
+Close and reopen Cursor to load the MCP server.
+
+## Step 4: Verify
+
+In Cursor's AI chat, ask:
+
+```
+What MCP tools are available?
+```
+
+You should see the CtxOpt tools listed.
+
+## Using CtxOpt with Cursor
+
+### Code Navigation
+
+Use smart file reading for exploring code:
+
+```
+Use smart_file_read to show the structure of src/api/routes.ts
+```
+
+### Build Error Analysis
+
+When builds fail:
+
+```
+Analyze this build output with auto_optimize: [paste errors]
+```
+
+### Diff Compression
+
+For large diffs:
+
+```
+Compress this git diff: [paste diff]
+```
+
+## Best Practices
+
+1. **Use smart_file_read** for code exploration instead of opening files directly
+2. **Compress build output** before pasting into chat
+3. **Check session_stats** periodically to see your savings
+
+## Troubleshooting
+
+### MCP Server Not Found
+
+1. Verify installation: `npx @ctxopt/mcp-server --version`
+2. Check Cursor's MCP logs in the Output panel
+3. Try running the server manually to check for errors
+
+### Tools Not Working
+
+1. Restart Cursor completely
+2. Check that the JSON config is valid
+3. Ensure Node.js 18+ is in your PATH

@@ -1,0 +1,214 @@
+---
+title: MCP Tools Reference
+description: Complete reference for all 19 CtxOpt optimization tools
+---
+
+# MCP Tools Reference
+
+CtxOpt provides 19 tools for optimizing LLM token usage. Each tool is designed for specific use cases.
+
+## File Reading Tools
+
+### smart_file_read
+
+Read code files with AST-aware extraction. Returns structure overview or specific elements.
+
+```
+smart_file_read filePath="src/server.ts"
+smart_file_read filePath="src/server.ts" target={"type":"function","name":"createServer"}
+smart_file_read filePath="src/utils.ts" query="parse"
+smart_file_read filePath="src/server.ts" skeleton=true
+```
+
+**Savings:** 50-70% compared to reading full files
+
+**Supported languages:** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
+
+### code_skeleton
+
+Extract only function/class signatures without implementation bodies.
+
+```
+code_skeleton filePath="src/api.ts" depth=2
+```
+
+**Savings:** 70-90%
+
+## Compression Tools
+
+### auto_optimize
+
+Automatically detect content type and apply optimal compression.
+
+```
+auto_optimize content="<build output or logs>"
+```
+
+**Savings:** 40-95% depending on content
+
+### compress_context
+
+Generic compression for any text content.
+
+```
+compress_context content="<large text>" targetRatio=0.5
+```
+
+**Savings:** 40-60%
+
+### semantic_compress
+
+TF-IDF based compression that keeps important segments.
+
+```
+semantic_compress content="<document>" targetRatio=0.5
+```
+
+**Savings:** 40-60%
+
+### diff_compress
+
+Compress git diff output while preserving essential changes.
+
+```
+diff_compress diff="<git diff output>" strategy="hunks-only"
+```
+
+Strategies: `hunks-only`, `summary`, `semantic`
+
+**Savings:** 50-95%
+
+### conversation_compress
+
+Compress conversation history while preserving key information.
+
+```
+conversation_compress messages=[...] strategy="hybrid" maxTokens=1000
+```
+
+Strategies: `rolling-summary`, `key-extraction`, `hybrid`
+
+**Savings:** 40-70%
+
+## Build & Error Tools
+
+### analyze_build_output
+
+Parse and compress build errors from npm, tsc, webpack, etc.
+
+```
+analyze_build_output output="<build output>" buildTool="tsc"
+```
+
+**Savings:** 95%+
+
+### deduplicate_errors
+
+Group repeated errors and show occurrence counts.
+
+```
+deduplicate_errors content="<output with repeated errors>"
+```
+
+**Savings:** 80-95%
+
+### summarize_logs
+
+Summarize verbose logs (server, test, build, application).
+
+```
+summarize_logs logs="<log content>" focus=["errors","warnings"]
+```
+
+**Savings:** 80-90%
+
+### detect_retry_loop
+
+Detect if Claude is stuck in a retry loop.
+
+```
+detect_retry_loop command="npm run build"
+```
+
+## Analysis Tools
+
+### analyze_context
+
+Analyze content for token usage and get optimization suggestions.
+
+```
+analyze_context content="<prompt or context>"
+```
+
+### context_budget
+
+Pre-flight token estimation before sending to LLM.
+
+```
+context_budget content="<content>" budgetTokens=5000
+```
+
+### session_stats
+
+View current session statistics.
+
+```
+session_stats detail="detailed"
+```
+
+### get_stats
+
+Get usage statistics for the session.
+
+```
+get_stats period="session"
+```
+
+### optimization_tips
+
+Get context engineering best practices.
+
+```
+optimization_tips focus="prompts"
+```
+
+## Utility Tools
+
+### smart_cache
+
+Interact with the file cache for parsed content.
+
+```
+smart_cache action="stats"
+smart_cache action="get" key="file:/path/to/file.ts"
+```
+
+### smart_pipeline
+
+Chain multiple compression tools automatically.
+
+```
+smart_pipeline content="<mixed content>" mode="auto"
+```
+
+### register_model
+
+Register the Claude model being used for accurate cost tracking.
+
+```
+register_model model="claude-opus-4-5-20251101"
+```
+
+## Token Savings Summary
+
+| Tool | Use Case | Savings |
+|------|----------|---------|
+| smart_file_read | Code exploration | 50-70% |
+| code_skeleton | API overview | 70-90% |
+| auto_optimize | Any large output | 40-95% |
+| analyze_build_output | Build errors | 95%+ |
+| deduplicate_errors | Repeated errors | 80-95% |
+| summarize_logs | Log files | 80-90% |
+| diff_compress | Git diffs | 50-95% |
+| conversation_compress | Chat history | 40-70% |
+| semantic_compress | Documents | 40-60% |

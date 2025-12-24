@@ -1,0 +1,166 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for CtxOpt
+---
+
+# Troubleshooting
+
+Solutions to common issues when using CtxOpt.
+
+## Installation Issues
+
+### Node.js Version Error
+
+**Error:** `Node.js 18+ required`
+
+**Solution:** Update Node.js to version 18 or higher:
+
+```bash
+# Using nvm
+nvm install 18
+nvm use 18
+
+# Or download from nodejs.org
+```
+
+### Permission Denied
+
+**Error:** `EACCES: permission denied`
+
+**Solution:** Use npm with a different prefix or fix permissions:
+
+```bash
+# Option 1: Use npx instead of global install
+npx @ctxopt/mcp-server serve
+
+# Option 2: Fix npm permissions (macOS/Linux)
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH=~/.npm-global/bin:$PATH
+```
+
+### Command Not Found
+
+**Error:** `ctxopt-mcp: command not found`
+
+**Solution:** The global npm bin is not in your PATH:
+
+```bash
+# Find where npm installs global packages
+npm config get prefix
+
+# Add to PATH (add to ~/.bashrc or ~/.zshrc)
+export PATH="$(npm config get prefix)/bin:$PATH"
+```
+
+## IDE Configuration Issues
+
+### MCP Server Not Starting
+
+**Symptoms:** IDE doesn't show CtxOpt tools
+
+**Solutions:**
+
+1. **Check config file exists:**
+   - Claude Code: `~/.claude/mcp.json`
+   - Cursor: Check IDE settings
+   - Windsurf: `~/.windsurf/mcp.json`
+
+2. **Validate JSON syntax:**
+   ```bash
+   cat ~/.claude/mcp.json | python -m json.tool
+   ```
+
+3. **Test server manually:**
+   ```bash
+   npx @ctxopt/mcp-server serve --verbose
+   ```
+
+4. **Run doctor:**
+   ```bash
+   ctxopt-mcp doctor
+   ```
+
+### Tools Not Appearing
+
+**Symptoms:** Server starts but tools don't show up
+
+**Solutions:**
+
+1. Restart your IDE completely (not just reload)
+2. Check IDE logs for MCP errors
+3. Verify the server name matches in config
+
+## Runtime Issues
+
+### Out of Memory
+
+**Error:** `JavaScript heap out of memory`
+
+**Solution:** For very large files, increase Node.js memory:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "node",
+      "args": ["--max-old-space-size=4096", "npx", "@ctxopt/mcp-server"]
+    }
+  }
+}
+```
+
+### Slow File Parsing
+
+**Symptoms:** smart_file_read takes too long
+
+**Solutions:**
+
+1. Use `skeleton=true` for large files
+2. Target specific functions with `target` parameter
+3. Use `lines` parameter for specific ranges
+
+### Parser Errors
+
+**Error:** `Failed to parse file`
+
+**Solutions:**
+
+1. Check file is valid syntax for its language
+2. Use native `Read` tool as fallback
+3. Report issue with file sample on GitHub
+
+## Tool-Specific Issues
+
+### auto_optimize Not Compressing
+
+**Symptoms:** Output is same size as input
+
+**Solutions:**
+
+1. Content may already be optimized
+2. Try specific tool (analyze_build_output, summarize_logs)
+3. Use `hint` parameter to specify content type
+
+### smart_file_read Returns Empty
+
+**Symptoms:** No structure found in file
+
+**Solutions:**
+
+1. File may not have extractable elements
+2. Check language is supported (TS, JS, Python, Go, Rust, PHP, Swift)
+3. Use native `Read` for config files
+
+## Getting Help
+
+If you can't resolve an issue:
+
+1. Run `ctxopt-mcp doctor` and include output
+2. Check [GitHub Issues](https://github.com/ctxopt/ctxopt/issues)
+3. Open a new issue with:
+   - CtxOpt version (`ctxopt-mcp --version`)
+   - Node.js version (`node --version`)
+   - IDE and version
+   - Error messages
+   - Steps to reproduce

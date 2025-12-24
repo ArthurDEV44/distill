@@ -1,0 +1,58 @@
+---
+title: Introduction
+description: Open source MCP server for LLM token optimization
+---
+
+# CtxOpt Documentation
+
+CtxOpt is an open source MCP server that helps you optimize LLM token usage. It provides intelligent context compression, smart file reading, and analysis tools for Claude Code, Cursor, and Windsurf.
+
+**No authentication, no API keys, no cloud services** - just install and use.
+
+## Quick Start
+
+Get started with CtxOpt in 3 simple steps:
+
+### 1. Install the MCP Server
+
+```bash
+# Using npm
+npm install -g @ctxopt/mcp-server
+
+# Or run directly with npx
+npx @ctxopt/mcp-server
+```
+
+### 2. Configure your IDE
+
+Add the MCP server to your IDE configuration. For Claude Code, edit `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"]
+    }
+  }
+}
+```
+
+### 3. Start saving tokens
+
+The MCP server provides 19 optimization tools. Use `session_stats` to see your savings in real-time.
+
+## Features
+
+- **19 Optimization Tools** - Smart file reading, build output compression, log summarization, and more
+- **AST-Aware Parsing** - Extract functions, classes, and types from code (TypeScript, Python, Go, Rust, PHP, Swift)
+- **Universal IDE Support** - Works with Claude Code, Cursor, Windsurf, and any MCP-compatible client
+- **50-95% Token Savings** - Depending on content type
+
+## Next Steps
+
+<Cards>
+  <Card title="Installation" href="/docs/installation" description="Detailed installation instructions for all platforms" />
+  <Card title="MCP Tools" href="/docs/mcp-tools" description="Complete reference for all 19 optimization tools" />
+  <Card title="Claude Code Guide" href="/docs/guides/claude-code" description="Step-by-step guide for Claude Code integration" />
+</Cards>

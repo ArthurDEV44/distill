@@ -1,0 +1,82 @@
+---
+title: Windsurf Integration
+description: Step-by-step guide to integrate CtxOpt with Windsurf
+---
+
+# Windsurf Integration
+
+This guide walks you through setting up CtxOpt with Windsurf IDE.
+
+## Prerequisites
+
+- Windsurf installed ([download](https://codeium.com/windsurf))
+- Node.js 18+ installed
+
+## Step 1: Install CtxOpt
+
+```bash
+npm install -g @ctxopt/mcp-server
+```
+
+## Step 2: Configure MCP
+
+Edit your Windsurf MCP configuration file at `~/.windsurf/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"]
+    }
+  }
+}
+```
+
+If the file doesn't exist, create it.
+
+## Step 3: Restart Windsurf
+
+Close and reopen Windsurf to load the MCP server.
+
+## Step 4: Verify
+
+Ask Windsurf's AI to check available tools:
+
+```
+List the MCP tools available
+```
+
+## Using CtxOpt with Windsurf
+
+### Smart File Analysis
+
+```
+Use smart_file_read to analyze src/components/Button.tsx
+```
+
+### Log Summarization
+
+```
+Summarize these server logs: [paste logs]
+```
+
+### Error Deduplication
+
+When you have repeated errors:
+
+```
+Deduplicate these errors: [paste build output]
+```
+
+## Troubleshooting
+
+### MCP Not Loading
+
+1. Check the config file location: `~/.windsurf/mcp.json`
+2. Validate JSON syntax
+3. Run `ctxopt-mcp doctor` to check installation
+
+### Permission Errors
+
+On macOS, you may need to allow the terminal in System Preferences > Security & Privacy.

@@ -1,0 +1,131 @@
+---
+title: Installation
+description: Install and configure CtxOpt MCP Server
+---
+
+# Installation
+
+CtxOpt MCP Server can be installed globally or run directly with npx.
+
+## Prerequisites
+
+- **Node.js 18+** required
+- An MCP-compatible IDE (Claude Code, Cursor, or Windsurf)
+
+## Install Methods
+
+### Global Installation (Recommended)
+
+```bash
+npm install -g @ctxopt/mcp-server
+```
+
+After installation, verify it works:
+
+```bash
+ctxopt-mcp --version
+ctxopt-mcp doctor
+```
+
+### Run with npx
+
+No installation needed - run directly:
+
+```bash
+npx @ctxopt/mcp-server serve
+```
+
+### From Source
+
+```bash
+git clone https://github.com/ctxopt/ctxopt
+cd ctxopt
+bun install
+bun run build
+```
+
+## IDE Configuration
+
+After installing, configure your IDE to use the MCP server.
+
+### Claude Code
+
+Edit `~/.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"]
+    }
+  }
+}
+```
+
+Or with global install:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "ctxopt-mcp",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Edit Cursor's MCP settings (Settings > MCP Servers):
+
+```json
+{
+  "ctxopt": {
+    "command": "npx",
+    "args": ["@ctxopt/mcp-server"]
+  }
+}
+```
+
+### Windsurf
+
+Edit `~/.windsurf/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"]
+    }
+  }
+}
+```
+
+## Verify Installation
+
+Run the doctor command to verify everything is configured:
+
+```bash
+ctxopt-mcp doctor
+```
+
+This checks:
+- Node.js version
+- Package installation
+- IDE configurations
+
+## CLI Commands
+
+```bash
+ctxopt-mcp serve      # Start the MCP server
+ctxopt-mcp setup      # Auto-configure IDEs
+ctxopt-mcp doctor     # Check installation
+ctxopt-mcp --help     # Show all commands
+```
+
+## Next Steps
+
+Once installed, check out the [MCP Tools Reference](/docs/mcp-tools) to see all available optimization tools.
