@@ -99,12 +99,18 @@ FUNCTIONS: createServer (46-121), runServer (126-142)
 
 ### 2.2 Skeleton Mode Allégé
 
-**Fichier concerné**: `src/tools/smart-file-read.ts:301-392`
+**Fichiers concernés**: `src/tools/smart-file-read.ts`, `src/ast/index.ts`
 
 **Actions**:
-- [ ] Ne pas lister toutes les variables (seulement les exportées)
-- [ ] Limiter les imports à 3 max
-- [ ] Supprimer les numéros de lignes pour les éléments mineurs
+- [x] Ne pas lister toutes les variables (seulement les exportées)
+- [x] Limiter les imports à 3 max (markdown et plain)
+- [x] Supprimer les numéros de lignes pour les éléments mineurs (types, interfaces)
+
+**Implémenté le 2025-12-24**:
+- `formatSkeletonOutput`: imports max 3, types sans lignes
+- `formatStructureSummary`: variables exportées seulement, imports max 3, types/interfaces sans lignes
+
+**Impact estimé**: -20% tokens supplémentaires
 
 ---
 

@@ -209,7 +209,7 @@ export function formatStructureSummary(
     }
   }
 
-  // Interfaces
+  // Interfaces (no line numbers in plain - minor elements)
   if (structure.interfaces.length > 0) {
     if (md) {
       parts.push("### Interfaces");
@@ -221,12 +221,12 @@ export function formatStructureSummary(
       }
       parts.push("");
     } else {
-      const ifList = structure.interfaces.map(i => `${i.name} (${i.startLine}-${i.endLine})`).join(", ");
+      const ifList = structure.interfaces.map(i => i.name).join(", ");
       parts.push(`INTERFACES: ${ifList}`);
     }
   }
 
-  // Types
+  // Types (no line numbers in plain - minor elements)
   if (structure.types.length > 0) {
     if (md) {
       parts.push("### Types");
@@ -236,34 +236,34 @@ export function formatStructureSummary(
       }
       parts.push("");
     } else {
-      const typeList = structure.types.map(t => `${t.name} (${t.startLine}-${t.endLine})`).join(", ");
+      const typeList = structure.types.map(t => t.name).join(", ");
       parts.push(`TYPES: ${typeList}`);
     }
   }
 
-  // Variables
-  if (structure.variables.length > 0) {
+  // Variables (exported only)
+  const exportedVars = structure.variables.filter(v => v.isExported);
+  if (exportedVars.length > 0) {
     if (md) {
-      parts.push("### Variables");
-      for (const variable of structure.variables) {
-        const exported = variable.isExported ? "exported " : "";
+      parts.push("### Exported Variables");
+      for (const variable of exportedVars) {
         parts.push(
-          `- \`${variable.name}\` (${exported}variable, lines ${variable.startLine}-${variable.endLine})`
+          `- \`${variable.name}\` (variable, lines ${variable.startLine}-${variable.endLine})`
         );
       }
       parts.push("");
     } else {
-      const varList = structure.variables.map(v => v.name).join(", ");
-      parts.push(`VARIABLES: ${varList}`);
+      const varList = exportedVars.map(v => v.name).join(", ");
+      parts.push(`EXPORTS: ${varList}`);
     }
   }
 
-  // Imports (collapsed)
+  // Imports (collapsed, max 3)
   if (structure.imports.length > 0) {
     const uniqueImports = [...new Set(structure.imports.map((i) => i.name))];
     if (md) {
       parts.push(`### Imports (${structure.imports.length})`);
-      if (uniqueImports.length <= 5) {
+      if (uniqueImports.length <= 3) {
         for (const name of uniqueImports) {
           parts.push(`- \`${name}\``);
         }

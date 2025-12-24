@@ -339,16 +339,16 @@ function formatSkeletonOutput(
 
   let elementCount = 0;
 
-  // Imports summary (collapsed)
+  // Imports summary (collapsed, max 3)
   if (structure.imports?.length) {
     if (md) {
       parts.push(`### Imports (${structure.imports.length})`);
-      const displayImports = structure.imports.slice(0, 5);
+      const displayImports = structure.imports.slice(0, 3);
       for (const imp of displayImports) {
         parts.push(`- \`${imp}\``);
       }
-      if (structure.imports.length > 5) {
-        parts.push(`- ... and ${structure.imports.length - 5} more`);
+      if (structure.imports.length > 3) {
+        parts.push(`- ... and ${structure.imports.length - 3} more`);
       }
       parts.push("");
     } else {
@@ -358,7 +358,7 @@ function formatSkeletonOutput(
     }
   }
 
-  // Types and Interfaces
+  // Types and Interfaces (no line numbers in plain - minor elements)
   if (structure.types?.length) {
     if (md) {
       parts.push("### Types/Interfaces");
@@ -369,7 +369,7 @@ function formatSkeletonOutput(
       }
       parts.push("");
     } else {
-      const typeList = structure.types.map(t => `${t.name} (${t.startLine}-${t.endLine})`).join(", ");
+      const typeList = structure.types.map(t => t.name).join(", ");
       parts.push(`TYPES: ${typeList}`);
       elementCount += structure.types.length;
     }
