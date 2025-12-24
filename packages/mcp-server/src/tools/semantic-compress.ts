@@ -23,24 +23,22 @@ export const semanticCompressSchema = {
   properties: {
     content: {
       type: "string",
-      description: "The content to compress semantically",
+      description: "Content to compress",
     },
     targetRatio: {
       type: "number",
-      description:
-        "Target compression ratio (0.5 = keep 50% of tokens). Default: 0.5",
+      description: "Keep ratio, e.g. 0.5 = 50% (default: 0.5)",
       minimum: 0.1,
       maximum: 0.9,
     },
     preservePatterns: {
       type: "array",
       items: { type: "string" },
-      description:
-        "Regex patterns for content that must be preserved (e.g., 'ERROR:.*', 'CRITICAL')",
+      description: "Regex patterns to preserve",
     },
     model: {
       type: "string",
-      description: "Compression model: 'fast' (rule-based). Default: 'fast'",
+      description: "Model: fast (default)",
       enum: ["fast"],
     },
   },
@@ -187,25 +185,8 @@ export async function executeSemanticCompress(
  */
 export const semanticCompressTool: ToolDefinition = {
   name: "semantic_compress",
-  description: `Intelligently compress content by extracting the most important segments using TF-IDF scoring, position weighting, and keyword detection.
-
-Use this tool when:
-- You have long documents or prompts that need to be shortened
-- You want to preserve the most meaningful content while reducing tokens
-- Content has natural structure (paragraphs, code blocks, sections)
-
-Features:
-- **TF-IDF scoring**: Identifies unique/important terms in each segment
-- **Position weighting**: Beginning and end content prioritized
-- **Keyword detection**: Errors, instructions, and code blocks preserved
-- **Pattern preservation**: Optionally preserve content matching regex patterns
-
-Typical savings: 40-60% token reduction while preserving key information.
-
-Example usage:
-- Compress long documentation before analysis
-- Reduce verbose logs while keeping errors
-- Shorten context while preserving instructions`,
+  description:
+    "TF-IDF based compression. Keeps important segments using position weighting and keyword detection.",
   inputSchema: semanticCompressSchema,
   execute: executeSemanticCompress,
 };

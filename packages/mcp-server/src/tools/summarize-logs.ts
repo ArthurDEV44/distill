@@ -263,15 +263,8 @@ function truncate(str: string, maxLen: number): string {
 
 export const summarizeLogsTool: ToolDefinition = {
   name: "summarize_logs",
-  description: `Summarize verbose logs to reduce tokens by 90%+.
-
-Use this tool when you have large log outputs (server logs, test results, build output) to get a concise summary with:
-- Errors and warnings extracted and deduplicated
-- Key events timeline
-- Statistics (request counts, response times, test results, etc.)
-- Auto-detection of log type (server, test, build, application)
-
-Supports focus areas: errors, warnings, performance, timeline.`,
+  description:
+    "Summarize logs. Extracts errors, warnings, key events. Auto-detects log type.",
   inputSchema: summarizeLogsSchema,
   execute: executeSummarizeLogs,
 };

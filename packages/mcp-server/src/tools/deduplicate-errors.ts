@@ -142,14 +142,8 @@ export async function executeDeduplicateErrors(
 
 export const deduplicateErrorsTool: ToolDefinition = {
   name: "deduplicate_errors",
-  description: `Deduplicate repetitive errors in build/test outputs to reduce tokens by 80%+.
-
-Use this tool when you have outputs with many repeated error messages (e.g., the same TypeScript error in multiple files). It groups identical errors and shows:
-- Unique error patterns with occurrence count
-- First occurrence location
-- List of affected files
-
-Example: 147 "Cannot find name 'foo'" errors become 1 grouped entry with file list.`,
+  description:
+    "Group repeated errors. Shows unique patterns with count and affected files.",
   inputSchema: deduplicateErrorsSchema,
   execute: executeDeduplicateErrors,
 };

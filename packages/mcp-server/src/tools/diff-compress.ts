@@ -18,17 +18,16 @@ export const diffCompressSchema = {
   properties: {
     diff: {
       type: "string",
-      description: "The unified diff content to compress (git diff output)",
+      description: "Git diff output",
     },
     strategy: {
       type: "string",
-      description: "Compression strategy",
+      description: "hunks-only, summary, or semantic",
       enum: ["hunks-only", "summary", "semantic"],
     },
     maxTokens: {
       type: "number",
-      description:
-        "Maximum tokens for output (used by semantic strategy). Default: 50% of original",
+      description: "Max output tokens (for semantic)",
     },
   },
   required: ["diff", "strategy"],
@@ -173,22 +172,8 @@ export async function executeDiffCompress(
  */
 export const diffCompressTool: ToolDefinition = {
   name: "diff_compress",
-  description: `Compress git diff output to reduce tokens while preserving essential changes.
-
-Use this tool when:
-- You have large git diffs that consume too many tokens
-- You need to summarize changes without full diff content
-- You want to focus on the most important code changes
-
-Strategies:
-- **hunks-only**: Keep only changed lines with minimal context (50-70% savings)
-- **summary**: Generate text summary of changes (80-95% savings)
-- **semantic**: Use TF-IDF to keep most important hunks (40-70% savings)
-
-Example usage:
-- Compress PR diff before code review
-- Summarize changes for commit message generation
-- Focus on critical changes in large refactors`,
+  description:
+    "Compress git diff. Strategies: hunks-only, summary, semantic.",
   inputSchema: diffCompressSchema,
   execute: executeDiffCompress,
 };

@@ -140,33 +140,8 @@ export async function executeConversationCompress(
  */
 export const conversationCompressTool: ToolDefinition = {
   name: "conversation_compress",
-  description: `Compress conversation history to reduce tokens while preserving key information.
-
-Use this tool when conversation context grows too large. It compresses older messages
-while keeping recent ones intact.
-
-Strategies:
-- **rolling-summary**: Summarize old messages into a single context paragraph. Best for general context.
-- **key-extraction**: Extract key decisions, code references, and facts as bullet points. Best for technical conversations.
-- **hybrid**: Combine summary + key points. Best balance of context and specifics.
-
-Options:
-- **preserveSystem**: Keep original system messages intact (default: true)
-- **preserveLastN**: Keep last N messages unchanged (default: 2)
-
-Typical savings: 40-70% token reduction depending on conversation length.
-
-Example:
-{
-  "messages": [
-    { "role": "user", "content": "Help me fix the bug in auth.ts" },
-    { "role": "assistant", "content": "I'll look at the auth.ts file..." },
-    ...
-  ],
-  "strategy": "hybrid",
-  "maxTokens": 1000,
-  "preserveLastN": 3
-}`,
+  description:
+    "Compress chat history. Strategies: rolling-summary, key-extraction, hybrid.",
   inputSchema: conversationCompressSchema,
   execute: executeConversationCompress,
 };

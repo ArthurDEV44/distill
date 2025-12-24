@@ -263,28 +263,8 @@ export async function executeSmartCache(
 
 export const smartCacheTool: ToolDefinition = {
   name: "smart_cache",
-  description: `Interact with the smart cache for storing and retrieving parsed file content.
-
-Available actions:
-- **get**: Retrieve a cached value by key
-- **set**: Store a value with optional TTL and file path for validation
-- **invalidate**: Remove a specific cache entry by key
-- **invalidate_path**: Remove all entries for a specific file path
-- **stats**: View cache statistics (hit rate, tokens saved, memory usage)
-- **clear**: Remove all cache entries
-- **keys**: List all cached keys
-
-The cache automatically:
-- Evicts least-recently-used entries when full (max 100 entries)
-- Validates file hashes to detect changes
-- Expires entries after 30 minutes (configurable per entry)
-- Tracks tokens saved via cache hits
-
-Examples:
-- Stats: { "action": "stats" }
-- Get: { "action": "get", "key": "file:/path/to/file.ts" }
-- Set: { "action": "set", "key": "mykey", "value": "{\\"data\\": 123}", "filePath": "/path/to/file.ts" }
-- Invalidate: { "action": "invalidate", "key": "mykey" }`,
+  description:
+    "Manage parsed file cache. Actions: get, set, invalidate, invalidate_path, stats, clear, keys.",
   inputSchema: smartCacheSchema,
   execute: executeSmartCache,
 };

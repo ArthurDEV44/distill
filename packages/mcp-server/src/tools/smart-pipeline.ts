@@ -32,26 +32,26 @@ export const smartPipelineSchema = {
   properties: {
     content: {
       type: "string",
-      description: "The content to optimize through the pipeline",
+      description: "Content to optimize",
     },
     mode: {
       type: "string",
-      description: "Pipeline mode: 'auto' for automatic detection, 'custom' for manual pipeline",
+      description: "auto (default) or custom",
       enum: ["auto", "custom"],
     },
     contentType: {
       type: "string",
-      description: "Force content type (overrides auto-detection). Options: build, logs, stacktrace, diff, config, code, generic",
+      description: "Force type (overrides auto-detection)",
       enum: ["build", "logs", "stacktrace", "diff", "config", "code", "generic"],
     },
     customPipeline: {
       type: "array",
       items: { type: "string" },
-      description: "Custom pipeline steps when mode='custom'. Available: analyze_build, deduplicate, summarize_logs, compress_diff, semantic_compress",
+      description: "Custom steps for mode=custom",
     },
     maxSteps: {
       type: "number",
-      description: "Maximum pipeline steps to execute (default: 5)",
+      description: "Max steps (default: 5)",
     },
   },
   required: ["content"],
@@ -426,28 +426,8 @@ export async function executeSmartPipeline(
  */
 export const smartPipelineTool: ToolDefinition = {
   name: "smart_pipeline",
-  description: `Automatically chain multiple compression tools based on detected content type.
-
-This tool detects the content type and applies the optimal sequence of compression steps:
-- **Build output**: analyze-build → deduplicate-errors (90-98% savings)
-- **Logs**: summarize-logs (80-90% savings)
-- **Stack traces**: deduplicate → semantic-compress (70-85% savings)
-- **Git diffs**: diff-compress (50-95% savings)
-- **Config files**: compress-context (30-60% savings)
-- **Code/Generic**: semantic-compress (40-60% savings)
-
-Use this tool when:
-- You have mixed or unknown content types
-- You want maximum compression with minimal configuration
-- You need to chain multiple optimization steps
-
-Modes:
-- **auto** (default): Automatically detect content type and apply optimal pipeline
-- **custom**: Specify your own pipeline steps
-
-Available custom steps:
-- analyze_build_output, deduplicate_errors, summarize_logs
-- diff_compress, semantic_compress, compress_context`,
+  description:
+    "Chain compression tools based on detected content type. Auto-detects build, logs, stacktrace, diff, config, or code.",
   inputSchema: smartPipelineSchema,
   execute: executeSmartPipeline,
 };

@@ -38,9 +38,9 @@ Le serveur MCP, conçu pour économiser des tokens, présente paradoxalement une
 **Fichiers concernés**: `src/tools/*.ts` (tous les fichiers d'outils)
 
 **Actions**:
-- [ ] Supprimer les exemples des descriptions (les mettre dans une doc externe)
-- [ ] Raccourcir les descriptions de paramètres à une ligne max
-- [ ] Supprimer les descriptions redondantes
+- [x] Supprimer les exemples des descriptions (les mettre dans une doc externe)
+- [x] Raccourcir les descriptions de paramètres à une ligne max
+- [x] Supprimer les descriptions redondantes
 
 **Exemple** - `smart-file-read.ts`:
 ```typescript
@@ -50,6 +50,12 @@ description: "Extract only function/class signatures without bodies (skeleton mo
 // APRÈS (concis)
 description: "Signatures only, no bodies"
 ```
+
+**Implémenté le 2025-12-24**:
+- 10 outils optimisés (top 5 + 5 secondaires)
+- Suppression des patterns "Use this tool when..."
+- Suppression des exemples inline
+- Descriptions de paramètres réduites à 1 phrase max
 
 **Impact estimé**: -30% sur les définitions
 

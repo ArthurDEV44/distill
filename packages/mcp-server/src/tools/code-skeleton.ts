@@ -253,26 +253,8 @@ export async function executeCodeSkeleton(
  */
 export const codeSkeletonTool: ToolDefinition = {
   name: "code_skeleton",
-  description: `Extract code skeleton (signatures only) from a source file.
-
-Returns function signatures, class structures, and type definitions without implementation bodies.
-Perfect for understanding a file's API surface with minimal tokens.
-
-Depth levels:
-- **1** (default): Minimal signatures only
-- **2**: Signatures + inline doc preview
-- **3**: Full signatures with complete documentation
-
-Options:
-- **includeTypes**: Include type/interface definitions (default: true)
-- **includeComments**: Include JSDoc/docstrings (default: true)
-
-Supports: TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
-
-Examples:
-- Minimal: { "filePath": "src/server.ts" }
-- With docs: { "filePath": "src/server.ts", "depth": 2 }
-- Full: { "filePath": "src/server.ts", "depth": 3, "includeTypes": true }`,
+  description:
+    "Extract signatures only (no bodies). Depth: 1=minimal, 2=+docs, 3=full. Supports TS, JS, Python, Go, Rust, PHP, Swift.",
   inputSchema: codeSkeletonSchema,
   execute: executeCodeSkeleton,
 };

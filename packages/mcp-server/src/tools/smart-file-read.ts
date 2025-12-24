@@ -113,7 +113,7 @@ export const smartFileReadSchema = {
   properties: {
     filePath: {
       type: "string",
-      description: "Absolute or relative path to the file to read",
+      description: "Path to file",
     },
     target: {
       type: "object",
@@ -121,57 +121,54 @@ export const smartFileReadSchema = {
         type: {
           type: "string",
           enum: ["function", "class", "interface", "type", "variable", "method"],
-          description: "Type of code element to extract",
+          description: "Element type",
         },
         name: {
           type: "string",
-          description: "Name of the element to extract",
+          description: "Element name",
         },
       },
       required: ["type", "name"],
-      description: "Specific code element to extract (function, class, etc.)",
+      description: "Extract specific element",
     },
     query: {
       type: "string",
-      description: "Search query to find relevant code elements by name or content",
+      description: "Search by name or content",
     },
     includeImports: {
       type: "boolean",
-      description: "Include related import statements (default: true)",
+      description: "Include imports (default: true)",
     },
     includeComments: {
       type: "boolean",
-      description: "Include JSDoc/docstring comments (default: true)",
+      description: "Include docs (default: true)",
     },
     lines: {
       type: "object",
       properties: {
         start: {
           type: "number",
-          description: "Start line number (1-indexed)",
+          description: "Start line",
         },
         end: {
           type: "number",
-          description: "End line number (1-indexed, inclusive)",
+          description: "End line",
         },
       },
       required: ["start", "end"],
-      description: "Extract a specific line range",
+      description: "Line range",
     },
     skeleton: {
       type: "boolean",
-      description:
-        "Extract only function/class signatures without bodies (skeleton mode). Great for getting an overview of a large file.",
+      description: "Signatures only, no bodies",
     },
     cache: {
       type: "boolean",
-      description:
-        "Use smart cache for parsed results (default: true). Set to false to bypass cache.",
+      description: "Use cache (default: true)",
     },
     language: {
       type: "string",
-      description:
-        "Force language detection instead of auto-detecting from file extension. Values: typescript, javascript, python, go, rust, php, swift (or aliases: ts, js, py, golang, rs)",
+      description: "Force language (ts, js, py, go, rust, php, swift)",
     },
   },
   required: ["filePath"],
@@ -547,24 +544,8 @@ export async function executeSmartFileRead(
 
 export const smartFileReadTool: ToolDefinition = {
   name: "smart_file_read",
-  description: `Read files intelligently using AST analysis.
-
-Instead of reading entire files, extract only what you need:
-- **Without arguments**: Get file structure overview (functions, classes, types)
-- **With target**: Extract a specific function, class, or type by name
-- **With query**: Search for code elements matching a pattern
-- **With lines**: Extract a specific line range
-- **With skeleton**: Get signatures only (no implementation bodies)
-
-Supports: TypeScript, JavaScript (full AST), Python, Go, Rust, PHP, Swift.
-
-Examples:
-- Structure: { "filePath": "src/utils.ts" }
-- Extract function: { "filePath": "src/utils.ts", "target": { "type": "function", "name": "parseConfig" } }
-- Search: { "filePath": "src/utils.ts", "query": "parse" }
-- Lines: { "filePath": "src/utils.ts", "lines": { "start": 10, "end": 50 } }
-- Skeleton: { "filePath": "src/utils.ts", "skeleton": true }
-- Force language: { "filePath": "src/utils.ts", "language": "typescript" }`,
+  description:
+    "Read files with AST extraction. Modes: structure (default), target, query, lines, skeleton. Supports TS, JS, Python, Go, Rust, PHP, Swift.",
   inputSchema: smartFileReadSchema,
   execute: executeSmartFileRead,
 };

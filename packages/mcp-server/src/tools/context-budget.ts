@@ -28,12 +28,11 @@ export const contextBudgetSchema = {
   properties: {
     content: {
       type: "string",
-      description: "The content/prompt to analyze for budget estimation",
+      description: "Content to analyze",
     },
     model: {
       type: "string",
-      description:
-        "Target model (claude-opus-4-20250514, claude-sonnet-4-20250514, claude-3-5-haiku-20241022). Default: claude-sonnet-4-20250514",
+      description: "Target model (default: claude-sonnet-4-20250514)",
       enum: [
         "claude-opus-4-20250514",
         "claude-sonnet-4-20250514",
@@ -42,14 +41,12 @@ export const contextBudgetSchema = {
     },
     budgetTokens: {
       type: "number",
-      description:
-        "Optional maximum token budget. If set, will check if content fits within budget.",
+      description: "Max token budget to check against",
       minimum: 50,
     },
     includeEstimatedOutput: {
       type: "boolean",
-      description:
-        "Include estimated output tokens in calculations. Default: true",
+      description: "Include output estimate (default: true)",
     },
   },
   required: ["content"],
@@ -401,20 +398,8 @@ export async function executeContextBudget(
  */
 export const contextBudgetTool: ToolDefinition = {
   name: "context_budget",
-  description: `Proactive token budget management - analyze content BEFORE sending to LLM.
-
-Use this tool to:
-- **Estimate total tokens** (input + estimated output) before making a request
-- **Calculate expected cost** based on the target model
-- **Check budget constraints** - verify content fits within a token budget
-- **Get optimization recommendations** - specific MCP tools to reduce tokens
-
-Unlike analyze_context (post-hoc analysis), context_budget is designed for pre-flight checks and budget planning.
-
-Example use cases:
-- Before sending a large prompt, check estimated cost
-- When budget-constrained, get tool recommendations to reduce tokens
-- Validate that content will fit within context window`,
+  description:
+    "Pre-flight token budget check. Estimates tokens, cost, and provides optimization recommendations.",
   inputSchema: contextBudgetSchema,
   execute: executeContextBudget,
 };
