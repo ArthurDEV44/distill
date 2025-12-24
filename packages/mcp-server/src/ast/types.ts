@@ -96,6 +96,14 @@ export interface ExtractionOptions {
 }
 
 /**
+ * Options for parsing control
+ */
+export interface ParseOptions {
+  /** Extract signature and documentation (default: false for performance) */
+  detailed?: boolean;
+}
+
+/**
  * Parser interface that all language parsers must implement
  */
 export interface LanguageParser {
@@ -103,7 +111,7 @@ export interface LanguageParser {
   languages: SupportedLanguage[];
 
   /** Parse file content and return structure */
-  parse(content: string): FileStructure;
+  parse(content: string, options?: ParseOptions): FileStructure;
 
   /** Extract a specific element by target */
   extractElement(

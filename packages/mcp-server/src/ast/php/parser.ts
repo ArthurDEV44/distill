@@ -19,6 +19,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "../types.js";
 import { createEmptyStructure } from "../types.js";
@@ -377,7 +378,7 @@ export async function searchPhpElements(content: string, query: string): Promise
 export const phpTreeSitterParser: LanguageParser = {
   languages: ["php"],
 
-  parse(content: string): FileStructure {
+  parse(content: string, _options?: ParseOptions): FileStructure {
     if (!parserInstance || !phpLanguage) {
       initParser().catch(() => {});
       return parsePhp(content);

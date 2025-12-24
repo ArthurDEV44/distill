@@ -19,6 +19,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "../types.js";
 import { createEmptyStructure } from "../types.js";
@@ -405,7 +406,7 @@ export async function searchGoElements(content: string, query: string): Promise<
 export const goTreeSitterParser: LanguageParser = {
   languages: ["go"],
 
-  parse(content: string): FileStructure {
+  parse(content: string, _options?: ParseOptions): FileStructure {
     if (!parserInstance || !goLanguage) {
       initParser().catch(() => {});
       return parseGo(content);

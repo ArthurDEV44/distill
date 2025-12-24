@@ -19,6 +19,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "../types.js";
 import { createEmptyStructure } from "../types.js";
@@ -130,8 +131,11 @@ function getParentClassName(node: Node): string | undefined {
 
 /**
  * Parse Python content and extract structure
+ * @param options ParseOptions - set detailed: true for signature/documentation
  */
-export function parsePython(content: string): FileStructure {
+export function parsePython(content: string, options: ParseOptions = {}): FileStructure {
+  const { detailed = false } = options;
+
   // Use synchronous parsing for the interface
   // Tree-sitter is async for initialization but sync for parsing after that
   let structure: FileStructure | null = null;
@@ -148,7 +152,7 @@ export function parsePython(content: string): FileStructure {
   if (!tree) {
     return createEmptyStructure("python", content.split("\n").length);
   }
-  structure = extractStructure(tree, content);
+  structure = extractStructure(tree, content, detailed);
 
   return structure;
 }
@@ -156,7 +160,9 @@ export function parsePython(content: string): FileStructure {
 /**
  * Async version of parsePython for initial calls
  */
-export async function parsePythonAsync(content: string): Promise<FileStructure> {
+export async function parsePythonAsync(content: string, options: ParseOptions = {}): Promise<FileStructure> {
+  const { detailed = false } = options;
+
   await initParser();
   if (!parserInstance) {
     return createEmptyStructure("python", content.split("\n").length);
@@ -166,34 +172,37 @@ export async function parsePythonAsync(content: string): Promise<FileStructure> 
   if (!tree) {
     return createEmptyStructure("python", content.split("\n").length);
   }
-  return extractStructure(tree, content);
+  return extractStructure(tree, content, detailed);
 }
 
 /**
  * Extract file structure from parsed tree
  */
-function extractStructure(tree: Tree, content: string): FileStructure {
+function extractStructure(tree: Tree, content: string, detailed: boolean = false): FileStructure {
   const lines = content.split("\n");
   const structure = createEmptyStructure("python", lines.length);
   const rootNode = tree.rootNode;
 
   // Walk the tree and extract elements
-  walkNode(rootNode, structure, lines);
+  walkNode(rootNode, structure, lines, detailed);
 
   return structure;
 }
 
 /**
  * Recursively walk the AST and extract code elements
+ * @param detailed When true, extract signature and documentation
  */
-function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
+function walkNode(node: Node, structure: FileStructure, lines: string[], detailed: boolean): void {
   switch (node.type) {
     case "import_statement":
     case "import_from_statement": {
+      const opts: Parameters<typeof createCodeElement>[3] = {};
+      if (detailed) {
+        opts.signature = getImportSignature(node);
+      }
       structure.imports.push(
-        createCodeElement("import", getImportName(node), node, {
-          signature: getImportSignature(node),
-        })
+        createCodeElement("import", getImportName(node), node, opts)
       );
       break;
     }
@@ -204,12 +213,13 @@ function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
         const bodyNode = getBodyNode(node);
         const isAsync = isAsyncFunction(node);
 
+        const opts: Parameters<typeof createCodeElement>[3] = { isAsync };
+        if (detailed) {
+          opts.signature = getFunctionSignature(node, isAsync);
+          opts.documentation = extractDocstring(bodyNode);
+        }
         structure.functions.push(
-          createCodeElement("function", nameNode?.text ?? "unknown", node, {
-            signature: getFunctionSignature(node, isAsync),
-            documentation: extractDocstring(bodyNode),
-            isAsync,
-          })
+          createCodeElement("function", nameNode?.text ?? "unknown", node, opts)
         );
       } else {
         // It's a method
@@ -218,13 +228,13 @@ function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
         const isAsync = isAsyncFunction(node);
         const parentClass = getParentClassName(node);
 
+        const opts: Parameters<typeof createCodeElement>[3] = { isAsync, parent: parentClass };
+        if (detailed) {
+          opts.signature = getFunctionSignature(node, isAsync);
+          opts.documentation = extractDocstring(bodyNode);
+        }
         structure.functions.push(
-          createCodeElement("method", nameNode?.text ?? "unknown", node, {
-            signature: getFunctionSignature(node, isAsync),
-            documentation: extractDocstring(bodyNode),
-            isAsync,
-            parent: parentClass,
-          })
+          createCodeElement("method", nameNode?.text ?? "unknown", node, opts)
         );
       }
       break;
@@ -234,17 +244,19 @@ function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
       const nameNode = node.childForFieldName("name");
       const bodyNode = getBodyNode(node);
 
+      const opts: Parameters<typeof createCodeElement>[3] = {};
+      if (detailed) {
+        opts.signature = getClassSignature(node);
+        opts.documentation = extractDocstring(bodyNode);
+      }
       structure.classes.push(
-        createCodeElement("class", nameNode?.text ?? "unknown", node, {
-          signature: getClassSignature(node),
-          documentation: extractDocstring(bodyNode),
-        })
+        createCodeElement("class", nameNode?.text ?? "unknown", node, opts)
       );
 
       // Walk into class body to find methods
       if (bodyNode) {
         for (const child of bodyNode.children) {
-          walkNode(child, structure, lines);
+          walkNode(child, structure, lines, detailed);
         }
       }
       return; // Don't walk children again
@@ -257,10 +269,12 @@ function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
         if (assignment?.type === "assignment") {
           const leftNode = assignment.childForFieldName("left");
           if (leftNode?.type === "identifier") {
+            const opts: Parameters<typeof createCodeElement>[3] = {};
+            if (detailed) {
+              opts.signature = node.text.split("\n")[0];
+            }
             structure.variables.push(
-              createCodeElement("variable", leftNode.text, node, {
-                signature: node.text.split("\n")[0],
-              })
+              createCodeElement("variable", leftNode.text, node, opts)
             );
           }
         }
@@ -271,7 +285,7 @@ function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
     case "decorated_definition": {
       // Let the child function/class handle itself
       for (const child of node.children) {
-        walkNode(child, structure, lines);
+        walkNode(child, structure, lines, detailed);
       }
       return; // Don't walk again
     }
@@ -279,7 +293,7 @@ function walkNode(node: Node, structure: FileStructure, lines: string[]): void {
 
   // Walk children
   for (const child of node.children) {
-    walkNode(child, structure, lines);
+    walkNode(child, structure, lines, detailed);
   }
 }
 
@@ -384,16 +398,16 @@ export async function searchPythonElements(content: string, query: string): Prom
 export const pythonTreeSitterParser: LanguageParser = {
   languages: ["python"],
 
-  parse(content: string): FileStructure {
+  parse(content: string, options?: ParseOptions): FileStructure {
     // Synchronous parse - requires parser to be initialized first
     // If not initialized, return empty structure
     // The async initialization will happen on first tool call
     if (!parserInstance || !pythonLanguage) {
       // Trigger async init for next call
       initParser().catch(() => {});
-      return parsePython(content);
+      return parsePython(content, options);
     }
-    return parsePython(content);
+    return parsePython(content, options);
   },
 
   extractElement(
@@ -410,7 +424,8 @@ export const pythonTreeSitterParser: LanguageParser = {
       return null;
     }
 
-    const structure = parsePython(content);
+    // Extraction needs detailed parsing for proper display
+    const structure = parsePython(content, { detailed: true });
     let element: CodeElement | undefined;
 
     switch (target.type) {
@@ -474,7 +489,8 @@ export const pythonTreeSitterParser: LanguageParser = {
       return [];
     }
 
-    const structure = parsePython(content);
+    // Search needs detailed parsing to match against signature/documentation
+    const structure = parsePython(content, { detailed: true });
     const queryLower = query.toLowerCase();
     const results: CodeElement[] = [];
 

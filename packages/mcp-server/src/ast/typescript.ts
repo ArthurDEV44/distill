@@ -11,6 +11,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
   SupportedLanguage,
 } from "./types.js";
@@ -72,8 +73,15 @@ function getFunctionSignature(
 
 /**
  * Parse TypeScript/JavaScript content into FileStructure
+ * @param options ParseOptions - set detailed: true to extract signature/documentation
  */
-export function parseTypeScript(content: string, isTypeScript: boolean = true): FileStructure {
+export function parseTypeScript(
+  content: string,
+  isTypeScript: boolean = true,
+  options: ParseOptions = {}
+): FileStructure {
+  const { detailed = false } = options;
+
   const sourceFile = ts.createSourceFile(
     isTypeScript ? "temp.ts" : "temp.js",
     content,
@@ -97,25 +105,31 @@ export function parseTypeScript(content: string, isTypeScript: boolean = true): 
       if (importClause) {
         // Default import
         if (importClause.name) {
-          structure.imports.push({
+          const imp: CodeElement = {
             type: "import",
             name: importClause.name.getText(sourceFile),
             startLine,
             endLine,
-            signature: `import ${importClause.name.getText(sourceFile)} from "${moduleSpecifier}"`,
-          });
+          };
+          if (detailed) {
+            imp.signature = `import ${importClause.name.getText(sourceFile)} from "${moduleSpecifier}"`;
+          }
+          structure.imports.push(imp);
         }
 
         // Named imports
         if (importClause.namedBindings && ts.isNamedImports(importClause.namedBindings)) {
           for (const element of importClause.namedBindings.elements) {
-            structure.imports.push({
+            const imp: CodeElement = {
               type: "import",
               name: element.name.getText(sourceFile),
               startLine,
               endLine,
-              signature: `import { ${element.name.getText(sourceFile)} } from "${moduleSpecifier}"`,
-            });
+            };
+            if (detailed) {
+              imp.signature = `import { ${element.name.getText(sourceFile)} } from "${moduleSpecifier}"`;
+            }
+            structure.imports.push(imp);
           }
         }
       }
@@ -123,16 +137,19 @@ export function parseTypeScript(content: string, isTypeScript: boolean = true): 
 
     // Function declarations
     if (ts.isFunctionDeclaration(node) && node.name) {
-      structure.functions.push({
+      const fn: CodeElement = {
         type: "function",
         name: node.name.getText(sourceFile),
         startLine,
         endLine,
-        signature: getFunctionSignature(node, sourceFile),
-        documentation: getJSDoc(node),
         isExported: isExported(node),
         isAsync: isAsync(node),
-      });
+      };
+      if (detailed) {
+        fn.signature = getFunctionSignature(node, sourceFile);
+        fn.documentation = getJSDoc(node);
+      }
+      structure.functions.push(fn);
     }
 
     // Variable declarations with arrow functions
@@ -142,16 +159,19 @@ export function parseTypeScript(content: string, isTypeScript: boolean = true): 
           const name = decl.name.getText(sourceFile);
 
           if (decl.initializer && ts.isArrowFunction(decl.initializer)) {
-            structure.functions.push({
+            const fn: CodeElement = {
               type: "function",
               name,
               startLine,
               endLine,
-              signature: `const ${name} = ${getFunctionSignature(decl.initializer, sourceFile)}`,
-              documentation: getJSDoc(node),
               isExported: isExported(node),
               isAsync: isAsync(decl.initializer),
-            });
+            };
+            if (detailed) {
+              fn.signature = `const ${name} = ${getFunctionSignature(decl.initializer, sourceFile)}`;
+              fn.documentation = getJSDoc(node);
+            }
+            structure.functions.push(fn);
           } else {
             structure.variables.push({
               type: "variable",
@@ -168,14 +188,17 @@ export function parseTypeScript(content: string, isTypeScript: boolean = true): 
     // Class declarations
     if (ts.isClassDeclaration(node) && node.name) {
       const className = node.name.getText(sourceFile);
-      structure.classes.push({
+      const cls: CodeElement = {
         type: "class",
         name: className,
         startLine,
         endLine,
-        documentation: getJSDoc(node),
         isExported: isExported(node),
-      });
+      };
+      if (detailed) {
+        cls.documentation = getJSDoc(node);
+      }
+      structure.classes.push(cls);
 
       // Visit class members
       for (const member of node.members) {
@@ -184,42 +207,51 @@ export function parseTypeScript(content: string, isTypeScript: boolean = true): 
           const methodStart = getLineNumber(sourceFile, member.getStart(sourceFile));
           const methodEnd = getLineNumber(sourceFile, member.getEnd());
 
-          structure.functions.push({
+          const method: CodeElement = {
             type: "method",
             name: methodName,
             startLine: methodStart,
             endLine: methodEnd,
-            signature: getFunctionSignature(member, sourceFile),
-            documentation: getJSDoc(member),
             isAsync: isAsync(member),
             parent: className,
-          });
+          };
+          if (detailed) {
+            method.signature = getFunctionSignature(member, sourceFile);
+            method.documentation = getJSDoc(member);
+          }
+          structure.functions.push(method);
         }
       }
     }
 
     // Interface declarations
     if (ts.isInterfaceDeclaration(node) && node.name) {
-      structure.interfaces.push({
+      const iface: CodeElement = {
         type: "interface",
         name: node.name.getText(sourceFile),
         startLine,
         endLine,
-        documentation: getJSDoc(node),
         isExported: isExported(node),
-      });
+      };
+      if (detailed) {
+        iface.documentation = getJSDoc(node);
+      }
+      structure.interfaces.push(iface);
     }
 
     // Type alias declarations
     if (ts.isTypeAliasDeclaration(node) && node.name) {
-      structure.types.push({
+      const typeAlias: CodeElement = {
         type: "type",
         name: node.name.getText(sourceFile),
         startLine,
         endLine,
-        documentation: getJSDoc(node),
         isExported: isExported(node),
-      });
+      };
+      if (detailed) {
+        typeAlias.documentation = getJSDoc(node);
+      }
+      structure.types.push(typeAlias);
     }
 
     // Export declarations
@@ -289,7 +321,8 @@ export function extractTypeScriptElement(
   options: ExtractionOptions,
   isTypeScript: boolean = true
 ): ExtractedContent | null {
-  const structure = parseTypeScript(content, isTypeScript);
+  // Extraction needs detailed parsing for proper signature/documentation display
+  const structure = parseTypeScript(content, isTypeScript, { detailed: true });
 
   // Find the target element
   let element: CodeElement | undefined;
@@ -356,7 +389,8 @@ export function extractTypeScriptElement(
  * Search for elements matching a query
  */
 export function searchTypeScriptElements(content: string, query: string): CodeElement[] {
-  const structure = parseTypeScript(content);
+  // Search needs detailed parsing to match against signature/documentation
+  const structure = parseTypeScript(content, true, { detailed: true });
   const queryLower = query.toLowerCase();
   const results: CodeElement[] = [];
 
@@ -387,8 +421,8 @@ export function searchTypeScriptElements(content: string, query: string): CodeEl
 export const typescriptParser: LanguageParser = {
   languages: ["typescript", "javascript"],
 
-  parse(content: string): FileStructure {
-    return parseTypeScript(content, true);
+  parse(content: string, options?: ParseOptions): FileStructure {
+    return parseTypeScript(content, true, options);
   },
 
   extractElement(

@@ -19,6 +19,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "../types.js";
 import { createEmptyStructure } from "../types.js";
@@ -412,7 +413,7 @@ export async function searchRustElements(content: string, query: string): Promis
 export const rustTreeSitterParser: LanguageParser = {
   languages: ["rust"],
 
-  parse(content: string): FileStructure {
+  parse(content: string, _options?: ParseOptions): FileStructure {
     if (!parserInstance || !rustLanguage) {
       initParser().catch(() => {});
       return parseRust(content);

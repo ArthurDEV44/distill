@@ -19,6 +19,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "../types.js";
 import { createEmptyStructure } from "../types.js";
@@ -563,7 +564,7 @@ export async function searchSwiftElements(content: string, query: string): Promi
 export const swiftTreeSitterParser: LanguageParser = {
   languages: ["swift"],
 
-  parse(content: string): FileStructure {
+  parse(content: string, _options?: ParseOptions): FileStructure {
     if (!parserInstance || !swiftLanguage) {
       initParser().catch(() => {});
       return parseSwift(content);

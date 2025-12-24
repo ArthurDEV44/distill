@@ -12,6 +12,7 @@ export type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "./types.js";
 
@@ -24,6 +25,7 @@ import type {
   ExtractedContent,
   ExtractionTarget,
   ExtractionOptions,
+  ParseOptions,
   LanguageParser,
 } from "./types.js";
 import { createEmptyStructure } from "./types.js";
@@ -65,11 +67,13 @@ export function hasParserSupport(language: SupportedLanguage): boolean {
 /**
  * Parse file content and return structure
  * @param mode 'full' for AST parsing, 'quick' for regex-based scan (faster, less detail)
+ * @param options ParseOptions to control extraction (detailed: true for signature/documentation)
  */
 export function parseFile(
   content: string,
   language: SupportedLanguage,
-  mode: "full" | "quick" = "full"
+  mode: "full" | "quick" = "full",
+  options: ParseOptions = {}
 ): FileStructure {
   // Quick mode: use regex-based scan (90% faster, no endLine/signatures)
   if (mode === "quick") {
@@ -81,9 +85,9 @@ export function parseFile(
   if (parser) {
     // Special case for JavaScript (use TS parser with isTypeScript=false)
     if (language === "javascript") {
-      return parseTypeScript(content, false);
+      return parseTypeScript(content, false, options);
     }
-    return parser.parse(content);
+    return parser.parse(content, options);
   }
 
   // No parser available - return minimal structure
