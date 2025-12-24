@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "CtxOpt - Context Engineering Optimizer",
+    default: "CtxOpt - Context Engineering for LLMs",
     template: "%s | CtxOpt",
   },
   description:
-    "Optimize your LLM token usage with intelligent context engineering. Reduce costs, improve performance, and get actionable suggestions.",
+    "Open source MCP server for LLM token optimization. Reduce costs by up to 60% with intelligent context compression.",
   keywords: [
     "LLM",
     "token optimization",
     "context engineering",
+    "MCP",
+    "Model Context Protocol",
     "Claude",
     "Anthropic",
-    "AI costs",
-    "prompt engineering",
+    "open source",
   ],
   authors: [{ name: "CtxOpt" }],
   openGraph: {
@@ -25,15 +25,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://ctxopt.dev",
     siteName: "CtxOpt",
-    title: "CtxOpt - Context Engineering Optimizer",
+    title: "CtxOpt - Context Engineering for LLMs",
     description:
-      "Optimize your LLM token usage with intelligent context engineering.",
+      "Open source MCP server for LLM token optimization.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CtxOpt - Context Engineering Optimizer",
+    title: "CtxOpt - Context Engineering for LLMs",
     description:
-      "Optimize your LLM token usage with intelligent context engineering.",
+      "Open source MCP server for LLM token optimization.",
   },
 };
 
@@ -43,13 +43,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body className="min-h-screen antialiased">
-          {children}
-          <Toaster position="bottom-right" />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen antialiased">
+        {children}
+        <Toaster position="bottom-right" />
+      </body>
+    </html>
   );
 }

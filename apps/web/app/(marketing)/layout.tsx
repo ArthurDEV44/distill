@@ -15,28 +15,16 @@ export default function MarketingLayout({
           </Link>
           <nav className="flex items-center gap-6">
             <Link
-              href="/pricing"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Pricing
-            </Link>
-            <Link
               href="/docs"
               className="text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               Docs
             </Link>
             <Link
-              href="/sign-in"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/sign-up"
+              href="https://github.com/ctxopt/ctxopt"
               className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Get Started
+              GitHub
             </Link>
           </nav>
         </div>
@@ -49,26 +37,20 @@ export default function MarketingLayout({
       <footer className="border-t py-8">
         <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} CtxOpt. All rights reserved.
+            &copy; {new Date().getFullYear()} CtxOpt. Open source under MIT.
           </p>
           <nav className="flex gap-4">
-            <Link
-              href="/privacy"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Privacy
-            </Link>
-            <Link
-              href="/terms"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Terms
-            </Link>
             <Link
               href="https://github.com/ctxopt/ctxopt"
               className="text-sm text-muted-foreground hover:text-foreground"
             >
               GitHub
+            </Link>
+            <Link
+              href="https://github.com/ctxopt/ctxopt/issues"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Issues
             </Link>
           </nav>
         </div>

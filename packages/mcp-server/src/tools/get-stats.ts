@@ -1,24 +1,24 @@
 import { z } from "zod";
 import { formatCost, formatNumber } from "@ctxopt/shared";
-import type { ServerConfig } from "../server";
+import type { ServerConfig } from "../server.js";
 
 export const getStatsSchema = {
   type: "object" as const,
   properties: {
     period: {
       type: "string",
-      description: "Time period for stats (session, today, week, month)",
-      enum: ["session", "today", "week", "month"],
+      description: "Time period for stats (session)",
+      enum: ["session"],
     },
   },
   required: [],
 };
 
 const inputSchema = z.object({
-  period: z.enum(["session", "today", "week", "month"]).optional().default("session"),
+  period: z.enum(["session"]).optional().default("session"),
 });
 
-// In-memory session stats (would be replaced by API call in production)
+// In-memory session stats
 let sessionStats = {
   requests: 0,
   inputTokens: 0,
@@ -46,30 +46,9 @@ export function resetSession() {
 
 export async function getStats(
   args: unknown,
-  config: ServerConfig
+  _config: ServerConfig
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
-  const { period } = inputSchema.parse(args);
-
-  // If API key is configured, fetch from server
-  if (config.apiKey && config.apiBaseUrl) {
-    try {
-      const response = await fetch(
-        `${config.apiBaseUrl}/api/usage?period=${period}`,
-        {
-          headers: {
-            Authorization: `Bearer ${config.apiKey}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        return formatServerStats(data, period);
-      }
-    } catch {
-      // Fall back to local stats
-    }
-  }
+  inputSchema.parse(args);
 
   // Return local session stats
   const duration = Math.round((Date.now() - sessionStats.startTime) / 1000 / 60);
@@ -93,49 +72,6 @@ ${
 
 ---
 *Stats from CtxOpt local session*`;
-
-  return {
-    content: [{ type: "text", text: result }],
-  };
-}
-
-function formatServerStats(
-  data: {
-    summary: {
-      totalRequests: number;
-      totalTokens: number;
-      inputTokens: number;
-      outputTokens: number;
-      totalCostMicros: number;
-      avgLatencyMs: number;
-    };
-    quotaUsage: {
-      used: number;
-      limit: number;
-      percentage: number;
-      resetDate: string;
-    };
-  },
-  period: string
-): { content: Array<{ type: "text"; text: string }> } {
-  const { summary, quotaUsage } = data;
-
-  const result = `## Usage Statistics (${period})
-
-**Requests:** ${summary.totalRequests.toLocaleString()}
-**Total Tokens:** ${formatNumber(summary.totalTokens)}
-  - Input: ${formatNumber(summary.inputTokens)}
-  - Output: ${formatNumber(summary.outputTokens)}
-**Total Cost:** ${formatCost(summary.totalCostMicros)}
-**Avg Latency:** ${summary.avgLatencyMs}ms
-
-### Quota Usage
-**Used:** ${formatNumber(quotaUsage.used)} / ${formatNumber(quotaUsage.limit)} tokens
-**Percentage:** ${quotaUsage.percentage.toFixed(1)}%
-**Resets:** ${new Date(quotaUsage.resetDate).toLocaleDateString()}
-
----
-*Stats from CtxOpt*`;
 
   return {
     content: [{ type: "text", text: result }],

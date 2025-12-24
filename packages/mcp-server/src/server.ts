@@ -46,12 +46,7 @@ import { registerModelTool } from "./tools/register-model.js";
 // Utils
 import { detectProject } from "./utils/project-detector.js";
 
-// Reporting
-import { reportUsage } from "./reporting/usage-reporter.js";
-
 export interface ServerConfig {
-  apiKey?: string;
-  apiBaseUrl?: string;
   verbose?: boolean;
 }
 
@@ -69,8 +64,6 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
   // Initialize session state
   const state = createSessionState({
     verbose: config.verbose ?? false,
-    apiKey: config.apiKey,
-    apiBaseUrl: config.apiBaseUrl,
   });
 
   // Detect project
@@ -171,37 +164,22 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
 }
 
 /**
- * Cleanup session state and report usage before exit
+ * Cleanup session state before exit
  * Returns a cleanup function that can be called manually (e.g., on server close)
  */
 function setupCleanupHooks(state: SessionState, verbose: boolean): () => Promise<void> {
   let isCleaningUp = false;
 
-  const cleanup = () => {
+  const cleanup = async () => {
+    // Prevent double cleanup
+    if (isCleaningUp) return;
+    isCleaningUp = true;
+
     const { errorsRemoved, patternsRemoved } = cleanupStaleEntries(state);
     if (verbose && (errorsRemoved > 0 || patternsRemoved > 0)) {
       console.error(
         `[ctxopt] Cleanup: removed ${errorsRemoved} errors, ${patternsRemoved} patterns`
       );
-    }
-  };
-
-  const cleanupAndReport = async () => {
-    // Prevent double cleanup
-    if (isCleaningUp) return;
-    isCleaningUp = true;
-
-    cleanup();
-
-    // Report usage if API key is configured
-    if (state.apiKey && state.apiBaseUrl) {
-      try {
-        await reportUsage(state, state.apiKey, state.apiBaseUrl, verbose);
-      } catch (error) {
-        if (verbose) {
-          console.error("[ctxopt] Failed to report usage:", error);
-        }
-      }
     }
   };
 
@@ -211,22 +189,22 @@ function setupCleanupHooks(state: SessionState, verbose: boolean): () => Promise
   });
 
   process.on("SIGINT", () => {
-    cleanupAndReport().finally(() => process.exit(0));
+    cleanup().finally(() => process.exit(0));
   });
 
   process.on("SIGTERM", () => {
-    cleanupAndReport().finally(() => process.exit(0));
+    cleanup().finally(() => process.exit(0));
   });
 
   // Handle stdin close (when parent process closes the connection)
   process.stdin.on("close", () => {
     if (verbose) {
-      console.error("[ctxopt] stdin closed, reporting usage...");
+      console.error("[ctxopt] stdin closed");
     }
-    cleanupAndReport().finally(() => process.exit(0));
+    cleanup().finally(() => process.exit(0));
   });
 
-  return cleanupAndReport;
+  return cleanup;
 }
 
 /**
@@ -236,16 +214,16 @@ export async function runServer(config: ServerConfig = {}): Promise<void> {
   const { server, state } = createServer(config);
 
   // Setup cleanup hooks for graceful shutdown
-  const cleanupAndReport = setupCleanupHooks(state, config.verbose ?? false);
+  const cleanup = setupCleanupHooks(state, config.verbose ?? false);
 
   const transport = new StdioServerTransport();
 
   // Handle server close event (when transport disconnects)
   server.onclose = async () => {
     if (config.verbose) {
-      console.error("[ctxopt] Server connection closed, reporting usage...");
+      console.error("[ctxopt] Server connection closed");
     }
-    await cleanupAndReport();
+    await cleanup();
     process.exit(0);
   };
 

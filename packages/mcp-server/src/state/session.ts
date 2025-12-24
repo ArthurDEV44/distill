@@ -84,14 +84,8 @@ export interface SessionState {
   // Retry patterns detected
   retryPatterns: Map<string, RetryPattern>;
 
-  // Periodic reporting state
-  lastReportedAt: Date | null;
-  lastReportedCommandCount: number;
-
   // Configuration
   verbose: boolean;
-  apiKey?: string;
-  apiBaseUrl: string;
 }
 
 function generateSessionId(): string {
@@ -104,8 +98,6 @@ function generateCommandId(): string {
 
 export function createSessionState(config: {
   verbose?: boolean;
-  apiKey?: string;
-  apiBaseUrl?: string;
 }): SessionState {
   return {
     sessionId: generateSessionId(),
@@ -117,11 +109,7 @@ export function createSessionState(config: {
     tokensSaved: 0,
     errorCache: new Map(),
     retryPatterns: new Map(),
-    lastReportedAt: null,
-    lastReportedCommandCount: 0,
     verbose: config.verbose ?? false,
-    apiKey: config.apiKey,
-    apiBaseUrl: config.apiBaseUrl ?? "https://app.ctxopt.dev/api",
   };
 }
 

@@ -2,12 +2,10 @@
  * Stats Middleware
  *
  * Tracks command history and token usage in the session state.
- * Also triggers periodic usage reporting to ensure data is captured.
  */
 
 import type { Middleware, ToolContext, ToolResult, MiddlewareConfig } from "./types.js";
 import { addCommand, checkRetryPattern, markRetryWarned } from "../state/session.js";
-import { maybeReportPeriodically } from "../reporting/usage-reporter.js";
 
 export function createStatsMiddleware(_config: MiddlewareConfig): Middleware {
   return {
@@ -57,11 +55,6 @@ export function createStatsMiddleware(_config: MiddlewareConfig): Middleware {
           firstContent.text += warningText;
         }
       }
-
-      // Trigger periodic usage reporting (non-blocking)
-      maybeReportPeriodically(ctx.state, ctx.state.verbose).catch(() => {
-        // Ignore errors - periodic reporting is best-effort
-      });
 
       return result;
     },

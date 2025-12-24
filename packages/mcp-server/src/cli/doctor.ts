@@ -110,27 +110,6 @@ function checkIDEConfigurations(): CheckResult[] {
   return results;
 }
 
-function checkNetworkConnectivity(): CheckResult {
-  // This is a lightweight check - just verify we can resolve the hostname
-  try {
-    execSync("node -e \"require('dns').lookup('ctxopt.dev', () => {})\"", {
-      stdio: "pipe",
-      timeout: 5000,
-    });
-    return {
-      name: "Network connectivity",
-      status: "pass",
-      message: "Can reach ctxopt.dev (optional, for cloud sync)",
-    };
-  } catch {
-    return {
-      name: "Network connectivity",
-      status: "warn",
-      message: "Cannot reach ctxopt.dev (cloud sync will be unavailable)",
-    };
-  }
-}
-
 export async function doctor(): Promise<void> {
   log(`\n${COLORS.bright}${COLORS.cyan}CtxOpt MCP Server Doctor${COLORS.reset}\n`);
   log(`Running diagnostic checks...\n`);
@@ -139,7 +118,6 @@ export async function doctor(): Promise<void> {
     checkNodeVersion(),
     checkPackageInstallation(),
     ...checkIDEConfigurations(),
-    checkNetworkConnectivity(),
   ];
 
   let passCount = 0;

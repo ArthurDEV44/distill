@@ -4,7 +4,6 @@ import { runServer } from "../dist/server.js";
 import { setup, parseSetupArgs } from "../dist/cli/setup.js";
 import { doctor } from "../dist/cli/doctor.js";
 import { getPackageVersion, COLORS, log } from "../dist/cli/utils.js";
-import { readConfig } from "../dist/cli/config.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -31,8 +30,6 @@ ${COLORS.bright}Setup Options:${COLORS.reset}
   --force, -f       Overwrite existing configuration
 
 ${COLORS.bright}Server Options:${COLORS.reset}
-  --api-key=KEY     Your CtxOpt API key (optional, enables cloud sync)
-  --api-url=URL     Custom API URL (default: https://app.ctxopt.dev/api)
   --verbose         Enable verbose logging (shows tool calls, timing, tokens)
 
 ${COLORS.bright}Other Options:${COLORS.reset}
@@ -47,10 +44,7 @@ ${COLORS.bright}Examples:${COLORS.reset}
   ctxopt-mcp setup --force            Overwrite existing configurations
   ctxopt-mcp doctor                   Verify installation
   ctxopt-mcp serve                    Start MCP server (used by IDE)
-  ctxopt-mcp serve --api-key=ctx_xxx  Start with cloud sync enabled
-
-${COLORS.bright}Quick Install:${COLORS.reset}
-  curl -fsSL https://ctxopt.dev/install.sh | bash
+  ctxopt-mcp serve --verbose          Start with verbose logging
 
 ${COLORS.bright}Documentation:${COLORS.reset}
   https://ctxopt.dev/docs
@@ -76,34 +70,9 @@ async function main() {
 
   switch (command) {
     case "serve": {
-      // Read config file as base
-      const fileConfig = readConfig();
-
-      // Priority: CLI args > env vars > config file > defaults
       const config = {
-        apiKey: fileConfig.apiKey,
-        apiBaseUrl: fileConfig.apiBaseUrl ?? "https://app.ctxopt.dev/api",
-        verbose: false,
+        verbose: args.includes("--verbose"),
       };
-
-      // Environment variables override config file
-      if (process.env.CTXOPT_API_KEY) {
-        config.apiKey = process.env.CTXOPT_API_KEY;
-      }
-      if (process.env.CTXOPT_API_URL) {
-        config.apiBaseUrl = process.env.CTXOPT_API_URL;
-      }
-
-      // CLI arguments override everything
-      for (const arg of args.slice(1)) {
-        if (arg.startsWith("--api-key=")) {
-          config.apiKey = arg.split("=")[1];
-        } else if (arg.startsWith("--api-url=")) {
-          config.apiBaseUrl = arg.split("=")[1];
-        } else if (arg === "--verbose") {
-          config.verbose = true;
-        }
-      }
 
       await runServer(config);
       break;
