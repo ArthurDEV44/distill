@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import {
   semanticCompressor,
@@ -115,8 +115,7 @@ function formatOutput(result: SemanticCompressOutput, technique: string): string
  * Execute semantic compression
  */
 export async function executeSemanticCompress(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   // Validate input
   const parseResult = inputSchema.safeParse(args);
@@ -171,7 +170,6 @@ export async function executeSemanticCompress(
 
   // Update session state with tokens saved
   if (output.savings > 0) {
-    state.tokensSaved += output.savings;
   }
 
   return {

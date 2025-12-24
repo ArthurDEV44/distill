@@ -2,22 +2,18 @@
  * Context Budget Tool Tests
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { executeContextBudget } from "./context-budget.js";
-import { createSessionState, type SessionState } from "../state/session.js";
+
 
 describe("context_budget tool", () => {
-  let state: SessionState;
 
-  beforeEach(() => {
-    state = createSessionState({ verbose: false });
-  });
 
   describe("basic estimation", () => {
     it("should count input tokens", async () => {
       const content = "Hello, world! This is a test message.";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       expect(result.isError).toBeFalsy();
       const text = result.content[0]!.text;
@@ -28,7 +24,7 @@ describe("context_budget tool", () => {
     it("should estimate output tokens", async () => {
       const content = "What is the difference between let and const in JavaScript?";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       expect(result.isError).toBeFalsy();
       const text = result.content[0]!.text;
@@ -38,7 +34,7 @@ describe("context_budget tool", () => {
     it("should calculate total tokens", async () => {
       const content = "Explain how async/await works.";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Total Estimated");
@@ -47,7 +43,7 @@ describe("context_budget tool", () => {
     it("should show estimated cost", async () => {
       const content = "Create a function that sorts an array.";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Estimated Cost");
@@ -57,7 +53,7 @@ describe("context_budget tool", () => {
     it("should show context usage percentage", async () => {
       const content = "Short prompt.";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Context Usage");
@@ -69,7 +65,7 @@ describe("context_budget tool", () => {
     it("should use default model when not specified", async () => {
       const content = "Test content";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Claude Sonnet 4");
@@ -79,9 +75,7 @@ describe("context_budget tool", () => {
       const content = "Test content";
 
       const result = await executeContextBudget(
-        { content, model: "claude-opus-4-20250514" },
-        state
-      );
+        { content, model: "claude-opus-4-20250514" });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Claude Opus 4");
@@ -91,9 +85,7 @@ describe("context_budget tool", () => {
       const content = "Test content";
 
       const result = await executeContextBudget(
-        { content, model: "claude-3-5-haiku-20241022" },
-        state
-      );
+        { content, model: "claude-3-5-haiku-20241022" });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Claude 3.5 Haiku");
@@ -105,9 +97,7 @@ describe("context_budget tool", () => {
       const content = "Short content";
 
       const result = await executeContextBudget(
-        { content, budgetTokens: 10000 },
-        state
-      );
+        { content, budgetTokens: 10000 });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Within Budget");
@@ -119,9 +109,7 @@ describe("context_budget tool", () => {
       const content = Array(100).fill("This is a test sentence.").join(" ");
 
       const result = await executeContextBudget(
-        { content, budgetTokens: 100 },
-        state
-      );
+        { content, budgetTokens: 100 });
 
       const text = result.content[0]!.text;
       expect(text).toContain("OVER BUDGET");
@@ -131,7 +119,7 @@ describe("context_budget tool", () => {
     it("should not show budget status when no budget specified", async () => {
       const content = "Test content";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).not.toContain("Budget Status");
@@ -182,7 +170,7 @@ const handler = async (req, res) => {
 export { processData, DataProcessor, handler };
       `;
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       // Should have code-related recommendations
@@ -197,7 +185,7 @@ export { processData, DataProcessor, handler };
 [2025-12-23 10:00:03] WARN: Cache miss for key xyz
       `.repeat(20);
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("summarize_logs");
@@ -208,7 +196,7 @@ export { processData, DataProcessor, handler };
         .fill("Error: Connection refused at Database.connect()")
         .join("\n");
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("deduplicate_errors");
@@ -219,7 +207,7 @@ export { processData, DataProcessor, handler };
         .fill("This is a paragraph of text explaining something in detail.")
         .join(" ");
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("semantic_compress");
@@ -230,7 +218,7 @@ export { processData, DataProcessor, handler };
         .fill("[INFO] Processing request from client")
         .join("\n");
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Potential Savings");
@@ -241,7 +229,7 @@ export { processData, DataProcessor, handler };
     it("should include output estimation by default", async () => {
       const content = "What is TypeScript?";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       // Estimated Output should be > 0
@@ -252,9 +240,7 @@ export { processData, DataProcessor, handler };
       const content = "What is TypeScript?";
 
       const result = await executeContextBudget(
-        { content, includeEstimatedOutput: false },
-        state
-      );
+        { content, includeEstimatedOutput: false });
 
       const text = result.content[0]!.text;
       // Estimated Output should be 0
@@ -264,7 +250,7 @@ export { processData, DataProcessor, handler };
 
   describe("input validation", () => {
     it("should reject empty content", async () => {
-      const result = await executeContextBudget({ content: "" }, state);
+      const result = await executeContextBudget({ content: "" });
 
       expect(result.isError).toBe(true);
       expect(result.content[0]!.text).toContain("Invalid input");
@@ -272,18 +258,14 @@ export { processData, DataProcessor, handler };
 
     it("should reject invalid model", async () => {
       const result = await executeContextBudget(
-        { content: "test", model: "invalid-model" as any },
-        state
-      );
+        { content: "test", model: "invalid-model" as any });
 
       expect(result.isError).toBe(true);
     });
 
     it("should reject budget below minimum", async () => {
       const result = await executeContextBudget(
-        { content: "test", budgetTokens: 50 },
-        state
-      );
+        { content: "test", budgetTokens: 50 });
 
       expect(result.isError).toBe(true);
     });
@@ -295,7 +277,7 @@ export { processData, DataProcessor, handler };
         .fill("[ERROR] Failed to connect")
         .join("\n");
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       expect(text).toContain("auto_optimize");
@@ -304,7 +286,7 @@ export { processData, DataProcessor, handler };
     it("should not show auto-optimize tip for small content", async () => {
       const content = "Short content here";
 
-      const result = await executeContextBudget({ content }, state);
+      const result = await executeContextBudget({ content });
 
       const text = result.content[0]!.text;
       // Small content shouldn't trigger the tip

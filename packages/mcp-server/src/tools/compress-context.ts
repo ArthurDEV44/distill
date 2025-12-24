@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import { compressContent, analyzeContent, type ContentType, type DetailLevel } from "../compressors/index.js";
 import { getContentTypeDescription } from "../utils/content-detector.js";
 import type { ToolDefinition } from "./registry.js";
@@ -92,8 +92,7 @@ function formatResult(
 }
 
 export async function executeCompressContext(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const input = inputSchema.parse(args);
 
@@ -115,7 +114,6 @@ export async function executeCompressContext(
   // Update session state with token savings
   const tokensSaved = result.stats.originalTokens - result.stats.compressedTokens;
   if (tokensSaved > 0) {
-    state.tokensSaved += tokensSaved;
   }
 
   // Format output

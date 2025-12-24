@@ -2,17 +2,10 @@
  * Semantic Compress Tool Tests
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { executeSemanticCompress } from "./semantic-compress.js";
-import { createSessionState, type SessionState } from "../state/session.js";
 
 describe("semantic_compress tool", () => {
-  let state: SessionState;
-
-  beforeEach(() => {
-    state = createSessionState({ verbose: false });
-  });
-
   describe("basic compression", () => {
     it("should compress content to approximately target ratio", async () => {
       const content = `
@@ -28,10 +21,7 @@ This paragraph exists mainly to pad the document length.
 This is the conclusion which summarizes the key points.
       `.trim();
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.5 },
-        state
-      );
+      const result = await executeSemanticCompress({ content, targetRatio: 0.5 });
 
       expect(result.isError).toBeFalsy();
       // Should contain beginning and/or end content
@@ -49,10 +39,11 @@ More regular content that is less important.
 Even more filler content here.
       `.trim();
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.3, preservePatterns: ["CRITICAL:.*"] },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content,
+        targetRatio: 0.3,
+        preservePatterns: ["CRITICAL:.*"],
+      });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0]!.text).toContain("CRITICAL:");
@@ -71,10 +62,7 @@ Info: Retrying connection attempt.
 Debug: More debug information here.
       `.trim();
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.4 },
-        state
-      );
+      const result = await executeSemanticCompress({ content, targetRatio: 0.4 });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0]!.text).toContain("Error:");
@@ -95,10 +83,7 @@ function hello() {
 And some concluding text here.
       `.trim();
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.8 },
-        state
-      );
+      const result = await executeSemanticCompress({ content, targetRatio: 0.8 });
 
       expect(result.isError).toBeFalsy();
       const text = result.content[0]!.text;
@@ -110,62 +95,38 @@ And some concluding text here.
     });
   });
 
-  describe("token savings tracking", () => {
-    it("should update session state with tokens saved", async () => {
-      // Create content long enough to compress
-      const content = Array(50)
-        .fill("This is a test sentence with some content.")
-        .join("\n\n");
-
-      const initialSaved = state.tokensSaved;
-
-      await executeSemanticCompress({ content, targetRatio: 0.5 }, state);
-
-      expect(state.tokensSaved).toBeGreaterThan(initialSaved);
-    });
-
-    it("should not add negative savings", async () => {
-      const content = "Short content";
-      const initialSaved = state.tokensSaved;
-
-      await executeSemanticCompress({ content, targetRatio: 0.5 }, state);
-
-      expect(state.tokensSaved).toBeGreaterThanOrEqual(initialSaved);
-    });
-  });
-
   describe("input validation", () => {
     it("should reject empty content", async () => {
-      const result = await executeSemanticCompress({ content: "" }, state);
+      const result = await executeSemanticCompress({ content: "" });
 
       expect(result.isError).toBe(true);
       expect(result.content[0]!.text).toContain("Invalid input");
     });
 
     it("should reject invalid regex patterns", async () => {
-      const result = await executeSemanticCompress(
-        { content: "test content here", preservePatterns: ["[invalid"] },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content: "test content here",
+        preservePatterns: ["[invalid"],
+      });
 
       expect(result.isError).toBe(true);
       expect(result.content[0]!.text).toContain("Invalid regex");
     });
 
     it("should reject targetRatio below minimum", async () => {
-      const result = await executeSemanticCompress(
-        { content: "test content", targetRatio: 0.05 },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content: "test content",
+        targetRatio: 0.05,
+      });
 
       expect(result.isError).toBe(true);
     });
 
     it("should reject targetRatio above maximum", async () => {
-      const result = await executeSemanticCompress(
-        { content: "test content", targetRatio: 0.95 },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content: "test content",
+        targetRatio: 0.95,
+      });
 
       expect(result.isError).toBe(true);
     });
@@ -173,24 +134,20 @@ And some concluding text here.
 
   describe("edge cases", () => {
     it("should handle content shorter than target gracefully", async () => {
-      const result = await executeSemanticCompress(
-        { content: "Short content", targetRatio: 0.5 },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content: "Short content",
+        targetRatio: 0.5,
+      });
 
       // Should not error, just return content as-is
       expect(result.isError).toBeFalsy();
     });
 
     it("should handle single paragraph content", async () => {
-      const result = await executeSemanticCompress(
-        {
-          content:
-            "This is a single paragraph without any breaks or structure.",
-          targetRatio: 0.5,
-        },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content: "This is a single paragraph without any breaks or structure.",
+        targetRatio: 0.5,
+      });
 
       expect(result.isError).toBeFalsy();
     });
@@ -204,20 +161,15 @@ console.log(x + y);
 \`\`\`
       `.trim();
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.5 },
-        state
-      );
+      const result = await executeSemanticCompress({ content, targetRatio: 0.5 });
 
       expect(result.isError).toBeFalsy();
     });
 
     it("should use default targetRatio of 0.5", async () => {
-      const content = Array(20)
-        .fill("Content paragraph here.")
-        .join("\n\n");
+      const content = Array(20).fill("Content paragraph here.").join("\n\n");
 
-      const result = await executeSemanticCompress({ content }, state);
+      const result = await executeSemanticCompress({ content });
 
       expect(result.isError).toBeFalsy();
       // Output should show compression occurred
@@ -227,14 +179,9 @@ console.log(x + y);
 
   describe("output format", () => {
     it("should include compression statistics", async () => {
-      const content = Array(10)
-        .fill("Paragraph of content here.")
-        .join("\n\n");
+      const content = Array(10).fill("Paragraph of content here.").join("\n\n");
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.5 },
-        state
-      );
+      const result = await executeSemanticCompress({ content, targetRatio: 0.5 });
 
       const text = result.content[0]!.text;
       expect(text).toContain("Original tokens");
@@ -258,10 +205,11 @@ Even more content here to ensure we have enough for compression.
 Final paragraph with some concluding thoughts about the topic.
       `.trim();
 
-      const result = await executeSemanticCompress(
-        { content, targetRatio: 0.5, preservePatterns: ["IMPORTANT:.*"] },
-        state
-      );
+      const result = await executeSemanticCompress({
+        content,
+        targetRatio: 0.5,
+        preservePatterns: ["IMPORTANT:.*"],
+      });
 
       const text = result.content[0]!.text;
       // The preserved content should definitely be in the output

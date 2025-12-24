@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import { compressDiff } from "../compressors/diff.js";
 
@@ -115,8 +115,7 @@ function formatOutput(output: DiffCompressOutput, strategy: string): string {
  * Execute diff compression
  */
 export async function executeDiffCompress(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
@@ -157,7 +156,6 @@ export async function executeDiffCompress(
   // Update session state with tokens saved
   const tokensSaved = output.originalTokens - output.compressedTokens;
   if (tokensSaved > 0) {
-    state.tokensSaved += tokensSaved;
   }
 
   return {

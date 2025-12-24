@@ -5,8 +5,6 @@
  * tool calls before and after execution.
  */
 
-import type { SessionState } from "../state/session.js";
-
 export interface MiddlewareError {
   middlewareName: string;
   phase: "beforeTool" | "afterTool" | "onError";
@@ -17,7 +15,6 @@ export interface MiddlewareError {
 export interface ToolContext {
   toolName: string;
   arguments: Record<string, unknown>;
-  state: SessionState;
   startTime: number;
   metadata: Record<string, unknown>;
   /** Errors encountered during middleware execution (non-fatal) */

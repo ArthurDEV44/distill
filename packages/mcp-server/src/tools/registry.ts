@@ -4,7 +4,6 @@
  * Central registry for all MCP tools with unified execution.
  */
 
-import type { SessionState } from "../state/session.js";
 import type { ToolContext, ToolResult } from "../middleware/types.js";
 import type { MiddlewareChain } from "../middleware/chain.js";
 import { countTokens } from "../utils/token-counter.js";
@@ -13,7 +12,7 @@ export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  execute: (args: unknown, state: SessionState) => Promise<ToolExecuteResult>;
+  execute: (args: unknown) => Promise<ToolExecuteResult>;
 }
 
 export interface ToolExecuteResult {
@@ -79,7 +78,7 @@ export class ToolRegistry {
   /**
    * Execute a tool with middleware chain
    */
-  async execute(name: string, args: unknown, state: SessionState): Promise<ToolResult> {
+  async execute(name: string, args: unknown): Promise<ToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
       return {
@@ -101,7 +100,6 @@ export class ToolRegistry {
     const ctx: ToolContext = {
       toolName: name,
       arguments: args as Record<string, unknown>,
-      state,
       startTime: Date.now(),
       metadata: {},
       middlewareErrors: [],
@@ -127,7 +125,7 @@ export class ToolRegistry {
       }
 
       // Execute tool
-      const executeResult = await tool.execute(currentCtx.arguments, state);
+      const executeResult = await tool.execute(currentCtx.arguments);
 
       // Count output tokens using centralized counter
       const outputText = executeResult.content.map((c) => c.text).join("\n");

@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import { countTokens } from "../utils/token-counter.js";
 import { detectContentType } from "../utils/content-detector.js";
@@ -305,8 +305,7 @@ function formatOutput(result: ContextBudgetOutput, model: string): string {
  * Execute the context-budget tool
  */
 export async function executeContextBudget(
-  args: unknown,
-  _state: SessionState
+  args: unknown
 ): Promise<{
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;

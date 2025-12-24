@@ -6,7 +6,6 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
 import { analyzeBuildOutput, type BuildTool } from "../parsers/index.js";
 import type { ToolDefinition } from "./registry.js";
 
@@ -40,8 +39,7 @@ const inputSchema = z.object({
 });
 
 export async function executeAnalyzeBuildOutput(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const { output, buildTool, verbosity } = inputSchema.parse(args);
 
@@ -64,12 +62,6 @@ export async function executeAnalyzeBuildOutput(
   parts.push(`- **Original tokens:** ${result.stats.tokensOriginal.toLocaleString()}`);
   parts.push(`- **Compressed tokens:** ${result.stats.tokensCompressed.toLocaleString()}`);
   parts.push(`- **Reduction:** ${result.stats.reductionPercent}%`);
-
-  // Update session state with savings
-  const tokensSaved = result.stats.tokensOriginal - result.stats.tokensCompressed;
-  if (tokensSaved > 0) {
-    state.tokensSaved += tokensSaved;
-  }
 
   return {
     content: [{ type: "text", text: parts.join("\n") }],

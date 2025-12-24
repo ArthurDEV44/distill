@@ -10,7 +10,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import {
   parseFile,
   extractElement,
@@ -392,8 +392,7 @@ function formatSkeletonOutput(
 }
 
 export async function executeSmartFileRead(
-  args: unknown,
-  _state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const input = inputSchema.parse(args);
   const workingDir = process.cwd();

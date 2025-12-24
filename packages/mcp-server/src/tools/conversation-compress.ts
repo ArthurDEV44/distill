@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import {
   compressConversation,
@@ -76,8 +76,7 @@ const inputSchema = z.object({
  * Execute conversation compression
  */
 export async function executeConversationCompress(
-  args: unknown,
-  _state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const input = inputSchema.parse(args);
 

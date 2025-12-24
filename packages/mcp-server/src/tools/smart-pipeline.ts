@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import { countTokens } from "../utils/token-counter.js";
 import { detectContentType } from "../utils/content-detector.js";
@@ -322,8 +322,7 @@ function formatOutput(result: PipelineResult): string {
  * Execute the smart pipeline tool
  */
 export async function executeSmartPipeline(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
@@ -410,7 +409,6 @@ export async function executeSmartPipeline(
   // Update session state
   const tokensSaved = originalTokens - finalTokens;
   if (tokensSaved > 0) {
-    state.tokensSaved += tokensSaved;
   }
 
   return {

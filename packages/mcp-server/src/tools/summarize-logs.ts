@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import {
   getSummarizer,
@@ -74,8 +74,7 @@ const inputSchema = z.object({
 });
 
 export async function executeSummarizeLogs(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const input = inputSchema.parse(args);
 
@@ -121,7 +120,6 @@ export async function executeSummarizeLogs(
 
   // Update session state
   if (tokensSaved > 0) {
-    state.tokensSaved += tokensSaved;
   }
 
   return {

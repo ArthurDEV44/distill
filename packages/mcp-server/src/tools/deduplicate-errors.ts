@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import {
   groupBySignature,
@@ -46,8 +46,7 @@ const inputSchema = z.object({
 });
 
 export async function executeDeduplicateErrors(
-  args: unknown,
-  state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const { content, threshold, keepFirst, errorPattern } = inputSchema.parse(args);
 
@@ -134,7 +133,6 @@ export async function executeDeduplicateErrors(
     parts.push(`*Estimated tokens saved: ~${tokensSaved.toLocaleString()}*`);
 
     // Update session state
-    state.tokensSaved += tokensSaved;
   }
 
   return {

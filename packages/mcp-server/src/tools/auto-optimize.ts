@@ -6,7 +6,7 @@
  */
 
 import type { ToolDefinition } from "./registry.js";
-import type { SessionState } from "../state/session.js";
+
 import { detectContentType } from "../utils/content-detector.js";
 import type { ContentType } from "../compressors/types.js";
 import { compressContent } from "../compressors/index.js";
@@ -169,8 +169,7 @@ function optimizeGeneric(content: string, aggressive: boolean): OptimizationResu
 }
 
 async function autoOptimize(
-  args: AutoOptimizeArgs,
-  _state: SessionState
+  args: AutoOptimizeArgs
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const { content, hint = "auto", aggressive = false } = args;
 
@@ -241,5 +240,5 @@ Auto-detects content type and applies appropriate optimization:
 
 Example: After "npm run build" fails, pass the output to auto_optimize to get a structured error summary.`,
   inputSchema: autoOptimizeSchema,
-  execute: async (args, state) => autoOptimize(args as AutoOptimizeArgs, state),
+  execute: async (args) => autoOptimize(args as AutoOptimizeArgs),
 };

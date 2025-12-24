@@ -6,7 +6,15 @@
 
 import { existsSync, readFileSync } from "fs";
 import { join, basename } from "path";
-import type { ProjectInfo } from "../state/session.js";
+
+export interface ProjectInfo {
+  rootPath: string;
+  name: string;
+  type: "node" | "python" | "rust" | "go" | "unknown";
+  packageManager?: "npm" | "yarn" | "pnpm" | "bun";
+  hasTypeScript: boolean;
+  detectedAt: Date;
+}
 
 interface PackageJson {
   name?: string;

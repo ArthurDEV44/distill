@@ -8,7 +8,7 @@
 import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import { parseFile, hasParserSupport } from "../ast/index.js";
 import { detectLanguageFromPath } from "../utils/language-detector.js";
@@ -177,8 +177,7 @@ function formatSkeletonByDepth(
  * Execute code-skeleton tool
  */
 export async function executeCodeSkeleton(
-  args: unknown,
-  _state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const input = inputSchema.parse(args);
   const workingDir = process.cwd();

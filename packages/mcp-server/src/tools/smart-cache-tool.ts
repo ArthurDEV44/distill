@@ -10,7 +10,7 @@
  */
 
 import { z } from "zod";
-import type { SessionState } from "../state/session.js";
+
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache, type CacheStats } from "../cache/index.js";
 
@@ -95,8 +95,7 @@ function formatStats(stats: CacheStats): string {
 }
 
 export async function executeSmartCache(
-  args: unknown,
-  _state: SessionState
+  args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const input = inputSchema.parse(args);
   const cache = getGlobalCache();
