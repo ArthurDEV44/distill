@@ -41,6 +41,7 @@ import { codeSkeletonTool } from "./tools/code-skeleton.js";
 import { conversationCompressTool } from "./tools/conversation-compress.js";
 import { diffCompressTool } from "./tools/diff-compress.js";
 import { smartPipelineTool } from "./tools/smart-pipeline.js";
+import { registerModelTool } from "./tools/register-model.js";
 
 // Utils
 import { detectProject } from "./utils/project-detector.js";
@@ -129,6 +130,7 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
   tools.register(conversationCompressTool);
   tools.register(diffCompressTool);
   tools.register(smartPipelineTool);
+  tools.register(registerModelTool);
 
   // Create MCP server
   const server = new Server(
@@ -170,8 +172,9 @@ export function createServer(config: ServerConfig = {}): ServerInstance {
 
 /**
  * Cleanup session state and report usage before exit
+ * Returns a cleanup function that can be called manually (e.g., on server close)
  */
-function setupCleanupHooks(state: SessionState, verbose: boolean): void {
+function setupCleanupHooks(state: SessionState, verbose: boolean): () => Promise<void> {
   let isCleaningUp = false;
 
   const cleanup = () => {
@@ -214,6 +217,16 @@ function setupCleanupHooks(state: SessionState, verbose: boolean): void {
   process.on("SIGTERM", () => {
     cleanupAndReport().finally(() => process.exit(0));
   });
+
+  // Handle stdin close (when parent process closes the connection)
+  process.stdin.on("close", () => {
+    if (verbose) {
+      console.error("[ctxopt] stdin closed, reporting usage...");
+    }
+    cleanupAndReport().finally(() => process.exit(0));
+  });
+
+  return cleanupAndReport;
 }
 
 /**
@@ -223,9 +236,19 @@ export async function runServer(config: ServerConfig = {}): Promise<void> {
   const { server, state } = createServer(config);
 
   // Setup cleanup hooks for graceful shutdown
-  setupCleanupHooks(state, config.verbose ?? false);
+  const cleanupAndReport = setupCleanupHooks(state, config.verbose ?? false);
 
   const transport = new StdioServerTransport();
+
+  // Handle server close event (when transport disconnects)
+  server.onclose = async () => {
+    if (config.verbose) {
+      console.error("[ctxopt] Server connection closed, reporting usage...");
+    }
+    await cleanupAndReport();
+    process.exit(0);
+  };
+
   await server.connect(transport);
 
   if (config.verbose) {
