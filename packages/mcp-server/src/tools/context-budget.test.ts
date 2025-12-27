@@ -265,7 +265,7 @@ export { processData, DataProcessor, handler };
 
     it("should reject budget below minimum", async () => {
       const result = await executeContextBudget(
-        { content: "test", budgetTokens: 50 });
+        { content: "test", budgetTokens: 49 });
 
       expect(result.isError).toBe(true);
     });

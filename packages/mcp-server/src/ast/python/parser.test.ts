@@ -107,7 +107,7 @@ describe("Python Tree-sitter Parser", () => {
     });
 
     it("should extract docstrings", async () => {
-      const structure = await parsePythonAsync(SAMPLE_PYTHON);
+      const structure = await parsePythonAsync(SAMPLE_PYTHON, { detailed: true });
 
       const userClass = structure.classes.find((c) => c.name === "User");
       expect(userClass?.documentation).toContain("user class");
