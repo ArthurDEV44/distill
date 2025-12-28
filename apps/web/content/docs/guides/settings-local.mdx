@@ -1,0 +1,274 @@
+---
+title: Project Settings Configuration
+description: Configure .claude/settings.local.json for project-level CtxOpt integration
+---
+
+# Project Settings Configuration
+
+Configure CtxOpt at the project level using `.claude/settings.local.json`. This file overrides global settings for a specific project.
+
+## File Location
+
+Create the file at your project root:
+
+```
+your-project/
+├── .claude/
+│   └── settings.local.json
+├── CLAUDE.md
+├── src/
+└── ...
+```
+
+## Complete Template
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"],
+      "env": {}
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__ctxopt__smart_file_read",
+      "mcp__ctxopt__auto_optimize",
+      "mcp__ctxopt__code_execute",
+      "mcp__ctxopt__discover_tools",
+      "mcp__ctxopt__session_stats",
+      "mcp__ctxopt__register_model"
+    ]
+  }
+}
+```
+
+## Configuration Options
+
+### MCP Servers
+
+Configure the CtxOpt MCP server:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Alternative with global install:**
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "ctxopt-mcp",
+      "args": ["serve"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Tool Permissions
+
+Pre-approve CtxOpt tools to avoid permission prompts:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__ctxopt__smart_file_read",
+      "mcp__ctxopt__auto_optimize",
+      "mcp__ctxopt__code_execute",
+      "mcp__ctxopt__discover_tools",
+      "mcp__ctxopt__session_stats",
+      "mcp__ctxopt__register_model",
+      "mcp__ctxopt__summarize_logs",
+      "mcp__ctxopt__compress_context",
+      "mcp__ctxopt__analyze_build_output",
+      "mcp__ctxopt__deduplicate_errors",
+      "mcp__ctxopt__semantic_compress",
+      "mcp__ctxopt__code_skeleton",
+      "mcp__ctxopt__diff_compress",
+      "mcp__ctxopt__context_budget"
+    ]
+  }
+}
+```
+
+**Minimal permissions (core tools only):**
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__ctxopt__smart_file_read",
+      "mcp__ctxopt__auto_optimize",
+      "mcp__ctxopt__code_execute",
+      "mcp__ctxopt__discover_tools"
+    ]
+  }
+}
+```
+
+## Minimal Setup
+
+For quick setup, use this minimal configuration:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__ctxopt__*"
+    ]
+  }
+}
+```
+
+The wildcard `mcp__ctxopt__*` allows all CtxOpt tools without individual prompts.
+
+## Global vs Project Settings
+
+| File | Location | Scope |
+|------|----------|-------|
+| `~/.claude/settings.json` | Home directory | All projects |
+| `.claude/settings.local.json` | Project root | Current project only |
+
+Project settings **override** global settings. Use project settings when:
+- Different projects need different MCP configurations
+- You want to share settings with your team (commit to git)
+- You need project-specific tool permissions
+
+## Auto-Setup with CLI
+
+Generate the configuration automatically:
+
+```bash
+# In your project directory
+ctxopt-mcp setup --local
+```
+
+This creates `.claude/settings.local.json` with the recommended configuration.
+
+## Combining with CLAUDE.md
+
+For optimal setup, use both files:
+
+1. **`.claude/settings.local.json`** - MCP server and permissions
+2. **`CLAUDE.md`** - Usage instructions for Claude
+
+```
+your-project/
+├── .claude/
+│   └── settings.local.json  # Server config + permissions
+├── CLAUDE.md                 # Usage guidelines
+└── ...
+```
+
+## Git Configuration
+
+### Commit to Repository (Recommended)
+
+Share settings with your team by committing the file:
+
+```bash
+git add .claude/settings.local.json
+git commit -m "chore: add CtxOpt MCP configuration"
+```
+
+### Keep Private
+
+If you don't want to commit settings, add to `.gitignore`:
+
+```txt
+.claude/settings.local.json
+```
+
+## Environment Variables
+
+Pass environment variables to the MCP server:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"],
+      "env": {
+        "CTXOPT_DEBUG": "true",
+        "CTXOPT_LOG_LEVEL": "info"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Settings Not Applied
+
+1. Restart Claude Code after creating/modifying the file
+2. Verify JSON syntax is valid:
+   ```bash
+   cat .claude/settings.local.json | python -m json.tool
+   ```
+3. Check file location (must be at project root in `.claude/` folder)
+
+### MCP Server Not Starting
+
+1. Run doctor to check installation:
+   ```bash
+   ctxopt-mcp doctor
+   ```
+2. Try running the server manually:
+   ```bash
+   npx @ctxopt/mcp-server serve
+   ```
+
+### Permission Denied Errors
+
+Add the specific tool to the `permissions.allow` array or use the wildcard pattern `mcp__ctxopt__*`.
+
+## Complete Example
+
+Full configuration with all options:
+
+```json
+{
+  "mcpServers": {
+    "ctxopt": {
+      "command": "npx",
+      "args": ["@ctxopt/mcp-server"],
+      "env": {}
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__ctxopt__smart_file_read",
+      "mcp__ctxopt__auto_optimize",
+      "mcp__ctxopt__code_execute",
+      "mcp__ctxopt__discover_tools",
+      "mcp__ctxopt__session_stats",
+      "mcp__ctxopt__register_model"
+    ]
+  }
+}
+```
+
+This configuration:
+- Enables the CtxOpt MCP server
+- Pre-approves core tools for seamless usage
+- Works with both global and local installations

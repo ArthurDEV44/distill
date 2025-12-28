@@ -9,6 +9,8 @@
     "guides/claude-code",
     "guides/cursor",
     "guides/windsurf",
+    "---Configuration---",
+    "guides/settings-local",
     "guides/claude-md-setup",
     "---Reference---",
     "troubleshooting"
