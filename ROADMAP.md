@@ -202,6 +202,8 @@ session_stats()
 
 ### 5.1 IDE-Specific Optimizations
 
+**Status: Complete**
+
 | IDE | Integration |
 |-----|-------------|
 | Claude Code | Native MCP (current) |
@@ -209,23 +211,27 @@ session_stats()
 | Windsurf | MCP server config |
 | VS Code + Continue | MCP adapter |
 
-- [ ] One-click setup scripts per IDE
-- [ ] IDE-specific configuration templates
-- [ ] Integration documentation
+- [x] One-click setup scripts per IDE (`scripts/install.sh`, `install.ps1`)
+- [x] IDE-specific configuration templates (`ctxopt-mcp setup`)
+- [x] Integration documentation (`docs/guides/`)
 
 ### 5.2 CI/CD Integration
 
+**Status: Complete**
+
 ```yaml
 # GitHub Actions example
-- uses: ctxopt/action@v1
+- uses: ctxopt/analyze-action@v1
   with:
-    analyze: true
-    report: token-usage.json
+    patterns: 'src/**/*.{ts,js}'
+    threshold: 2000
+    fail-on-threshold: false
 ```
 
-- [ ] GitHub Action for token usage analysis
-- [ ] Pre-commit hook for large file warnings
-- [ ] PR comment with optimization suggestions
+- [x] GitHub Action for token usage analysis (`action/action.yml`)
+- [x] Pre-commit hook for large file warnings (`scripts/pre-commit-hook.sh`)
+- [x] CLI analyze command (`ctxopt-mcp analyze`)
+- [ ] PR comment with optimization suggestions (future enhancement)
 
 ---
 
@@ -314,13 +320,20 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 - Composable pipelines
 - Improved session analytics
 
-### v0.4.0 (In Progress)
+### v0.5.0 (Current)
+- Phase 5: Ecosystem Integration
+- GitHub Action for token usage analysis (`action/action.yml`)
+- Pre-commit hook for large file warnings (`scripts/pre-commit-hook.sh`)
+- CLI `analyze` command for codebase token analysis
+- Phase 5.1: IDE setup scripts and documentation (already existed)
+
+### v0.4.0
 - `ctx.git.*` module: diff, log, blame, status, branch
 - `ctx.search.*` module: grep, symbols, files, references
 - `ctx.analyze.*` module: dependencies, callGraph, exports, structure
 - `ctx.pipeline` module: composable pipelines with DSL and templates
 - Git sandbox security: blocked network commands, argument sanitization
-- Pipeline result caching with SmartCache integration
+- Pipeline result caching with TTL-based expiration
 - SDK.md documentation with comprehensive examples
 - `detect_retry_loop` tool: command history analysis, pattern detection, suggestions
 - `session_stats` tool: per-session analytics, token savings, cost estimation

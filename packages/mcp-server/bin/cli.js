@@ -3,6 +3,7 @@
 import { runServer } from "../dist/server.js";
 import { setup, parseSetupArgs } from "../dist/cli/setup.js";
 import { doctor } from "../dist/cli/doctor.js";
+import { runAnalyze } from "../dist/cli/analyze.js";
 import { getPackageVersion, COLORS, log } from "../dist/cli/utils.js";
 
 const args = process.argv.slice(2);
@@ -21,6 +22,7 @@ ${COLORS.bright}Commands:${COLORS.reset}
   serve             Start the MCP server (stdio mode)
   setup             Configure IDEs to use CtxOpt
   doctor            Check installation and configuration
+  analyze           Analyze files for token usage
 
 ${COLORS.bright}Setup Options:${COLORS.reset}
   --claude          Configure Claude Code only
@@ -33,6 +35,12 @@ ${COLORS.bright}Server Options:${COLORS.reset}
   --lazy            Enable lazy mode (95% token savings, only 2 meta-tools)
   --mode <mode>     Loading mode: lazy|core|all (default: core)
   --verbose         Enable verbose logging (shows tool calls, timing, tokens)
+
+${COLORS.bright}Analyze Options:${COLORS.reset}
+  --patterns, -p    Glob patterns to match (default: **/*.{ts,tsx,js,jsx,py,go,rs})
+  --threshold, -t   Token threshold for warnings (default: 2000)
+  --json, -j        Output as JSON
+  --output, -o      Write report to file
 
 ${COLORS.bright}Other Options:${COLORS.reset}
   --version, -v     Show version number
@@ -48,6 +56,8 @@ ${COLORS.bright}Examples:${COLORS.reset}
   ctxopt-mcp serve                    Start MCP server (used by IDE)
   ctxopt-mcp serve --lazy             Start with lazy mode (95% savings)
   ctxopt-mcp serve --verbose          Start with verbose logging
+  ctxopt-mcp analyze                  Analyze token usage in codebase
+  ctxopt-mcp analyze -t 5000 --json   Custom threshold, JSON output
 
 ${COLORS.bright}Documentation:${COLORS.reset}
   https://ctxopt.dev/docs
@@ -101,6 +111,11 @@ async function main() {
 
     case "doctor": {
       await doctor();
+      break;
+    }
+
+    case "analyze": {
+      await runAnalyze(args.slice(1));
       break;
     }
 
