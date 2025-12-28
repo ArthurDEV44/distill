@@ -408,7 +408,7 @@ function useIsMobile(): boolean {
     const checkMobile = () => {
       setIsMobile(
         /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-        window.innerWidth < 768
+          window.innerWidth < 768
       );
     };
     window.addEventListener('resize', checkMobile);

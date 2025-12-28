@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { Terminal, Bot, Plug, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import { Button } from '../ui/Button';
 import CosmicBackground from './CosmicBackground';
 import { useHydrated } from '@/hooks';
 
@@ -114,13 +114,9 @@ function HeroStatic() {
 
         {/* CTA */}
         <div className="flex flex-col sm:flex-row items-center gap-5 pt-6 w-full justify-center">
-          <Link
-            href="/docs"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-300 bg-tech-accent text-tech-black hover:bg-tech-accent/90 shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)]"
-          >
-            <Terminal size={18} />
+          <Button variant="primary" icon={<Terminal size={18} />} href="/docs">
             Activer les Agents
-          </Link>
+          </Button>
         </div>
 
         {/* Tech indicators */}
@@ -189,13 +185,9 @@ function HeroAnimated() {
           variants={fadeInUp}
           className="flex flex-col sm:flex-row items-center gap-5 pt-6 w-full justify-center"
         >
-          <Link
-            href="/docs"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-300 bg-tech-accent text-tech-black hover:bg-tech-accent/90 shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)]"
-          >
-            <Terminal size={18} />
+          <Button variant="primary" icon={<Terminal size={18} />} href="/docs">
             Activer les Agents
-          </Link>
+          </Button>
         </motion.div>
 
         {/* Tech indicators */}
@@ -255,13 +247,9 @@ const Hero = () => {
             et entrez dans une nouvelle dimension de l&apos;ingénierie logicielle.
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-5 pt-6 w-full justify-center">
-            <Link
-              href="/docs"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-300 bg-tech-accent text-tech-black hover:bg-tech-accent/90 shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)]"
-            >
-              <Terminal size={18} />
+            <Button variant="primary" icon={<Terminal size={18} />} href="/docs">
               Activer les Agents
-            </Link>
+            </Button>
           </div>
           <div className="pt-16 flex items-center justify-center gap-12 opacity-40 hover:opacity-100 transition-opacity duration-700">
             <TechIndicator icon={Bot} label="29 Agents" />

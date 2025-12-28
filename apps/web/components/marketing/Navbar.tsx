@@ -51,9 +51,6 @@ const Navbar: React.FC = () => {
           <a href="#" className="text-gray-400 hover:text-white transition-colors">
             <Github size={20} />
           </a>
-          <button className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-sm font-medium text-white transition-all">
-            Login
-          </button>
         </div>
 
         {/* Mobile Toggle */}
@@ -78,10 +75,6 @@ const Navbar: React.FC = () => {
               {link.label}
             </a>
           ))}
-          <div className="h-px bg-white/10 my-2"></div>
-          <button className="w-full py-3 bg-white/10 rounded text-center text-white font-medium">
-            Login
-          </button>
         </div>
       )}
     </nav>
