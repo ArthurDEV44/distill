@@ -8,7 +8,10 @@ import { describe, it, expect } from "vitest";
 import {
   serializeToolsToToon,
   serializeToolsToToonTabular,
+  serializeMetadataToToon,
+  serializeMetadataToToonTabular,
   compareTokens,
+  type ToolMetadataLite,
 } from "./toon-serializer.js";
 import type { ToolDefinition } from "../tools/registry.js";
 
@@ -236,5 +239,111 @@ describe("TOON Format Compliance", () => {
     for (const line of toolLines) {
       expect(line.startsWith("  ")).toBe(true);
     }
+  });
+});
+
+// Sample metadata for lazy loading tests
+const sampleMetadata: ToolMetadataLite[] = [
+  {
+    name: "auto_optimize",
+    category: "core",
+    description: "Auto-detect content type and apply optimal compression",
+  },
+  {
+    name: "smart_file_read",
+    category: "core",
+    description: "Read files with AST-based extraction",
+  },
+  {
+    name: "compress_context",
+    category: "compress",
+    description: "Compress generic text content (logs, configs)",
+  },
+  {
+    name: "summarize_logs",
+    category: "logs",
+    description: "Summarize verbose log output",
+  },
+];
+
+describe("Lightweight Metadata TOON Serialization", () => {
+  describe("serializeMetadataToToon", () => {
+    it("should serialize metadata without loading tools", () => {
+      const result = serializeMetadataToToon(sampleMetadata, { groupByCategory: false });
+
+      expect(result).toContain("tools[4]:");
+      expect(result).toContain("auto_optimize");
+      expect(result).toContain("smart_file_read");
+      expect(result).toContain("compress_context");
+    });
+
+    it("should group by category when requested", () => {
+      const result = serializeMetadataToToon(sampleMetadata, { groupByCategory: true });
+
+      expect(result).toContain("core[2]:");
+      expect(result).toContain("compress[1]:");
+      expect(result).toContain("logs[1]:");
+    });
+
+    it("should use arrow notation for descriptions", () => {
+      const result = serializeMetadataToToon(sampleMetadata);
+
+      expect(result).toContain("→");
+      expect(result).toContain("auto_optimize → Auto-detect");
+    });
+
+    it("should truncate long descriptions", () => {
+      const longMeta: ToolMetadataLite[] = [
+        {
+          name: "long_tool",
+          category: "core",
+          description: "This is a very long description that should be truncated to save tokens",
+        },
+      ];
+
+      const result = serializeMetadataToToon(longMeta);
+      expect(result).toContain("...");
+    });
+  });
+
+  describe("serializeMetadataToToonTabular", () => {
+    it("should serialize metadata to tabular format", () => {
+      const result = serializeMetadataToToonTabular(sampleMetadata);
+
+      expect(result).toContain("tools[4]{name,desc}:");
+      expect(result).toContain("auto_optimize,");
+    });
+
+    it("should handle descriptions with commas", () => {
+      const commasMeta: ToolMetadataLite[] = [
+        {
+          name: "comma_tool",
+          category: "core",
+          description: "First, second, third",
+        },
+      ];
+
+      const result = serializeMetadataToToonTabular(commasMeta);
+      // Should quote the description
+      expect(result).toContain('"First, second, third"');
+    });
+  });
+
+  describe("Token comparison", () => {
+    it("should be more compact than full TOON with parameters", () => {
+      const metaResult = serializeMetadataToToon(sampleMetadata);
+      const fullResult = serializeToolsToToon(sampleTools);
+
+      // Metadata-only should be shorter (no parameter info)
+      expect(metaResult.length).toBeLessThan(fullResult.length);
+    });
+
+    it("should show significant savings for lazy loading", () => {
+      const metaResult = serializeMetadataToToonTabular(sampleMetadata);
+
+      // Very compact output
+      const lines = metaResult.split("\n");
+      expect(lines.length).toBe(5); // header + 4 tools
+    });
   });
 });

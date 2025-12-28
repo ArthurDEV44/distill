@@ -12,7 +12,10 @@ import { getDynamicLoader, TOOL_CATALOG, type ToolCategory } from "./dynamic-loa
 import {
   serializeToolsToToon,
   serializeToolsToToonTabular,
+  serializeMetadataToToon,
+  serializeMetadataToToonTabular,
   compareTokens,
+  type ToolMetadataLite,
 } from "../utils/toon-serializer.js";
 
 // Minimal schema - descriptions in tool description, not properties
@@ -80,6 +83,9 @@ async function executeDiscoverTools(
 
 /**
  * Format output as TOON (Token-Oriented Object Notation)
+ *
+ * When load=false, uses lightweight metadata-only TOON (no schema loading).
+ * When load=true, loads full definitions and includes parameter info.
  */
 async function formatToonOutput(
   matches: Array<{ name: string; category: ToolCategory; description: string }>,
@@ -93,34 +99,50 @@ async function formatToonOutput(
     };
   }
 
-  // Load full tool definitions to get schemas
   const loader = getDynamicLoader();
-  const toolDefs = await loader.loadByNames(matches.map((m) => m.name));
-
-  // Build category map
-  const categories = new Map<string, string>();
-  for (const m of matches) {
-    categories.set(m.name, m.category);
-  }
-
-  // Serialize to TOON
   let toonOutput: string;
-  if (format === "toon-tabular") {
-    toonOutput = serializeToolsToToonTabular(toolDefs);
+  let savingsNote: string;
+
+  if (load) {
+    // Load full tool definitions to get schemas for detailed TOON output
+    const toolDefs = await loader.loadByNames(matches.map((m) => m.name));
+
+    // Build category map
+    const categories = new Map<string, string>();
+    for (const m of matches) {
+      categories.set(m.name, m.category);
+    }
+
+    // Serialize to full TOON with parameters
+    if (format === "toon-tabular") {
+      toonOutput = serializeToolsToToonTabular(toolDefs);
+    } else {
+      toonOutput = serializeToolsToToon(toolDefs, {
+        groupByCategory: true,
+        categories,
+      });
+    }
+
+    const stats = compareTokens(toolDefs);
+    savingsNote = `[tokens] json:${stats.json} → toon:${format === "toon-tabular" ? stats.toonTabular : stats.toon} (-${stats.savings}%)`;
   } else {
-    toonOutput = serializeToolsToToon(toolDefs, {
-      groupByCategory: true,
-      categories,
-    });
+    // Use lightweight metadata-only TOON (no loading required)
+    const metadata: ToolMetadataLite[] = matches.map((m) => ({
+      name: m.name,
+      category: m.category,
+      description: m.description,
+    }));
+
+    if (format === "toon-tabular") {
+      toonOutput = serializeMetadataToToonTabular(metadata);
+    } else {
+      toonOutput = serializeMetadataToToon(metadata, { groupByCategory: true });
+    }
+
+    savingsNote = "[lazy] metadata only (use load:true for full schemas)";
   }
 
-  // Add token savings info
-  const stats = compareTokens(toolDefs);
-  const lines = [
-    toonOutput,
-    "",
-    `[tokens] json:${stats.json} → toon:${format === "toon-tabular" ? stats.toonTabular : stats.toon} (-${stats.savings}%)`,
-  ];
+  const lines = [toonOutput, "", savingsNote];
 
   if (load) {
     lines.push(`[loaded] ${loadedCount} tools activated`);

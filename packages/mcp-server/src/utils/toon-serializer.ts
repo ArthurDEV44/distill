@@ -8,7 +8,18 @@
  */
 
 import type { ToolDefinition } from "../tools/registry.js";
+import type { ToolCategory } from "../tools/dynamic-loader.js";
 import { countTokens } from "./token-counter.js";
+
+/**
+ * Lightweight tool metadata for lazy serialization
+ */
+export interface ToolMetadataLite {
+  name: string;
+  category: ToolCategory;
+  description: string;
+  keywords?: string[];
+}
 
 export interface ToonSerializerOptions {
   /** Include parameter details (default: true) */
@@ -239,4 +250,78 @@ export function compareTokens(
     toonTabular: toonTabularTokens,
     savings,
   };
+}
+
+/**
+ * Serialize tool metadata to lightweight TOON format (no schema loading)
+ *
+ * Used for lazy loading - shows available tools without loading full definitions.
+ * Output format:
+ * ```
+ * tools[N]:
+ *   tool_name → Description [keywords]
+ *   ...
+ * ```
+ */
+export function serializeMetadataToToon(
+  metadata: ToolMetadataLite[],
+  options: { groupByCategory?: boolean } = {}
+): string {
+  const { groupByCategory = true } = options;
+  const lines: string[] = [];
+
+  if (groupByCategory) {
+    const byCategory = new Map<string, ToolMetadataLite[]>();
+
+    for (const tool of metadata) {
+      const cat = tool.category;
+      if (!byCategory.has(cat)) {
+        byCategory.set(cat, []);
+      }
+      byCategory.get(cat)!.push(tool);
+    }
+
+    for (const [cat, catTools] of byCategory) {
+      lines.push(`${cat}[${catTools.length}]:`);
+      for (const tool of catTools) {
+        const desc = tool.description.length > 50
+          ? tool.description.slice(0, 47) + "..."
+          : tool.description;
+        lines.push(`  ${tool.name} → ${desc}`);
+      }
+    }
+  } else {
+    lines.push(`tools[${metadata.length}]:`);
+    for (const tool of metadata) {
+      const desc = tool.description.length > 50
+        ? tool.description.slice(0, 47) + "..."
+        : tool.description;
+      lines.push(`  ${tool.name} → ${desc}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Serialize tool metadata to lightweight tabular TOON format
+ */
+export function serializeMetadataToToonTabular(
+  metadata: ToolMetadataLite[]
+): string {
+  const lines: string[] = [];
+  lines.push(`tools[${metadata.length}]{name,desc}:`);
+
+  for (const tool of metadata) {
+    let desc = tool.description.length > 50
+      ? tool.description.slice(0, 47) + "..."
+      : tool.description;
+    // Escape commas
+    if (desc.includes(",")) {
+      desc = `"${desc.replace(/"/g, '""')}"`;
+    }
+    lines.push(`  ${tool.name},${desc}`);
+  }
+
+  return lines.join("\n");
 }
