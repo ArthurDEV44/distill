@@ -8,12 +8,13 @@
 import type { ToolDefinition } from "./registry.js";
 import { getDynamicLoader, type ToolCategory } from "./dynamic-loader.js";
 
+// Minimal schema - descriptions in tool description, not properties
 const discoverToolsSchema = {
   type: "object" as const,
   properties: {
-    query: { type: "string", description: "Search by keyword" },
-    category: { type: "string", enum: ["compress", "analyze", "logs", "code", "pipeline"] },
-    load: { type: "boolean", description: "Load tools immediately" },
+    query: { type: "string" },
+    category: { enum: ["compress", "analyze", "logs", "code", "pipeline"] },
+    load: { type: "boolean" },
   },
 };
 

@@ -17,13 +17,14 @@ import { countTokens } from "../utils/token-counter.js";
 
 type OutputFormat = "plain" | "markdown";
 
+// Minimal schema - format rarely used, keep only essential properties
 const autoOptimizeSchema = {
   type: "object" as const,
   properties: {
     content: { type: "string" },
-    hint: { type: "string", enum: ["build", "logs", "errors", "code", "auto"] },
+    hint: { enum: ["build", "logs", "errors", "code", "auto"] },
     aggressive: { type: "boolean" },
-    format: { type: "string", enum: ["plain", "markdown"] },
+    format: { enum: ["plain", "markdown"] },
   },
   required: ["content"],
 };

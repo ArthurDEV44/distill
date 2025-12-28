@@ -108,30 +108,25 @@ function validatePath(
   return { safe: true, resolvedPath };
 }
 
+// Minimal schema for MCP - removes rarely-used properties to save tokens
+// Full validation is done by Zod inputSchema below
 export const smartFileReadSchema = {
   type: "object" as const,
   properties: {
-    filePath: { type: "string", description: "Path to file" },
+    filePath: { type: "string" },
     target: {
-      type: "object",
       properties: {
-        type: { type: "string", enum: ["function", "class", "interface", "type", "variable", "method"] },
+        type: { enum: ["function", "class", "interface", "type", "variable", "method"] },
         name: { type: "string" },
       },
-      required: ["type", "name"],
     },
     query: { type: "string" },
     lines: {
-      type: "object",
       properties: { start: { type: "number" }, end: { type: "number" } },
-      required: ["start", "end"],
     },
     skeleton: { type: "boolean" },
-    cache: { type: "boolean" },
-    language: { type: "string" },
-    format: { type: "string", enum: ["plain", "markdown"] },
-    includeImports: { type: "boolean" },
-    includeComments: { type: "boolean" },
+    // Rarely-used properties omitted from schema but still supported:
+    // cache, language, format, includeImports, includeComments
   },
   required: ["filePath"],
 };

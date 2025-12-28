@@ -35,12 +35,14 @@ import type { ToolDefinition } from "./registry.js";
 /**
  * Maximum tokens allowed per tool definition.
  * These are intentionally tight to catch any bloat early.
+ *
+ * 2024-12: Tightened budgets after schema optimization
  */
 const TOKEN_BUDGETS = {
-  // Core tools (always loaded) - keep minimal
-  auto_optimize: 100,
-  smart_file_read: 200,
-  discover_tools: 100,
+  // Core tools (always loaded) - ultra-minimal
+  auto_optimize: 90,
+  smart_file_read: 120, // Reduced from 200
+  discover_tools: 75,
 
   // Compress category
   compress_context: 120,
@@ -67,8 +69,9 @@ const TOKEN_BUDGETS = {
 /**
  * Maximum tokens for the entire ListTools response (core tools only).
  * Currently: auto_optimize + smart_file_read + discover_tools
+ * 2024-12: Reduced from 500 after schema optimization
  */
-const CORE_TOOLS_BUDGET = 500;
+const CORE_TOOLS_BUDGET = 300;
 
 /**
  * Maximum tokens for all tools combined.
@@ -325,11 +328,16 @@ describe("Regression Prevention", () => {
    * Snapshot of current token counts.
    * Update these when intentionally adding features.
    * Any unexpected change will fail the test.
+   *
+   * 2024-12: Optimized schemas to reduce token overhead
+   * - Removed property descriptions (moved to tool description)
+   * - Removed rarely-used properties from public schema
+   * - Simplified nested object type declarations
    */
   const CURRENT_SNAPSHOT = {
-    auto_optimize: 88,
-    smart_file_read: 177,
-    discover_tools: 79,
+    auto_optimize: 80,
+    smart_file_read: 106,
+    discover_tools: 63,
   };
 
   // Tolerance: ±5 tokens for minor changes
