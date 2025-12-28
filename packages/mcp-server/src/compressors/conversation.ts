@@ -289,3 +289,305 @@ export function compressConversation(
     savings: Math.max(0, savings), // Ensure non-negative
   };
 }
+
+// ============================================
+// Memory Management (Phase 6.2)
+// ============================================
+
+/**
+ * Decision extracted from conversation
+ */
+export interface Decision {
+  decision: string;
+  context: string;
+  timestamp: number;
+}
+
+/**
+ * Code reference from conversation
+ */
+export interface CodeReference {
+  file: string;
+  element?: string;
+  action: "created" | "modified" | "discussed" | "deleted";
+}
+
+/**
+ * Conversation memory state
+ */
+export interface ConversationMemory {
+  /** Rolling summary of conversation */
+  summary: string;
+  /** Key decisions made */
+  decisions: Decision[];
+  /** Code references mentioned */
+  codeReferences: CodeReference[];
+  /** Compressed message history */
+  compressedHistory: ConversationMessage[];
+  /** Timestamp of last update */
+  lastUpdated: number;
+}
+
+/**
+ * Options for memory restoration
+ */
+export interface MemoryRestoreOptions {
+  /** Include full summary */
+  includeSummary?: boolean;
+  /** Number of recent messages to include */
+  recentMessages?: number;
+  /** Include code references */
+  includeCodeRefs?: boolean;
+  /** Include decisions */
+  includeDecisions?: boolean;
+}
+
+/**
+ * Result of conversation memory operation
+ */
+export interface ConversationMemoryResult {
+  /** Restored context string */
+  context: string;
+  /** Memory state */
+  memory: ConversationMemory;
+  /** Statistics */
+  stats: {
+    originalTokens: number;
+    compressedTokens: number;
+    decisionsExtracted: number;
+    codeRefsFound: number;
+  };
+}
+
+/**
+ * Extract decisions from messages with enhanced patterns
+ */
+export function extractDecisions(messages: ConversationMessage[]): Decision[] {
+  const decisions: Decision[] = [];
+  const now = Date.now();
+
+  // Decision patterns
+  const decisionPatterns = [
+    // Direct decisions
+    /(?:decided|will|going to|let's|I'll|we'll|we should)\s+(.{10,150})/gi,
+    // Plans and approaches
+    /(?:the approach|the solution|the plan|strategy)\s+(?:is|will be)\s+(.{10,150})/gi,
+    // Requirements
+    /(?:we need to|must|should|have to)\s+(.{10,150})/gi,
+    // Completed actions
+    /(?:done|completed|finished|implemented|created|fixed|updated):\s*(.{10,150})/gi,
+  ];
+
+  for (const msg of messages) {
+    if (msg.role === "system") continue;
+
+    const lines = msg.content.split("\n");
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length < 15 || trimmed.length > 300) continue;
+
+      for (const pattern of decisionPatterns) {
+        pattern.lastIndex = 0; // Reset regex state
+        const match = pattern.exec(trimmed);
+        if (match && match[1]) {
+          const decision = match[1].trim();
+          // Avoid duplicates
+          if (!decisions.some((d) => d.decision === decision)) {
+            decisions.push({
+              decision,
+              context: trimmed.slice(0, 200),
+              timestamp: now,
+            });
+          }
+        }
+      }
+
+      // Also check for numbered list items that look like decisions
+      if (/^\d+\.\s+/.test(trimmed)) {
+        const item = trimmed.replace(/^\d+\.\s+/, "").trim();
+        if (
+          item.length > 15 &&
+          item.length < 200 &&
+          !decisions.some((d) => d.decision === item)
+        ) {
+          decisions.push({
+            decision: item,
+            context: trimmed,
+            timestamp: now,
+          });
+        }
+      }
+    }
+  }
+
+  // Limit to 20 most recent decisions
+  return decisions.slice(-20);
+}
+
+/**
+ * Extract code references from messages
+ */
+export function extractCodeReferences(
+  messages: ConversationMessage[]
+): CodeReference[] {
+  const refs: CodeReference[] = [];
+  const seenFiles = new Set<string>();
+
+  // File path pattern
+  const filePattern =
+    /[a-zA-Z0-9_\-./]+\.(ts|js|tsx|jsx|py|go|rs|json|yaml|yml|md|css|scss|html)\b/g;
+
+  // Action patterns
+  const actionPatterns: Array<{ pattern: RegExp; action: CodeReference["action"] }> = [
+    { pattern: /\b(created?|add(?:ed|ing)?|writ(?:e|ing|ten))\b/i, action: "created" },
+    { pattern: /\b(modif(?:y|ied|ying)|updat(?:e|ed|ing)|chang(?:e|ed|ing)|edit(?:ed|ing)?)\b/i, action: "modified" },
+    { pattern: /\b(delet(?:e|ed|ing)|remov(?:e|ed|ing))\b/i, action: "deleted" },
+  ];
+
+  for (const msg of messages) {
+    const content = msg.content;
+    let match;
+
+    while ((match = filePattern.exec(content)) !== null) {
+      const file = match[0];
+      if (seenFiles.has(file)) continue;
+      seenFiles.add(file);
+
+      // Find surrounding context to determine action
+      const start = Math.max(0, match.index - 50);
+      const end = Math.min(content.length, match.index + file.length + 50);
+      const context = content.slice(start, end).toLowerCase();
+
+      let action: CodeReference["action"] = "discussed";
+      for (const { pattern, action: act } of actionPatterns) {
+        if (pattern.test(context)) {
+          action = act;
+          break;
+        }
+      }
+
+      refs.push({ file, action });
+    }
+  }
+
+  // Limit to 30 most relevant
+  return refs.slice(0, 30);
+}
+
+/**
+ * Create conversation memory from messages
+ */
+export function createMemory(
+  messages: ConversationMessage[],
+  options: ConversationCompressOptions
+): ConversationMemory {
+  const summary = createRollingSummary(messages);
+  const decisions = extractDecisions(messages);
+  const codeReferences = extractCodeReferences(messages);
+
+  // Compress messages using hybrid strategy
+  const result = compressConversation(messages, {
+    ...options,
+    strategy: "hybrid",
+  });
+
+  return {
+    summary,
+    decisions,
+    codeReferences,
+    compressedHistory: result.compressedMessages,
+    lastUpdated: Date.now(),
+  };
+}
+
+/**
+ * Restore context from memory state
+ */
+export function restoreContext(
+  memory: ConversationMemory,
+  options: MemoryRestoreOptions = {}
+): string {
+  const {
+    includeSummary = true,
+    recentMessages = 3,
+    includeCodeRefs = true,
+    includeDecisions = true,
+  } = options;
+
+  const parts: string[] = [];
+
+  // Add summary
+  if (includeSummary && memory.summary) {
+    parts.push("[Previous Context]");
+    parts.push(memory.summary);
+    parts.push("");
+  }
+
+  // Add decisions
+  if (includeDecisions && memory.decisions.length > 0) {
+    parts.push("[Key Decisions]");
+    for (const decision of memory.decisions.slice(-10)) {
+      parts.push(`- ${decision.decision}`);
+    }
+    parts.push("");
+  }
+
+  // Add code references
+  if (includeCodeRefs && memory.codeReferences.length > 0) {
+    parts.push("[Code References]");
+    const byAction = new Map<string, string[]>();
+
+    for (const ref of memory.codeReferences) {
+      if (!byAction.has(ref.action)) {
+        byAction.set(ref.action, []);
+      }
+      byAction.get(ref.action)!.push(ref.file);
+    }
+
+    for (const [action, files] of byAction) {
+      parts.push(`${action}: ${files.slice(0, 10).join(", ")}`);
+    }
+    parts.push("");
+  }
+
+  // Add recent messages
+  if (recentMessages > 0 && memory.compressedHistory.length > 0) {
+    parts.push("[Recent Messages]");
+    const recent = memory.compressedHistory.slice(-recentMessages);
+    for (const msg of recent) {
+      const preview = msg.content.slice(0, 200);
+      parts.push(`${msg.role}: ${preview}${msg.content.length > 200 ? "..." : ""}`);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+/**
+ * Compress conversation and create memory result
+ */
+export function compressConversationWithMemory(
+  messages: ConversationMessage[],
+  options: ConversationCompressOptions
+): ConversationMemoryResult {
+  const originalTokens = messages.reduce(
+    (sum, m) => sum + countTokens(m.content),
+    0
+  );
+
+  const memory = createMemory(messages, options);
+  const context = restoreContext(memory);
+  const compressedTokens = countTokens(context);
+
+  return {
+    context,
+    memory,
+    stats: {
+      originalTokens,
+      compressedTokens,
+      decisionsExtracted: memory.decisions.length,
+      codeRefsFound: memory.codeReferences.length,
+    },
+  };
+}

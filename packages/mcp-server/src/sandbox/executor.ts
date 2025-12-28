@@ -24,6 +24,8 @@ import {
   createSearchAPI,
   createAnalyzeAPI,
   createPipelineAPI,
+  createMultifileAPI,
+  createConversationAPI,
 } from "./sdk/index.js";
 import { analyzeCode, sanitizeError } from "./security/index.js";
 import { validatePath, validateGlobPattern } from "./security/path-validator.js";
@@ -143,6 +145,8 @@ function createSDK(workingDir: string): CtxOptSDK {
     search: createSearchAPI(workingDir, callbacks),
     analyze: createAnalyzeAPI(workingDir, callbacks),
     pipeline: createPipelineAPI(workingDir, callbacks),
+    multifile: createMultifileAPI(workingDir, callbacks),
+    conversation: createConversationAPI(workingDir, callbacks),
   };
 }
 

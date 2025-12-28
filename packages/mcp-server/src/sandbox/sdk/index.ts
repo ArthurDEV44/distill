@@ -11,4 +11,6 @@ export { createGitAPI } from "./git.js";
 export { createSearchAPI } from "./search.js";
 export { createAnalyzeAPI } from "./analyze.js";
 export { createPipelineAPI } from "./pipeline.js";
+export { createMultifileAPI } from "./multifile.js";
+export { createConversationAPI } from "./conversation.js";
 export * from "./utils.js";

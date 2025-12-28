@@ -146,6 +146,36 @@ export interface CtxOptSDK {
     findUsages: (symbol: string, glob?: string) => SymbolUsage;
     analyzeDeps: (file: string, depth?: number) => DependencyAnalysis;
   };
+
+  multifile: {
+    compress: (
+      patterns: string[],
+      options?: MultiFileCompressOptions
+    ) => MultiFileCompressResult;
+    extractShared: (patterns: string[]) => SharedElements;
+    chunk: (patterns: string[], maxTokensPerChunk: number) => ChunkInfo[];
+    skeletons: (patterns: string[], depth?: number) => string;
+    readAll: (patterns: string[]) => string;
+  };
+
+  conversation: {
+    compress: (
+      messages: ConversationMessage[],
+      options?: ConversationCompressOptions
+    ) => ConversationCompressResult;
+    createMemory: (
+      messages: ConversationMessage[],
+      options?: ConversationCompressOptions
+    ) => ConversationMemoryResult;
+    extractDecisions: (messages: ConversationMessage[]) => Decision[];
+    extractCodeRefs: (messages: ConversationMessage[]) => CodeReference[];
+    restore: (options?: MemoryRestoreOptions) => string;
+    getMemory: () => ConversationMemory | null;
+    setMemory: (memory: ConversationMemory) => void;
+    clearMemory: () => void;
+    hasMemory: () => boolean;
+    getSummary: () => ConversationMemorySummary | null;
+  };
 }
 
 /**
@@ -458,4 +488,155 @@ export interface DependencyAnalysis {
   transitiveDeps: string[];
   externalPackages: string[];
   circularDeps: string[];
+}
+
+// ============================================
+// Multi-File Types (Phase 6.1)
+// ============================================
+
+/**
+ * Multi-file compression options
+ */
+export interface MultiFileCompressOptions {
+  maxTokens?: number;
+  strategy?: "deduplicate" | "skeleton" | "smart-chunk";
+  preservePatterns?: string[];
+}
+
+/**
+ * Multi-file compression result
+ */
+export interface MultiFileCompressResult {
+  compressed: string;
+  filesIncluded: string[];
+  sharedElements: SharedElements;
+  stats: {
+    originalTokens: number;
+    compressedTokens: number;
+    filesProcessed: number;
+    deduplicatedItems: number;
+    reductionPercent: number;
+  };
+}
+
+/**
+ * Shared elements across files
+ */
+export interface SharedElements {
+  imports: Array<{ source: string; names: string[]; usedIn: string[] }>;
+  types: Array<{
+    name: string;
+    kind: string;
+    definition: string;
+    usedIn: string[];
+  }>;
+  constants: Array<{ name: string; value: string; usedIn: string[] }>;
+}
+
+/**
+ * Chunk information for smart chunking
+ */
+export interface ChunkInfo {
+  id: string;
+  files: string[];
+  tokens: number;
+  dependencies: string[];
+}
+
+// ============================================
+// Conversation Types (Phase 6.2)
+// ============================================
+
+/**
+ * Conversation message
+ */
+export interface ConversationMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+/**
+ * Conversation compression options
+ */
+export interface ConversationCompressOptions {
+  strategy: "rolling-summary" | "key-extraction" | "hybrid";
+  maxTokens: number;
+  preserveSystem?: boolean;
+  preserveLastN?: number;
+}
+
+/**
+ * Conversation compression result
+ */
+export interface ConversationCompressResult {
+  compressedMessages: ConversationMessage[];
+  summary?: string;
+  keyPoints?: string[];
+  originalTokens: number;
+  compressedTokens: number;
+  savings: number;
+}
+
+/**
+ * Decision extracted from conversation
+ */
+export interface Decision {
+  decision: string;
+  context: string;
+  timestamp: number;
+}
+
+/**
+ * Code reference from conversation
+ */
+export interface CodeReference {
+  file: string;
+  element?: string;
+  action: "created" | "modified" | "discussed" | "deleted";
+}
+
+/**
+ * Conversation memory state
+ */
+export interface ConversationMemory {
+  summary: string;
+  decisions: Decision[];
+  codeReferences: CodeReference[];
+  compressedHistory: ConversationMessage[];
+  lastUpdated: number;
+}
+
+/**
+ * Options for memory restoration
+ */
+export interface MemoryRestoreOptions {
+  includeSummary?: boolean;
+  recentMessages?: number;
+  includeCodeRefs?: boolean;
+  includeDecisions?: boolean;
+}
+
+/**
+ * Conversation memory result
+ */
+export interface ConversationMemoryResult {
+  context: string;
+  memory: ConversationMemory;
+  stats: {
+    originalTokens: number;
+    compressedTokens: number;
+    decisionsExtracted: number;
+    codeRefsFound: number;
+  };
+}
+
+/**
+ * Conversation memory summary
+ */
+export interface ConversationMemorySummary {
+  summary: string;
+  decisionsCount: number;
+  codeRefsCount: number;
+  messagesCount: number;
+  lastUpdated: number;
 }

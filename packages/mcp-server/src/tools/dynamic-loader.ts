@@ -184,6 +184,29 @@ export const TOOL_CATALOG: ToolMetadata[] = [
     description: "Get session-wide token savings and usage statistics",
     loader: async () => (await import("./session-stats.js")).sessionStatsTool,
   },
+
+  // Phase 6: Advanced Compression
+  {
+    name: "set_output_config",
+    category: "pipeline",
+    keywords: ["config", "output", "format", "toon", "verbosity", "settings"],
+    description: "Configure global output format and verbosity",
+    loader: async () => (await import("./set-output-config.js")).setOutputConfigTool,
+  },
+  {
+    name: "multifile_compress",
+    category: "compress",
+    keywords: ["multifile", "deduplicate", "shared", "imports", "types", "chunk", "context"],
+    description: "Compress multiple files with cross-file deduplication",
+    loader: async () => (await import("./multifile-compress.js")).multifileCompressTool,
+  },
+  {
+    name: "conversation_memory",
+    category: "compress",
+    keywords: ["conversation", "memory", "decisions", "restore", "context", "history"],
+    description: "Manage long conversation context with decision extraction",
+    loader: async () => (await import("./conversation-memory.js")).conversationMemoryTool,
+  },
 ];
 
 /**

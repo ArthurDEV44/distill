@@ -237,25 +237,27 @@ session_stats()
 
 ## Phase 6: Advanced Compression
 
+**Status: Complete**
+
 **Goal**: Push compression boundaries with advanced techniques.
 
 ### 6.1 Multi-File Context Compression
 
-- [ ] Cross-file deduplication (shared imports, types)
-- [ ] Dependency-aware skeleton extraction
-- [ ] Smart chunking for large codebases
+- [x] Cross-file deduplication (shared imports, types)
+- [x] Dependency-aware skeleton extraction
+- [x] Smart chunking for large codebases
 
 ### 6.2 Conversation Memory Compression
 
-- [ ] Long conversation summarization
-- [ ] Key decision extraction
-- [ ] Context restoration from compressed state
+- [x] Long conversation summarization
+- [x] Key decision extraction
+- [x] Context restoration from compressed state
 
 ### 6.3 Output Format Optimization
 
-- [ ] TOON format for all tool outputs
-- [ ] Configurable verbosity levels
-- [ ] Structured vs prose output modes
+- [x] TOON format for all tool outputs
+- [x] Configurable verbosity levels
+- [x] Structured vs prose output modes
 
 ---
 
@@ -315,12 +317,17 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 - Lazy MCP pattern
 - `code_execute` SDK
 
-### Next Release
-- Extended SDK (`ctx.search.*`, `ctx.analyze.*`)
-- Composable pipelines
-- Improved session analytics
+### v0.6.0 (Current)
+- Phase 6: Advanced Compression
+- `multifile_compress` tool: cross-file deduplication, smart chunking
+- `conversation_memory` tool: decision extraction, context restoration
+- `set_output_config` tool: global verbosity and format settings
+- `ctx.multifile` SDK module: compress, extractShared, chunk, skeletons
+- `ctx.conversation` SDK module: createMemory, extractDecisions, restore
+- TOON format support extended for generic result serialization
+- Enhanced conversation compressor with memory management
 
-### v0.5.0 (Current)
+### v0.5.0
 - Phase 5: Ecosystem Integration
 - GitHub Action for token usage analysis (`action/action.yml`)
 - Pre-commit hook for large file warnings (`scripts/pre-commit-hook.sh`)
