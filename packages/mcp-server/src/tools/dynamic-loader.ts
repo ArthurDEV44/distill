@@ -37,6 +37,13 @@ export const TOOL_CATALOG: ToolMetadata[] = [
     description: "Read files with AST-based extraction",
     loader: async () => (await import("./smart-file-read.js")).smartFileReadTool,
   },
+  {
+    name: "code_execute",
+    category: "core",
+    keywords: ["execute", "code", "sdk", "typescript", "script", "sandbox"],
+    description: "Execute TypeScript with ctxopt SDK (98% token savings)",
+    loader: async () => (await import("./code-execute.js")).codeExecuteTool,
+  },
 
   // Compress category
   {
