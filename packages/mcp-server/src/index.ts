@@ -7,7 +7,7 @@
  */
 
 // Server
-export { createServer, runServer, type ServerConfig, type ServerInstance } from "./server.js";
+export { createServer, runServer, type ServerConfig, type ServerInstance, type LoadingMode } from "./server.js";
 
 // State management
 
@@ -32,6 +32,13 @@ export {
   DynamicToolLoader,
 } from "./tools/dynamic-loader.js";
 export { discoverToolsTool } from "./tools/discover-tools.js";
+export {
+  browseToolsTool,
+  runToolTool,
+  lazyMcpTools,
+  setLazyMcpRegistry,
+  calculateLazySavings,
+} from "./tools/lazy-mcp.js";
 
 // Parsers
 export * from "./parsers/index.js";

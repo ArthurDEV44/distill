@@ -17,11 +17,21 @@ import { createLoggingMiddleware } from "./middleware/logging.js";
 import { createToolRegistry, type ToolRegistry } from "./tools/registry.js";
 import { getDynamicLoader, resetDynamicLoader } from "./tools/dynamic-loader.js";
 import { discoverToolsTool } from "./tools/discover-tools.js";
+import { lazyMcpTools, setLazyMcpRegistry, calculateLazySavings } from "./tools/lazy-mcp.js";
+
+export type LoadingMode = "lazy" | "core" | "all";
 
 export interface ServerConfig {
   verbose?: boolean;
   /** Load all tools at startup instead of using dynamic loading */
   loadAllTools?: boolean;
+  /**
+   * Tool loading mode:
+   * - "lazy": Only 2 meta-tools (browse_tools, run_tool) - 95% token savings
+   * - "core": Core tools + discover_tools (default)
+   * - "all": Load all tools at startup
+   */
+  mode?: LoadingMode;
 }
 
 export interface ServerInstance {
@@ -34,6 +44,9 @@ export interface ServerInstance {
  * Create and configure the MCP server
  */
 export async function createServer(config: ServerConfig = {}): Promise<ServerInstance> {
+  // Determine loading mode (support legacy loadAllTools option)
+  const mode: LoadingMode = config.mode ?? (config.loadAllTools ? "all" : "core");
+
   // Reset dynamic loader for fresh start
   resetDynamicLoader();
   const loader = getDynamicLoader();
@@ -46,18 +59,34 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
   const tools = createToolRegistry();
   tools.setMiddlewareChain(middleware);
 
-  // Register the discover_tools meta-tool (always available)
-  tools.register(discoverToolsTool);
+  // Load tools based on mode
+  if (mode === "lazy") {
+    // Lazy mode: Only 2 meta-tools (95% token savings)
+    for (const tool of lazyMcpTools) {
+      tools.register(tool);
+    }
+    // Connect registry to lazy-mcp for run_tool execution
+    setLazyMcpRegistry({
+      execute: async (name, args) => {
+        const result = await tools.execute(name, args);
+        return { content: result.content, isError: result.isError };
+      },
+    });
 
-  // Load tools based on configuration
-  if (config.loadAllTools) {
-    // Fallback: load all tools for clients that don't support dynamic loading
+    if (config.verbose) {
+      const savings = calculateLazySavings();
+      console.error(`[ctxopt] Lazy mode: ${savings.savingsPercent}% token savings`);
+    }
+  } else if (mode === "all") {
+    // All mode: Load all tools at startup
+    tools.register(discoverToolsTool);
     const allTools = await loader.loadAllTools();
     for (const tool of allTools) {
       tools.register(tool);
     }
   } else {
-    // Default: load only core tools (auto_optimize, smart_file_read)
+    // Core mode (default): Core tools + discover_tools
+    tools.register(discoverToolsTool);
     const coreTools = await loader.loadCoreTools();
     for (const tool of coreTools) {
       tools.register(tool);

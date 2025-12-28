@@ -30,6 +30,8 @@ ${COLORS.bright}Setup Options:${COLORS.reset}
   --force, -f       Overwrite existing configuration
 
 ${COLORS.bright}Server Options:${COLORS.reset}
+  --lazy            Enable lazy mode (95% token savings, only 2 meta-tools)
+  --mode <mode>     Loading mode: lazy|core|all (default: core)
   --verbose         Enable verbose logging (shows tool calls, timing, tokens)
 
 ${COLORS.bright}Other Options:${COLORS.reset}
@@ -44,6 +46,7 @@ ${COLORS.bright}Examples:${COLORS.reset}
   ctxopt-mcp setup --force            Overwrite existing configurations
   ctxopt-mcp doctor                   Verify installation
   ctxopt-mcp serve                    Start MCP server (used by IDE)
+  ctxopt-mcp serve --lazy             Start with lazy mode (95% savings)
   ctxopt-mcp serve --verbose          Start with verbose logging
 
 ${COLORS.bright}Documentation:${COLORS.reset}
@@ -70,8 +73,20 @@ async function main() {
 
   switch (command) {
     case "serve": {
+      // Parse mode option
+      let mode = "core";
+      const modeIndex = args.indexOf("--mode");
+      if (modeIndex !== -1 && args[modeIndex + 1]) {
+        mode = args[modeIndex + 1];
+      } else if (args.includes("--lazy")) {
+        mode = "lazy";
+      } else if (args.includes("--all")) {
+        mode = "all";
+      }
+
       const config = {
         verbose: args.includes("--verbose"),
+        mode,
       };
 
       await runServer(config);
