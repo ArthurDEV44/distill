@@ -17,11 +17,47 @@ import type {
   HostCallbacks,
 } from "../types.js";
 import { compressAuto, compressSemantic, compressLogs } from "./compress.js";
-import { parseFile } from "../../ast/index.js";
 import { detectLanguageFromPath } from "../../utils/language-detector.js";
 import { validateGlobPattern } from "../security/path-validator.js";
 
 const MAX_ITEMS = 1000;
+const CACHE_TTL_GLOB = 2 * 60 * 1000; // 2 minutes for glob results
+const CACHE_TTL_TEMPLATE = 5 * 60 * 1000; // 5 minutes for template methods
+
+/**
+ * Simple synchronous cache for pipeline results
+ * Uses a Map with TTL-based expiration
+ */
+interface PipelineCacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
+const pipelineCache = new Map<string, PipelineCacheEntry<unknown>>();
+
+function getCached<T>(key: string): T | null {
+  const entry = pipelineCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    pipelineCache.delete(key);
+    return null;
+  }
+  return entry.value as T;
+}
+
+function setCached<T>(key: string, value: T, ttl: number): void {
+  // Limit cache size to prevent memory issues
+  if (pipelineCache.size > 100) {
+    // Evict oldest entries
+    const now = Date.now();
+    for (const [k, v] of pipelineCache.entries()) {
+      if (v.expiresAt < now || pipelineCache.size > 50) {
+        pipelineCache.delete(k);
+      }
+    }
+  }
+  pipelineCache.set(key, { value, expiresAt: Date.now() + ttl });
+}
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
 /**
@@ -52,13 +88,21 @@ function matchGlob(filepath: string, pattern: string): boolean {
 }
 
 /**
- * Walk directory and find files matching pattern
+ * Walk directory and find files matching pattern (with caching)
  */
 function walkDirectory(
   dir: string,
   pattern: string,
   maxFiles: number = MAX_ITEMS
 ): string[] {
+  const cacheKey = `pipeline:glob:${dir}:${pattern}:${maxFiles}`;
+
+  // Check cache first
+  const cached = getCached<string[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const results: string[] = [];
 
   function walk(currentDir: string, relativePath: string = ""): void {
@@ -91,6 +135,10 @@ function walkDirectory(
   }
 
   walk(dir);
+
+  // Cache the results
+  setCached(cacheKey, results, CACHE_TTL_GLOB);
+
   return results;
 }
 
@@ -227,11 +275,18 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
   };
 
   /**
-   * Get codebase overview with statistics
+   * Get codebase overview with statistics (cached)
    */
   pipeline.codebaseOverview = (dir?: string): CodebaseOverview => {
     const targetDir = dir ?? ".";
     const fullPath = path.join(workingDir, targetDir);
+    const cacheKey = `pipeline:overview:${fullPath}`;
+
+    // Check cache first
+    const cached = getCached<CodebaseOverview>(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     const files = walkDirectory(fullPath, "**/*.{ts,tsx,js,jsx,py,go,rs,php,swift}");
     const languages: Record<string, number> = {};
@@ -272,20 +327,33 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
       })),
     };
 
-    return {
+    const result: CodebaseOverview = {
       totalFiles: files.length,
       totalLines,
       languages,
       largestFiles: fileSizes.slice(0, 10),
       structure,
     };
+
+    // Cache the result
+    setCached(cacheKey, result, CACHE_TTL_TEMPLATE);
+
+    return result;
   };
 
   /**
-   * Find all usages of a symbol
+   * Find all usages of a symbol (cached)
    */
   pipeline.findUsages = (symbol: string, glob?: string): SymbolUsage => {
     const pattern = glob ?? "**/*.{ts,tsx,js,jsx,py,go,rs}";
+    const cacheKey = `pipeline:usages:${symbol}:${pattern}`;
+
+    // Check cache first
+    const cached = getCached<SymbolUsage>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const files = walkDirectory(workingDir, pattern);
 
     const definitions: Array<{ file: string; line: number }> = [];
@@ -337,19 +405,32 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
       }
     }
 
-    return {
+    const result: SymbolUsage = {
       symbol,
       definitions,
       usages,
       totalReferences: definitions.length + usages.length,
     };
+
+    // Cache the result
+    setCached(cacheKey, result, CACHE_TTL_TEMPLATE);
+
+    return result;
   };
 
   /**
-   * Analyze dependencies transitively
+   * Analyze dependencies transitively (cached)
    */
   pipeline.analyzeDeps = (file: string, depth?: number): DependencyAnalysis => {
     const maxDepth = Math.min(depth ?? 3, 5);
+    const cacheKey = `pipeline:deps:${file}:${maxDepth}`;
+
+    // Check cache first
+    const cached = getCached<DependencyAnalysis>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const directDeps: string[] = [];
     const transitiveDeps: string[] = [];
     const externalPackages: string[] = [];
@@ -427,13 +508,18 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
 
     analyzeFile(file, 0);
 
-    return {
+    const result: DependencyAnalysis = {
       file,
       directDeps,
       transitiveDeps,
       externalPackages,
       circularDeps: [...new Set(circularDeps)],
     };
+
+    // Cache the result
+    setCached(cacheKey, result, CACHE_TTL_TEMPLATE);
+
+    return result;
   };
 
   return pipeline;

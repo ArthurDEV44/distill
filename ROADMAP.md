@@ -89,6 +89,8 @@ loader.isSemanticSearchReady() // true after preload
 
 ### 3.1 Extended SDK API
 
+**Status: Complete**
+
 ```typescript
 // Current SDK
 ctx.files.read(path)
@@ -110,8 +112,8 @@ ctx.analyze.callGraph(fn)       // Function call graph
 - [x] `ctx.git.*` - Git operations module (diff, log, blame, status, branch)
 - [x] `ctx.search.*` - Code search module (grep, symbols, files, references)
 - [x] `ctx.analyze.*` - Static analysis module (dependencies, callGraph, exports, structure)
-- [ ] Improve sandbox security for new operations
-- [ ] Add SDK documentation with examples
+- [x] Improve sandbox security for new operations
+- [x] Add SDK documentation with examples
 
 ### 3.2 Composable Pipelines
 
@@ -145,7 +147,7 @@ ctx.pipeline.analyzeDeps(file)       // Analyser dépendances
 
 - [x] Pipeline DSL design
 - [x] Built-in pipeline templates
-- [ ] Pipeline result caching
+- [x] Pipeline result caching
 
 ---
 
@@ -311,3 +313,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 - `ctx.search.*` module: grep, symbols, files, references
 - `ctx.analyze.*` module: dependencies, callGraph, exports, structure
 - `ctx.pipeline` module: composable pipelines with DSL and templates
+- Git sandbox security: blocked network commands, argument sanitization
+- Pipeline result caching with SmartCache integration
+- SDK.md documentation with comprehensive examples

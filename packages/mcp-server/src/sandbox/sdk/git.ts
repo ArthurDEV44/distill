@@ -20,11 +20,57 @@ import { validatePath } from "../security/path-validator.js";
 const GIT_TIMEOUT = 5000; // 5 seconds
 
 /**
+ * Blocked git commands that could access network or modify remote state
+ */
+const BLOCKED_GIT_COMMANDS = [
+  "push",
+  "fetch",
+  "pull",
+  "clone",
+  "remote",
+  "submodule",
+  "ls-remote",
+  "archive",
+] as const;
+
+/**
+ * Sanitize git argument to prevent shell injection
+ */
+function sanitizeGitArg(arg: string): string {
+  // Block shell metacharacters that could enable command injection
+  if (/[;&|`$(){}[\]<>\\!'"]/.test(arg)) {
+    throw new Error(`Invalid git argument: contains shell metacharacters`);
+  }
+  // Block newlines which could inject additional commands
+  if (/[\r\n]/.test(arg)) {
+    throw new Error(`Invalid git argument: contains newlines`);
+  }
+  return arg;
+}
+
+/**
+ * Validate git command is not blocked
+ */
+function validateGitCommand(command: string): void {
+  const cmd = command.toLowerCase();
+  if (BLOCKED_GIT_COMMANDS.includes(cmd as (typeof BLOCKED_GIT_COMMANDS)[number])) {
+    throw new Error(`Git command '${command}' is blocked for security reasons`);
+  }
+}
+
+/**
  * Execute git command safely
  */
 function execGit(args: string[], workingDir: string): string {
+  // Validate the git subcommand
+  if (args.length > 0 && args[0]) {
+    validateGitCommand(args[0]);
+  }
+
+  // Sanitize all arguments
+  const sanitizedArgs = args.map(sanitizeGitArg);
   try {
-    const result = execSync(`git ${args.join(" ")}`, {
+    const result = execSync(`git ${sanitizedArgs.join(" ")}`, {
       cwd: workingDir,
       timeout: GIT_TIMEOUT,
       encoding: "utf-8",
