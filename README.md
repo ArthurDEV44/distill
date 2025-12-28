@@ -70,16 +70,47 @@ Common model IDs:
 
 ### Available MCP Tools
 
-| Tool | Purpose | Token Savings |
-|------|---------|---------------|
-| `smart_file_read` | Read code with AST extraction | 50-70% |
-| `auto_optimize` | Auto-detect and compress any content | 40-95% |
-| `analyze_build_output` | Parse build errors | 95%+ |
-| `summarize_logs` | Summarize server/test/build logs | 80-90% |
-| `compress_context` | Generic content compression | 40-60% |
-| `deduplicate_errors` | Group repeated errors | 80-95% |
-| `session_stats` | View current session statistics | - |
-| `register_model` | Register model for accurate tracking | - |
+**Core Tools** (always loaded - 249 tokens overhead):
+
+| Tool | Tokens | Purpose | Savings |
+|------|--------|---------|---------|
+| `smart_file_read` | 106 | Read code with AST extraction | 50-70% |
+| `auto_optimize` | 80 | Auto-detect and compress content | 40-95% |
+| `discover_tools` | 63 | Load additional tools on-demand | - |
+
+**On-Demand Tools** (loaded via `discover_tools`):
+
+| Tool | Tokens | Purpose | Savings |
+|------|--------|---------|---------|
+| `semantic_compress` | 48 | TF-IDF based compression | 40-60% |
+| `summarize_logs` | 100 | Summarize server/test/build logs | 80-90% |
+| `analyze_build_output` | 87 | Parse build errors | 95%+ |
+| `compress_context` | 83 | Generic content compression | 40-60% |
+| `deduplicate_errors` | 56 | Group repeated errors | 80-95% |
+| `code_skeleton` | 66 | Extract signatures only | 70-90% |
+| `diff_compress` | 66 | Compress git diffs | 50-80% |
+| `smart_pipeline` | 69 | Chain compression tools | varies |
+| `context_budget` | 96 | Pre-flight token estimation | - |
+| `conversation_compress` | 95 | Compress chat history | 40-70% |
+| `smart_cache` | 78 | Cache management | - |
+
+### Token Overhead
+
+CtxOpt uses **dynamic tool loading** to minimize overhead:
+
+- **Core tools**: 249 tokens per request (always available)
+- **All tools**: 1,093 tokens (if all loaded)
+- **Break-even**: Content must exceed ~312 tokens for 80% compression to be net positive
+
+Use `discover_tools` to load only what you need:
+
+```bash
+# Load compression tools
+mcp__ctxopt__discover_tools category="compress" load=true
+
+# Search for specific tools
+mcp__ctxopt__discover_tools query="logs"
+```
 
 ### Smart File Read Examples
 
