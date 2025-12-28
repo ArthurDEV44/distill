@@ -12,5 +12,10 @@ export default defineConfig({
       exclude: ["src/**/*.test.ts"],
     },
     testTimeout: 30000, // Tree-sitter initialization can be slow
+    server: {
+      deps: {
+        inline: ["zod"],
+      },
+    },
   },
 });

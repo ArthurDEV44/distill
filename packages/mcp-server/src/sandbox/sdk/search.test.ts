@@ -203,7 +203,9 @@ describe("Search SDK", () => {
 
   describe("error handling", () => {
     it("should handle empty results gracefully", () => {
-      const result = search.grep("xyznonexistentpattern123", "**/*.ts");
+      // Use a pattern that won't appear in any file (including this test file)
+      // by searching in a directory without test files
+      const result = search.grep("xyznonexistentpattern123", "src/ast/**/*.ts");
       expect(result.matches).toEqual([]);
       expect(result.totalMatches).toBe(0);
     });
