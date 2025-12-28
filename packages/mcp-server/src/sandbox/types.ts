@@ -139,6 +139,13 @@ export interface CtxOptSDK {
     exports: (file: string) => ExportInfo[];
     structure: (dir?: string, depth?: number) => StructureEntry;
   };
+
+  pipeline: {
+    (steps: PipelineStep[]): PipelineResult;
+    codebaseOverview: (dir?: string) => CodebaseOverview;
+    findUsages: (symbol: string, glob?: string) => SymbolUsage;
+    analyzeDeps: (file: string, depth?: number) => DependencyAnalysis;
+  };
 }
 
 /**
@@ -389,4 +396,66 @@ export interface StructureEntry {
   functions?: number;
   classes?: number;
   size?: number;
+}
+
+// ============================================
+// Pipeline Types
+// ============================================
+
+/**
+ * Pipeline step types
+ */
+export type PipelineStep =
+  | { glob: string }
+  | { filter: (item: unknown) => boolean }
+  | { read: boolean }
+  | { map: (item: unknown) => unknown }
+  | { reduce: (acc: unknown, item: unknown) => unknown; initial: unknown }
+  | { compress: "auto" | "semantic" | "logs"; ratio?: number }
+  | { limit: number }
+  | { sort: "asc" | "desc"; by?: string }
+  | { unique: boolean | string };
+
+/**
+ * Pipeline execution result
+ */
+export interface PipelineResult<T = unknown> {
+  data: T;
+  stats: {
+    stepsExecuted: number;
+    itemsProcessed: number;
+    executionTimeMs: number;
+  };
+}
+
+/**
+ * Codebase overview result
+ */
+export interface CodebaseOverview {
+  totalFiles: number;
+  totalLines: number;
+  languages: Record<string, number>;
+  largestFiles: Array<{ path: string; lines: number }>;
+  structure: StructureEntry;
+}
+
+/**
+ * Symbol usage result
+ */
+export interface SymbolUsage {
+  symbol: string;
+  definitions: Array<{ file: string; line: number }>;
+  usages: Array<{ file: string; line: number; context: string }>;
+  totalReferences: number;
+}
+
+/**
+ * Dependency analysis result
+ */
+export interface DependencyAnalysis {
+  file: string;
+  directDeps: string[];
+  transitiveDeps: string[];
+  externalPackages: string[];
+  circularDeps: string[];
 }

@@ -115,6 +115,8 @@ ctx.analyze.callGraph(fn)       // Function call graph
 
 ### 3.2 Composable Pipelines
 
+**Status: Complete**
+
 ```typescript
 // Chain operations declaratively
 ctx.pipeline([
@@ -123,10 +125,26 @@ ctx.pipeline([
   { map: f => ctx.code.skeleton(ctx.files.read(f), "ts") },
   { compress: "semantic", ratio: 0.3 }
 ])
+
+// Built-in templates
+ctx.pipeline.codebaseOverview(dir)   // Vue d'ensemble du code
+ctx.pipeline.findUsages(symbol)      // Trouver usages d'un symbole
+ctx.pipeline.analyzeDeps(file)       // Analyser dépendances
 ```
 
-- [ ] Pipeline DSL design
-- [ ] Built-in pipeline templates
+**Pipeline Steps**:
+- `{ glob: pattern }` - Select files matching pattern
+- `{ filter: fn }` - Filter items
+- `{ read: true }` - Read file contents
+- `{ map: fn }` - Transform each item
+- `{ reduce: fn, initial }` - Reduce to single value
+- `{ compress: type }` - Compress result (auto/semantic/logs)
+- `{ limit: n }` - Limit results
+- `{ sort: direction, by? }` - Sort items
+- `{ unique: boolean|key }` - Deduplicate items
+
+- [x] Pipeline DSL design
+- [x] Built-in pipeline templates
 - [ ] Pipeline result caching
 
 ---
@@ -292,3 +310,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 - `ctx.git.*` module: diff, log, blame, status, branch
 - `ctx.search.*` module: grep, symbols, files, references
 - `ctx.analyze.*` module: dependencies, callGraph, exports, structure
+- `ctx.pipeline` module: composable pipelines with DSL and templates

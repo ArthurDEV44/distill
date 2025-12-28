@@ -10,4 +10,5 @@ export { createFilesAPI } from "./files.js";
 export { createGitAPI } from "./git.js";
 export { createSearchAPI } from "./search.js";
 export { createAnalyzeAPI } from "./analyze.js";
+export { createPipelineAPI } from "./pipeline.js";
 export * from "./utils.js";
