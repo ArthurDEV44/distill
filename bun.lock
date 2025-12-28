@@ -25,6 +25,7 @@
         "fumadocs-core": "^16.3.2",
         "fumadocs-mdx": "^14.2.2",
         "fumadocs-ui": "^16.3.2",
+        "glsl-noise": "^0.0.0",
         "lucide-react": "^0.561.0",
         "motion": "^12.23.26",
         "next": "16.0.10",
@@ -68,7 +69,7 @@
     },
     "packages/mcp-server": {
       "name": "distill-mcp",
-      "version": "0.6.0-beta",
+      "version": "0.6.1-beta",
       "bin": {
         "distill-mcp": "./bin/cli.js",
       },

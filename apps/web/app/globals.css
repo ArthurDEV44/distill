@@ -42,13 +42,27 @@
   --animate-beam-glow: beam-glow 3s ease-in-out infinite alternate;
 
   @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
   }
 
   @keyframes beam-glow {
-    0% { opacity: 0.5; filter: blur(20px); }
-    100% { opacity: 0.8; filter: blur(30px); }
+    0% {
+      opacity: 0.5;
+      filter: blur(20px);
+    }
+
+    100% {
+      opacity: 0.8;
+      filter: blur(30px);
+    }
   }
 }
 
@@ -125,9 +139,10 @@ body {
   --color-info-foreground: var(--info-foreground);
   --color-info: var(--info);
   --color-destructive-foreground: var(--destructive-foreground);
+
   @keyframes skeleton {
-  to {
-    background-position: -200% 0;
+    to {
+      background-position: -200% 0;
     }
   }
 }
@@ -219,6 +234,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

@@ -60,27 +60,27 @@ const titleVariants: Variants = {
 /** Feature card component (static, animations handled by parent) */
 function FeatureCard({ feature }: { feature: Feature }) {
   return (
-    <div className="group relative h-full p-8 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md hover:bg-white/3 hover:border-tech-accent/30 transition-all duration-500 overflow-hidden">
+    <div className="group relative h-full p-8 rounded-2xl bg-[#311c35]/50 border border-[#f4cf8b]/30 backdrop-blur-md transition-all duration-500 overflow-hidden">
       {/* Scanline effect on hover */}
-      <div className="absolute inset-0 bg-linear-to-b from-transparent via-tech-accent/3 to-transparent -translate-y-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-b from-transparent via-[#f4cf8b]/5 to-transparent -translate-y-full animate-[shimmer_1.5s_infinite] pointer-events-none" />
 
       {/* Icon with glow effect */}
       <div className="relative mb-8 inline-flex items-center justify-center">
-        <div className="absolute inset-0 bg-tech-accent/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 scale-150" />
-        <div className="relative z-10 text-neutral-400 group-hover:text-tech-accent transition-colors duration-300 transform group-hover:-translate-y-1">
+        <div className="absolute inset-0 bg-[#f4cf8b]/20 blur-xl rounded-full opacity-100 scale-150" />
+        <div className="relative z-10 text-[#f4cf8b]">
           <feature.Icon size={28} />
         </div>
       </div>
 
       {/* Text content */}
       <div className="relative space-y-4">
-        <span className="inline-block text-[10px] font-mono text-tech-accent/60 uppercase tracking-widest border-b border-transparent group-hover:border-tech-accent/30 transition-all pb-1">
+        <span className="inline-block text-[10px] font-mono text-[#f4cf8b]/60 uppercase tracking-widest border-b border-[#f4cf8b]/30 pb-1">
           {feature.subtitle}
         </span>
-        <h3 className="text-xl font-semibold text-white group-hover:text-tech-accent/90 transition-colors">
+        <h3 className="text-xl font-semibold text-[#f4cf8b]/90">
           {feature.title}
         </h3>
-        <p className="text-sm text-neutral-400 leading-relaxed font-light group-hover:text-neutral-300 transition-colors">
+        <p className="text-sm text-neutral-300 leading-relaxed font-light">
           {feature.description}
         </p>
       </div>
@@ -91,22 +91,20 @@ function FeatureCard({ feature }: { feature: Feature }) {
 /** Static version rendered during SSR (hidden) */
 function FeaturesStatic() {
   return (
-    <section className="relative py-32 px-6 bg-tech-black overflow-hidden" style={{ opacity: 0 }}>
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -right-[10%] w-[800px] h-[800px] bg-tech-accent/5 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-[20%] -left-[10%] w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-[100px]" />
-      </div>
+    <section className="relative py-32 px-6 bg-transparent overflow-hidden" style={{ opacity: 0 }}>
+      {/* Background gradients */}
+      {/* Background gradients removed */}
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col items-center mb-20 text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(34,211,238,0.15)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-tech-accent animate-pulse"></span>
-            <span className="text-[10px] font-mono tracking-[0.2em] text-tech-accent uppercase">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(244,207,139,0.15)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
+            <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
               Core Features
             </span>
           </div>
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-            Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-200 to-neutral-500">Distill?</span>
+            Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-[#f4cf8b] to-[#311c35]">Distill?</span>
           </h2>
         </div>
 
@@ -123,12 +121,9 @@ function FeaturesStatic() {
 /** Animated version rendered after hydration */
 function FeaturesAnimated() {
   return (
-    <section className="relative py-32 px-6 bg-tech-black overflow-hidden">
+    <section className="relative py-32 px-6 bg-transparent overflow-hidden">
       {/* Nebula / Cosmic dust background effects */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -right-[10%] w-[800px] h-[800px] bg-tech-accent/5 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-[20%] -left-[10%] w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-[100px]" />
-      </div>
+      {/* Nebula / Cosmic dust background effects removed */}
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section header */}
@@ -139,10 +134,10 @@ function FeaturesAnimated() {
             whileInView="visible"
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(34,211,238,0.15)]"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(244,207,139,0.15)]"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-tech-accent animate-pulse"></span>
-            <span className="text-[10px] font-mono tracking-[0.2em] text-tech-accent uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
+            <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
               Core Features
             </span>
           </motion.div>
@@ -153,9 +148,9 @@ function FeaturesAnimated() {
             whileInView="visible"
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-            className="text-3xl md:text-5xl font-bold tracking-tight text-white"
+            className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2 leading-[1.05]"
           >
-            Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-200 to-neutral-500">Distill?</span>
+            Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-100 to-neutral-400">Distill?</span>
           </motion.h2>
         </div>
 
@@ -190,21 +185,18 @@ const Features = () => {
   // Skip animations for users who prefer reduced motion
   if (shouldReduceMotion) {
     return (
-      <section className="relative py-32 px-6 bg-tech-black overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute -top-[20%] -right-[10%] w-[800px] h-[800px] bg-tech-accent/5 rounded-full blur-[120px]" />
-          <div className="absolute -bottom-[20%] -left-[10%] w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-[100px]" />
-        </div>
+      <section className="relative py-32 px-6 bg-transparent overflow-hidden">
+        {/* Background gradients removed */}
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col items-center mb-20 text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(34,211,238,0.15)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-tech-accent animate-pulse"></span>
-              <span className="text-[10px] font-mono tracking-[0.2em] text-tech-accent uppercase">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(244,207,139,0.15)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
+              <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
                 Core Features
               </span>
             </div>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-              Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-200 to-neutral-500">Distill?</span>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2 leading-[1.05]">
+              Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-100 to-neutral-400">Distill?</span>
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
