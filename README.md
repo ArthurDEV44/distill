@@ -70,13 +70,14 @@ Common model IDs:
 
 ### Available MCP Tools
 
-**Core Tools** (always loaded - 264 tokens overhead):
+**Core Tools** (always loaded):
 
 | Tool | Tokens | Purpose | Savings |
 |------|--------|---------|---------|
 | `smart_file_read` | 106 | Read code with AST extraction | 50-70% |
 | `auto_optimize` | 80 | Auto-detect and compress content | 40-95% |
 | `discover_tools` | 78 | Load tools, supports TOON format | 55% (TOON) |
+| `code_execute` | ~150 | Execute TypeScript with SDK | **98%** |
 
 **On-Demand Tools** (loaded via `discover_tools`):
 
@@ -177,6 +178,50 @@ After a failed build command, compress the output:
 ```bash
 mcp__ctxopt__auto_optimize content="<paste npm/tsc/webpack output>"
 ```
+
+### Code Execution SDK
+
+The `code_execute` tool provides **98% token savings** by letting LLMs write TypeScript instead of calling multiple MCP tools:
+
+```bash
+mcp__ctxopt__code_execute code="return ctx.compress.auto(ctx.files.read('logs.txt'))"
+```
+
+**SDK API (`ctx`):**
+
+| Namespace | Functions |
+|-----------|-----------|
+| `ctx.compress` | `auto(content, hint?)` `logs(logs)` `diff(diff)` `semantic(content, ratio?)` |
+| `ctx.code` | `parse(content, lang)` `extract(content, lang, {type, name})` `skeleton(content, lang)` |
+| `ctx.files` | `read(path)` `exists(path)` `glob(pattern)` |
+| `ctx.utils` | `countTokens(text)` `detectType(content)` `detectLanguage(path)` |
+
+**Examples:**
+
+```typescript
+// Compress all TypeScript files in src/
+const files = ctx.files.glob("src/**/*.ts");
+const skeletons = files.slice(0, 5).map(f => ({
+  file: f,
+  skeleton: ctx.code.skeleton(ctx.files.read(f), "typescript")
+}));
+return skeletons;
+
+// Summarize logs with token count
+const logs = ctx.files.read("server.log");
+const summary = ctx.compress.logs(logs);
+return { ...summary, tokens: ctx.utils.countTokens(logs) };
+
+// Extract a specific function
+const content = ctx.files.read("src/api.ts");
+return ctx.code.extract(content, "typescript", { type: "function", name: "handleRequest" });
+```
+
+**Security:** Code runs in a sandboxed environment with:
+- Blocked patterns: `eval`, `require`, `import()`, `process`, `global`
+- File access restricted to working directory
+- Sensitive files blocked (`.env`, credentials, keys)
+- Memory limit: 128MB, Timeout: 30s
 
 ### View Session Statistics
 
