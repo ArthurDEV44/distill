@@ -117,6 +117,14 @@ export interface CtxOptSDK {
     detectType: (content: string) => ContentType;
     detectLanguage: (filePath: string) => SupportedLanguage;
   };
+
+  git: {
+    diff: (ref?: string) => GitDiff;
+    log: (limit?: number) => GitCommit[];
+    blame: (file: string, line?: number) => GitBlame;
+    status: () => GitStatus;
+    branch: () => GitBranch;
+  };
 }
 
 /**
@@ -148,4 +156,79 @@ export interface HostCallbacks {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
   glob: (pattern: string) => string[];
+}
+
+// ============================================
+// Git Types
+// ============================================
+
+/**
+ * Git diff result
+ */
+export interface GitDiff {
+  raw: string;
+  files: GitFileChange[];
+  stats: {
+    additions: number;
+    deletions: number;
+  };
+}
+
+/**
+ * Individual file change in a diff
+ */
+export interface GitFileChange {
+  file: string;
+  status: "added" | "modified" | "deleted" | "renamed";
+  additions: number;
+  deletions: number;
+}
+
+/**
+ * Git commit information
+ */
+export interface GitCommit {
+  hash: string;
+  shortHash: string;
+  author: string;
+  date: string;
+  message: string;
+}
+
+/**
+ * Git blame result
+ */
+export interface GitBlame {
+  lines: GitBlameLine[];
+}
+
+/**
+ * Individual blame line
+ */
+export interface GitBlameLine {
+  hash: string;
+  author: string;
+  date: string;
+  line: number;
+  content: string;
+}
+
+/**
+ * Git repository status
+ */
+export interface GitStatus {
+  branch: string;
+  ahead: number;
+  behind: number;
+  staged: string[];
+  modified: string[];
+  untracked: string[];
+}
+
+/**
+ * Git branch information
+ */
+export interface GitBranch {
+  current: string;
+  branches: string[];
 }

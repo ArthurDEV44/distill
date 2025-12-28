@@ -107,7 +107,7 @@ ctx.analyze.callGraph(fn)       // Function call graph
 ```
 
 **Tasks**:
-- [ ] `ctx.git.*` - Git operations module
+- [x] `ctx.git.*` - Git operations module (diff, log, blame, status, branch)
 - [ ] `ctx.search.*` - Code search module
 - [ ] `ctx.analyze.*` - Static analysis module
 - [ ] Improve sandbox security for new operations
@@ -284,6 +284,9 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 - `code_execute` SDK
 
 ### Next Release
-- Extended SDK (`ctx.git.*`, `ctx.search.*`)
-- Improved session analytics
+- Extended SDK (`ctx.search.*`, `ctx.analyze.*`)
 - Composable pipelines
+- Improved session analytics
+
+### v0.4.0 (In Progress)
+- `ctx.git.*` module: diff, log, blame, status, branch

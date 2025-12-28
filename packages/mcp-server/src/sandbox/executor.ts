@@ -20,6 +20,7 @@ import {
   detectType,
   detectLanguage,
   createFilesAPI,
+  createGitAPI,
 } from "./sdk/index.js";
 import { analyzeCode, sanitizeError } from "./security/index.js";
 import { validatePath, validateGlobPattern } from "./security/path-validator.js";
@@ -135,6 +136,7 @@ function createSDK(workingDir: string): CtxOptSDK {
       detectType,
       detectLanguage,
     },
+    git: createGitAPI(workingDir),
   };
 }
 
