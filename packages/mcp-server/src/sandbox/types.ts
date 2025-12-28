@@ -125,6 +125,13 @@ export interface CtxOptSDK {
     status: () => GitStatus;
     branch: () => GitBranch;
   };
+
+  search: {
+    grep: (pattern: string, glob?: string) => GrepResult;
+    symbols: (query: string, glob?: string) => SymbolResult;
+    files: (pattern: string) => FileResult;
+    references: (symbol: string, glob?: string) => ReferenceMatch[];
+  };
 }
 
 /**
@@ -231,4 +238,76 @@ export interface GitStatus {
 export interface GitBranch {
   current: string;
   branches: string[];
+}
+
+// ============================================
+// Search Types
+// ============================================
+
+/**
+ * Grep match result
+ */
+export interface GrepMatch {
+  file: string;
+  line: number;
+  column: number;
+  content: string;
+  match: string;
+}
+
+/**
+ * Grep search result
+ */
+export interface GrepResult {
+  matches: GrepMatch[];
+  totalMatches: number;
+  filesSearched: number;
+}
+
+/**
+ * Symbol search result
+ */
+export interface SymbolMatch {
+  name: string;
+  type: ElementType;
+  file: string;
+  line: number;
+  signature?: string;
+}
+
+/**
+ * Symbol search result container
+ */
+export interface SymbolResult {
+  symbols: SymbolMatch[];
+  totalMatches: number;
+}
+
+/**
+ * File search result
+ */
+export interface FileMatch {
+  path: string;
+  name: string;
+  extension: string;
+  size?: number;
+}
+
+/**
+ * File search result container
+ */
+export interface FileResult {
+  files: FileMatch[];
+  totalMatches: number;
+}
+
+/**
+ * Reference location
+ */
+export interface ReferenceMatch {
+  file: string;
+  line: number;
+  column: number;
+  context: string;
+  type: "definition" | "usage" | "import";
 }
