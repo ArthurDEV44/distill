@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@ctxopt/shared": "workspace:*",
+    "@huggingface/transformers": "^3.8.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "js-tiktoken": "^1.0.15",
     "tree-sitter-wasms": "^0.1.13",

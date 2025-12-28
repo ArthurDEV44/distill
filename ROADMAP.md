@@ -58,11 +58,28 @@ loader.searchToolsWithScores("compress logs")
 - [x] Integrated BM25 into `DynamicToolLoader.searchTools()`
 - [x] Added `searchToolsWithScores()` for relevance debugging
 
-### 2.2 Semantic Search (Optional)
+### 2.2 Semantic Search
 
-- [ ] Add embedding-based search (local model, no API)
-- [ ] Cache embeddings for tool descriptions
-- [ ] Hybrid BM25 + semantic ranking
+**Status: Complete**
+
+```typescript
+// Hybrid search with embeddings
+await loader.searchToolsHybrid("shrink output")
+// → Finds "compress" even without keyword match!
+
+// Preload embeddings during idle time
+await loader.preloadSemanticSearch()
+
+// Check if semantic ready
+loader.isSemanticSearchReady() // true after preload
+```
+
+**Implementation**:
+- [x] Add `@huggingface/transformers` for local embeddings
+- [x] Add `embeddings.ts` with all-MiniLM-L6-v2 model (384 dims)
+- [x] Add `hybrid-search.ts` combining BM25 (40%) + cosine similarity (60%)
+- [x] Integrate into `DynamicToolLoader.searchToolsHybrid()`
+- [x] Add `preloadSemanticSearch()` for background initialization
 
 ---
 
@@ -242,20 +259,22 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 **Priority areas for contributions**:
 1. New language parsers (Java, C#, Kotlin)
 2. SDK extensions (`ctx.git.*`, `ctx.search.*`)
-3. Semantic search with embeddings (Phase 2.2)
-4. Documentation and examples
+3. Documentation and examples
+4. Performance optimizations
 
 ---
 
 ## Changelog
 
-### v0.2.0 (Current)
+### v0.3.0 (Current)
+- Hybrid semantic search with Transformers.js
+- `searchToolsHybrid()` for BM25 + embedding similarity
+- `preloadSemanticSearch()` for background model loading
+- Local embeddings with all-MiniLM-L6-v2 (no API keys)
+
+### v0.2.0
 - BM25 search algorithm for tool discovery
 - `searchToolsWithScores()` API for relevance debugging
-- 19 optimization tools
-- 7 language parsers
-- Lazy MCP pattern
-- `code_execute` SDK
 
 ### v0.1.0
 - Initial release
@@ -267,4 +286,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 ### Next Release
 - Extended SDK (`ctx.git.*`, `ctx.search.*`)
 - Improved session analytics
-- Semantic search (optional)
+- Composable pipelines

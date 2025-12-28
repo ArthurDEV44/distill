@@ -7,6 +7,11 @@
 
 import type { ToolDefinition } from "./registry.js";
 import { createBM25Index, type BM25Index, type BM25Result } from "../utils/bm25.js";
+import {
+  createHybridSearchIndex,
+  type HybridSearchIndex,
+  type HybridSearchResult,
+} from "../utils/hybrid-search.js";
 
 export type ToolCategory = "compress" | "analyze" | "logs" | "code" | "pipeline" | "core";
 
@@ -174,6 +179,14 @@ export class DynamicToolLoader {
   private loadedTools: Map<string, ToolDefinition> = new Map();
   private onChangeCallbacks: Array<() => void> = [];
   private bm25Index: BM25Index<ToolMetadata> | null = null;
+  private hybridIndex: HybridSearchIndex<ToolMetadata> | null = null;
+
+  /**
+   * Get searchable text from tool metadata
+   */
+  private static getSearchableText(tool: ToolMetadata): string {
+    return `${tool.name} ${tool.keywords.join(" ")} ${tool.description}`;
+  }
 
   /**
    * Get or create BM25 search index (lazy initialization)
@@ -182,11 +195,25 @@ export class DynamicToolLoader {
     if (!this.bm25Index) {
       this.bm25Index = createBM25Index(
         TOOL_CATALOG,
-        (tool) => `${tool.name} ${tool.keywords.join(" ")} ${tool.description}`,
+        DynamicToolLoader.getSearchableText,
         { k1: 1.2, b: 0.75 }
       );
     }
     return this.bm25Index;
+  }
+
+  /**
+   * Get or create hybrid search index (lazy initialization)
+   */
+  private getHybridIndex(): HybridSearchIndex<ToolMetadata> {
+    if (!this.hybridIndex) {
+      this.hybridIndex = createHybridSearchIndex(
+        TOOL_CATALOG,
+        DynamicToolLoader.getSearchableText,
+        { bm25Weight: 0.4, semanticWeight: 0.6 }
+      );
+    }
+    return this.hybridIndex;
   }
 
   /**
@@ -217,6 +244,38 @@ export class DynamicToolLoader {
   searchToolsWithScores(query: string): BM25Result<ToolMetadata>[] {
     const index = this.getBM25Index();
     return index.search(query);
+  }
+
+  /**
+   * Hybrid search combining BM25 (lexical) and semantic similarity
+   *
+   * This method finds tools even when the query uses different words
+   * than the tool description (e.g., "shrink output" → compress).
+   *
+   * @param query - Search query
+   * @returns Ranked results with both BM25 and semantic scores
+   */
+  async searchToolsHybrid(query: string): Promise<HybridSearchResult<ToolMetadata>[]> {
+    const index = this.getHybridIndex();
+    return index.search(query);
+  }
+
+  /**
+   * Preload semantic embeddings for faster hybrid search
+   *
+   * Call this during idle time to avoid latency on first hybrid search.
+   * The embedding model (~23MB) is downloaded and cached on first use.
+   */
+  async preloadSemanticSearch(): Promise<void> {
+    const index = this.getHybridIndex();
+    await index.precomputeEmbeddings();
+  }
+
+  /**
+   * Check if semantic search is ready (embeddings loaded)
+   */
+  isSemanticSearchReady(): boolean {
+    return this.hybridIndex?.isSemanticReady() ?? false;
   }
 
   /**
