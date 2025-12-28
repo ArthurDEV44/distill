@@ -132,6 +132,13 @@ export interface CtxOptSDK {
     files: (pattern: string) => FileResult;
     references: (symbol: string, glob?: string) => ReferenceMatch[];
   };
+
+  analyze: {
+    dependencies: (file: string) => DependencyResult;
+    callGraph: (functionName: string, file: string, depth?: number) => CallGraphResult;
+    exports: (file: string) => ExportInfo[];
+    structure: (dir?: string, depth?: number) => StructureEntry;
+  };
 }
 
 /**
@@ -310,4 +317,76 @@ export interface ReferenceMatch {
   column: number;
   context: string;
   type: "definition" | "usage" | "import";
+}
+
+// ============================================
+// Analyze Types
+// ============================================
+
+/**
+ * Import dependency info
+ */
+export interface ImportInfo {
+  source: string;
+  names: string[];
+  isDefault: boolean;
+  isNamespace: boolean;
+  resolvedPath?: string;
+}
+
+/**
+ * Export info
+ */
+export interface ExportInfo {
+  name: string;
+  type: ElementType;
+  isDefault: boolean;
+  line: number;
+  signature?: string;
+}
+
+/**
+ * File dependencies result
+ */
+export interface DependencyResult {
+  file: string;
+  imports: ImportInfo[];
+  exports: ExportInfo[];
+  externalDeps: string[];
+  internalDeps: string[];
+}
+
+/**
+ * Call graph node
+ */
+export interface CallNode {
+  name: string;
+  file: string;
+  line: number;
+  calls: string[];
+  calledBy: string[];
+}
+
+/**
+ * Call graph result
+ */
+export interface CallGraphResult {
+  root: string;
+  nodes: CallNode[];
+  depth: number;
+}
+
+/**
+ * Directory structure entry
+ */
+export interface StructureEntry {
+  path: string;
+  type: "file" | "directory";
+  name: string;
+  children?: StructureEntry[];
+  language?: string;
+  exports?: number;
+  functions?: number;
+  classes?: number;
+  size?: number;
 }

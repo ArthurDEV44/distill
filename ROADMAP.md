@@ -109,7 +109,7 @@ ctx.analyze.callGraph(fn)       // Function call graph
 **Tasks**:
 - [x] `ctx.git.*` - Git operations module (diff, log, blame, status, branch)
 - [x] `ctx.search.*` - Code search module (grep, symbols, files, references)
-- [ ] `ctx.analyze.*` - Static analysis module
+- [x] `ctx.analyze.*` - Static analysis module (dependencies, callGraph, exports, structure)
 - [ ] Improve sandbox security for new operations
 - [ ] Add SDK documentation with examples
 
@@ -291,3 +291,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 ### v0.4.0 (In Progress)
 - `ctx.git.*` module: diff, log, blame, status, branch
 - `ctx.search.*` module: grep, symbols, files, references
+- `ctx.analyze.*` module: dependencies, callGraph, exports, structure

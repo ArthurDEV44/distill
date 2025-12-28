@@ -9,4 +9,5 @@ export * from "./code.js";
 export { createFilesAPI } from "./files.js";
 export { createGitAPI } from "./git.js";
 export { createSearchAPI } from "./search.js";
+export { createAnalyzeAPI } from "./analyze.js";
 export * from "./utils.js";

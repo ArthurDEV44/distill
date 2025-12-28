@@ -22,6 +22,7 @@ import {
   createFilesAPI,
   createGitAPI,
   createSearchAPI,
+  createAnalyzeAPI,
 } from "./sdk/index.js";
 import { analyzeCode, sanitizeError } from "./security/index.js";
 import { validatePath, validateGlobPattern } from "./security/path-validator.js";
@@ -139,6 +140,7 @@ function createSDK(workingDir: string): CtxOptSDK {
     },
     git: createGitAPI(workingDir),
     search: createSearchAPI(workingDir, callbacks),
+    analyze: createAnalyzeAPI(workingDir, callbacks),
   };
 }
 
