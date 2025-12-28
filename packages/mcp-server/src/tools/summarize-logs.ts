@@ -19,14 +19,14 @@ import {
 } from "../summarizers/index.js";
 import { detectLogType } from "../utils/log-parser.js";
 
+// Minimal schema - timeframe rarely used
 export const summarizeLogsSchema = {
   type: "object" as const,
   properties: {
     logs: { type: "string" },
-    logType: { type: "string", enum: ["server", "test", "build", "application", "generic"] },
-    focus: { type: "array", items: { type: "string", enum: ["errors", "warnings", "performance", "timeline"] } },
-    detail: { type: "string", enum: ["minimal", "normal", "detailed"] },
-    timeframe: { type: "object", properties: { start: { type: "string" }, end: { type: "string" } } },
+    logType: { enum: ["server", "test", "build", "application", "generic"] },
+    focus: { type: "array", items: { enum: ["errors", "warnings", "performance", "timeline"] } },
+    detail: { enum: ["minimal", "normal", "detailed"] },
   },
   required: ["logs"],
 };

@@ -41,29 +41,29 @@ import type { ToolDefinition } from "./registry.js";
 const TOKEN_BUDGETS = {
   // Core tools (always loaded) - ultra-minimal
   auto_optimize: 90,
-  smart_file_read: 120, // Reduced from 200
+  smart_file_read: 120,
   discover_tools: 75,
 
-  // Compress category
-  compress_context: 120,
-  semantic_compress: 100,
-  diff_compress: 80,
-  conversation_compress: 150,
+  // Compress category - aggressively optimized
+  compress_context: 95,
+  semantic_compress: 60,
+  diff_compress: 75,
+  conversation_compress: 110,
 
   // Analyze category
-  analyze_build_output: 110,
-  context_budget: 120,
+  analyze_build_output: 95,
+  context_budget: 105,
 
   // Logs category
-  summarize_logs: 150,
-  deduplicate_errors: 80,
+  summarize_logs: 115,
+  deduplicate_errors: 65,
 
   // Code category
-  code_skeleton: 100,
-  smart_cache: 110,
+  code_skeleton: 75,
+  smart_cache: 90,
 
   // Pipeline category
-  smart_pipeline: 110,
+  smart_pipeline: 80,
 } as const;
 
 /**
@@ -75,8 +75,9 @@ const CORE_TOOLS_BUDGET = 300;
 
 /**
  * Maximum tokens for all tools combined.
+ * 2024-12: Reduced from 1500 after aggressive schema optimization
  */
-const ALL_TOOLS_BUDGET = 1500;
+const ALL_TOOLS_BUDGET = 1200;
 
 // ============================================================================
 // Helper Functions

@@ -15,13 +15,13 @@ import {
   type GroupOptions,
 } from "../utils/signature-grouper.js";
 
+// Minimal schema - errorPattern rarely used
 export const deduplicateErrorsSchema = {
   type: "object" as const,
   properties: {
     content: { type: "string" },
     threshold: { type: "number" },
     keepFirst: { type: "number" },
-    errorPattern: { type: "string" },
   },
   required: ["content"],
 };

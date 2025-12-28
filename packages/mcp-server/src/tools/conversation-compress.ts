@@ -13,22 +13,18 @@ import {
   type ConversationMessage,
 } from "../compressors/conversation.js";
 
-// JSON Schema for MCP
+// Minimal schema - preserveSystem/preserveLastN rarely changed
 export const conversationCompressSchema = {
   type: "object" as const,
   properties: {
     messages: {
       type: "array",
       items: {
-        type: "object",
-        properties: { role: { type: "string", enum: ["user", "assistant", "system"] }, content: { type: "string" } },
-        required: ["role", "content"],
+        properties: { role: { enum: ["user", "assistant", "system"] }, content: { type: "string" } },
       },
     },
-    strategy: { type: "string", enum: ["rolling-summary", "key-extraction", "hybrid"] },
+    strategy: { enum: ["rolling-summary", "key-extraction", "hybrid"] },
     maxTokens: { type: "number" },
-    preserveSystem: { type: "boolean" },
-    preserveLastN: { type: "number" },
   },
   required: ["messages", "strategy", "maxTokens"],
 };

@@ -13,11 +13,12 @@ import { compressDiff } from "../compressors/diff.js";
 /**
  * JSON Schema for MCP tool registration
  */
+// Minimal schema
 export const diffCompressSchema = {
   type: "object" as const,
   properties: {
     diff: { type: "string" },
-    strategy: { type: "string", enum: ["hunks-only", "summary", "semantic"] },
+    strategy: { enum: ["hunks-only", "summary", "semantic"] },
     maxTokens: { type: "number" },
   },
   required: ["diff", "strategy"],

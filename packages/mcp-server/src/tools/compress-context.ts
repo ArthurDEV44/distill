@@ -11,14 +11,14 @@ import { compressContent, analyzeContent, type ContentType, type DetailLevel } f
 import { getContentTypeDescription } from "../utils/content-detector.js";
 import type { ToolDefinition } from "./registry.js";
 
+// Minimal schema - preservePatterns rarely used
 export const compressContextSchema = {
   type: "object" as const,
   properties: {
     content: { type: "string" },
-    contentType: { type: "string", enum: ["logs", "stacktrace", "config", "code", "generic"] },
+    contentType: { enum: ["logs", "stacktrace", "config", "code", "generic"] },
     targetRatio: { type: "number" },
-    preservePatterns: { type: "array", items: { type: "string" } },
-    detail: { type: "string", enum: ["minimal", "normal", "detailed"] },
+    detail: { enum: ["minimal", "normal", "detailed"] },
   },
   required: ["content"],
 };

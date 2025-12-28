@@ -14,15 +14,14 @@ import { z } from "zod";
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache, type CacheStats } from "../cache/index.js";
 
+// Minimal schema - ttl/tokenCount rarely used
 export const smartCacheSchema = {
   type: "object" as const,
   properties: {
-    action: { type: "string", enum: ["get", "set", "invalidate", "invalidate_path", "stats", "clear", "keys"] },
+    action: { enum: ["get", "set", "invalidate", "invalidate_path", "stats", "clear", "keys"] },
     key: { type: "string" },
     value: { type: "string" },
     filePath: { type: "string" },
-    ttl: { type: "number" },
-    tokenCount: { type: "number" },
   },
   required: ["action"],
 };

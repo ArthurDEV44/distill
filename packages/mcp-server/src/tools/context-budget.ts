@@ -23,12 +23,13 @@ import {
 /**
  * JSON Schema for MCP tool registration
  */
+// Minimal schema
 export const contextBudgetSchema = {
   type: "object" as const,
   properties: {
     content: { type: "string" },
-    model: { type: "string", enum: ["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"] },
-    budgetTokens: { type: "number", minimum: 50 },
+    model: { enum: ["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"] },
+    budgetTokens: { type: "number" },
     includeEstimatedOutput: { type: "boolean" },
   },
   required: ["content"],

@@ -15,14 +15,12 @@ import { detectLanguageFromPath } from "../utils/language-detector.js";
 import { countTokens } from "../utils/token-counter.js";
 import type { FileStructure } from "../ast/types.js";
 
-// Schema JSON pour MCP
+// Minimal schema - includeTypes/includeComments rarely changed
 export const codeSkeletonSchema = {
   type: "object" as const,
   properties: {
     filePath: { type: "string" },
-    includeTypes: { type: "boolean" },
-    includeComments: { type: "boolean" },
-    depth: { type: "number", enum: [1, 2, 3] },
+    depth: { enum: [1, 2, 3] },
   },
   required: ["filePath"],
 };

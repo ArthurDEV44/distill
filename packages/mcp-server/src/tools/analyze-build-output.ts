@@ -9,12 +9,13 @@ import { z } from "zod";
 import { analyzeBuildOutput, type BuildTool } from "../parsers/index.js";
 import type { ToolDefinition } from "./registry.js";
 
+// Minimal schema
 export const analyzeBuildOutputSchema = {
   type: "object" as const,
   properties: {
     output: { type: "string" },
-    buildTool: { type: "string", enum: ["tsc", "eslint", "webpack", "vite", "esbuild", "rust", "go", "generic"] },
-    verbosity: { type: "string", enum: ["minimal", "normal", "detailed"] },
+    buildTool: { enum: ["tsc", "eslint", "webpack", "vite", "esbuild", "rust", "go", "generic"] },
+    verbosity: { enum: ["minimal", "normal", "detailed"] },
   },
   required: ["output"],
 };

@@ -18,13 +18,12 @@ import {
 /**
  * JSON Schema for MCP tool registration
  */
+// Minimal schema - model has only one value, preservePatterns rarely used
 export const semanticCompressSchema = {
   type: "object" as const,
   properties: {
     content: { type: "string" },
-    targetRatio: { type: "number", minimum: 0.1, maximum: 0.9 },
-    preservePatterns: { type: "array", items: { type: "string" } },
-    model: { type: "string", enum: ["fast"] },
+    targetRatio: { type: "number" },
   },
   required: ["content"],
 };

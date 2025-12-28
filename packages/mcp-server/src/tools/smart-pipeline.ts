@@ -27,14 +27,13 @@ import {
 /**
  * JSON Schema for MCP tool registration
  */
+// Minimal schema - customPipeline/maxSteps rarely used
 export const smartPipelineSchema = {
   type: "object" as const,
   properties: {
     content: { type: "string" },
-    mode: { type: "string", enum: ["auto", "custom"] },
-    contentType: { type: "string", enum: ["build", "logs", "stacktrace", "diff", "config", "code", "generic"] },
-    customPipeline: { type: "array", items: { type: "string" } },
-    maxSteps: { type: "number" },
+    mode: { enum: ["auto", "custom"] },
+    contentType: { enum: ["build", "logs", "stacktrace", "diff", "config", "code", "generic"] },
   },
   required: ["content"],
 };
