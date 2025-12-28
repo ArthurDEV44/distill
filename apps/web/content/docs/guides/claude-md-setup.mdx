@@ -1,0 +1,164 @@
+---
+title: CLAUDE.md Configuration
+description: Complete CLAUDE.md template for optimal CtxOpt integration
+---
+
+# CLAUDE.md Configuration
+
+Add these instructions to your project's `CLAUDE.md` file to enable automatic token optimization with CtxOpt.
+
+## Quick Setup
+
+Create a `CLAUDE.md` file at your project root and paste the template below.
+
+## Complete Template
+
+```markdown
+## MCP Tool Usage Guidelines
+
+Use CtxOpt MCP tools for token-efficient operations:
+
+### Rule 1: Smart File Reading
+
+When reading source code files for **exploration or understanding**:
+
+\`\`\`
+mcp__ctxopt__smart_file_read filePath="path/to/file.ts"
+\`\`\`
+
+**When to use native Read instead:**
+- Before editing a file (Edit requires Read first)
+- Configuration files: `.json`, `.yaml`, `.toml`, `.md`, `.env`
+
+### Rule 2: Compress Large Outputs
+
+After Bash commands that produce large output (>500 chars):
+
+\`\`\`
+mcp__ctxopt__auto_optimize content="<paste the large output>"
+\`\`\`
+
+### Rule 3: Register Model at Session Start
+
+\`\`\`
+mcp__ctxopt__register_model model="claude-opus-4-5-20251101"
+\`\`\`
+
+### Rule 4: Code Execution SDK for Complex Operations
+
+For multi-step operations, use `code_execute` instead of multiple tool calls (**98% token savings**):
+
+\`\`\`
+mcp__ctxopt__code_execute code="<typescript code>"
+\`\`\`
+
+**SDK API (`ctx`):**
+- `ctx.compress.auto(content, hint?)` - Auto-detect and compress
+- `ctx.compress.logs(logs)` - Summarize log output
+- `ctx.compress.diff(diff)` - Compress git diff
+- `ctx.compress.semantic(content, ratio?)` - TF-IDF compression
+- `ctx.code.parse(content, lang)` - Parse to AST structure
+- `ctx.code.extract(content, lang, {type, name})` - Extract element
+- `ctx.code.skeleton(content, lang)` - Get signatures only
+- `ctx.files.read(path)` - Read file content
+- `ctx.files.exists(path)` - Check if file exists
+- `ctx.files.glob(pattern)` - Find files by pattern
+- `ctx.utils.countTokens(text)` - Count tokens
+- `ctx.utils.detectType(content)` - Detect content type
+- `ctx.utils.detectLanguage(path)` - Detect language from path
+
+**Examples:**
+
+\`\`\`typescript
+// Get skeletons of all TypeScript files
+const files = ctx.files.glob("src/**/*.ts").slice(0, 5);
+return files.map(f => ({
+  file: f,
+  skeleton: ctx.code.skeleton(ctx.files.read(f), "typescript")
+}));
+
+// Compress and analyze logs
+const logs = ctx.files.read("server.log");
+return ctx.compress.logs(logs);
+
+// Extract a specific function
+const content = ctx.files.read("src/api.ts");
+return ctx.code.extract(content, "typescript", { type: "function", name: "handleRequest" });
+\`\`\`
+
+### Quick Reference
+
+| Action | Use |
+|--------|-----|
+| Read code for exploration | `mcp__ctxopt__smart_file_read filePath="file.ts"` |
+| Get function/class | `mcp__ctxopt__smart_file_read filePath="file.ts" target={"type":"function","name":"myFunc"}` |
+| Compress build errors | `mcp__ctxopt__auto_optimize content="..."` |
+| Summarize logs | `mcp__ctxopt__summarize_logs logs="..."` |
+| Multi-step operations | `mcp__ctxopt__code_execute code="return ctx.files.glob('src/**/*.ts')"` |
+| Before editing | Use native `Read` tool |
+```
+
+## Minimal Template
+
+If you prefer a shorter version:
+
+```markdown
+## MCP Tools
+
+Use CtxOpt for token optimization:
+- Code exploration: `mcp__ctxopt__smart_file_read filePath="file.ts"`
+- Large outputs: `mcp__ctxopt__auto_optimize content="..."`
+- Multi-step ops: `mcp__ctxopt__code_execute code="return ctx.files.glob('**/*.ts')"`
+- Before editing: Use native `Read` tool
+```
+
+## Token Savings Reference
+
+| Tool | Savings | Best For |
+|------|---------|----------|
+| `smart_file_read` | 50-70% | Reading source code |
+| `auto_optimize` | 40-95% | Build errors, logs |
+| `code_execute` | **98%** | Multi-step operations |
+| `discover_tools` (TOON) | 55% | Tool discovery |
+
+## Auto-Install with CLI
+
+Instead of manually creating the file, you can use the CLI:
+
+```bash
+ctxopt-mcp setup --hooks
+```
+
+This will:
+1. Create or update your `CLAUDE.md` with the recommended configuration
+2. Install prompt hooks for automatic reminders
+
+## IDE-Specific Notes
+
+### Claude Code
+
+The `CLAUDE.md` file is automatically read by Claude Code when you open a project. Place it at your repository root.
+
+### Cursor
+
+Cursor also supports `CLAUDE.md` files. The same template works for both IDEs.
+
+### Windsurf
+
+Windsurf uses a similar mechanism. Add the template to your project root.
+
+## Verifying Setup
+
+After adding the `CLAUDE.md`, verify CtxOpt is working:
+
+1. Start a new conversation
+2. Ask Claude to read a source file
+3. Check if it uses `smart_file_read` instead of `Read`
+
+You can also check session statistics:
+
+```
+Show my session stats
+```
+
+This will display tokens saved and compression ratios.
