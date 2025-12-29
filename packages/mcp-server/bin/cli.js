@@ -28,6 +28,7 @@ ${COLORS.bright}Setup Options:${COLORS.reset}
   --claude          Configure Claude Code only
   --cursor          Configure Cursor only
   --windsurf        Configure Windsurf only
+  --antigravity     Configure Antigravity only
   --hooks           Install project hooks (enforces MCP tool usage)
   --force, -f       Overwrite existing configuration
 
@@ -47,8 +48,9 @@ ${COLORS.bright}Other Options:${COLORS.reset}
   --help, -h        Show this help message
 
 ${COLORS.bright}Examples:${COLORS.reset}
-  distill-mcp setup                    Auto-detect and configure all IDEs
+  distill-mcp setup                    Interactive setup wizard
   distill-mcp setup --claude           Configure Claude Code only
+  distill-mcp setup --antigravity      Configure Antigravity only
   distill-mcp setup --claude --hooks   Configure Claude Code + install hooks
   distill-mcp setup --hooks            Install hooks only (current project)
   distill-mcp setup --force            Overwrite existing configurations

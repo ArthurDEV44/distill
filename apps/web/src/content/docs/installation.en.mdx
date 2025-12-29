@@ -17,12 +17,12 @@ npm install -g distill-mcp
 distill-mcp setup
 ```
 
-That's it! The setup command auto-detects Claude Code, Cursor, and Windsurf.
+The interactive setup wizard will guide you through configuring your IDEs (Claude Code, Cursor, Windsurf, Antigravity).
 
 ## Prerequisites
 
 - **Node.js 18+** required
-- An MCP-compatible IDE (Claude Code, Cursor, or Windsurf)
+- An MCP-compatible IDE (Claude Code, Cursor, Windsurf, or Antigravity)
 
 ## Installation Options
 
@@ -36,9 +36,10 @@ distill-mcp setup
 ### Option 2: Configure Specific IDE
 
 ```bash
-distill-mcp setup --claude     # Claude Code only
-distill-mcp setup --cursor     # Cursor only
-distill-mcp setup --windsurf   # Windsurf only
+distill-mcp setup --claude       # Claude Code only
+distill-mcp setup --cursor       # Cursor only
+distill-mcp setup --windsurf     # Windsurf only
+distill-mcp setup --antigravity  # Antigravity only
 ```
 
 ### Option 3: Run with npx (No Install)
@@ -99,6 +100,21 @@ Edit `~/.cursor/mcp.json` (or Settings > MCP Servers):
 ### Windsurf
 
 Edit `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "distill": {
+      "command": "distill-mcp",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+### Antigravity
+
+Open Antigravity, go to Agent session > MCP Servers > Manage MCP Servers > View raw config, then edit `mcp_config.json`:
 
 ```json
 {

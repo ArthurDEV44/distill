@@ -2,7 +2,7 @@ import { homedir, platform } from "os";
 import { join } from "path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 
-export type IDE = "claude" | "cursor" | "windsurf";
+export type IDE = "claude" | "cursor" | "windsurf" | "antigravity";
 
 export interface IDEConfig {
   name: string;
@@ -70,6 +70,16 @@ export function getIDEConfigPaths(): Record<IDE, IDEConfig> {
       configPath: isWindows
         ? join(home, "AppData", "Roaming", "windsurf", "settings.json")
         : join(home, ".windsurf", "settings.json"),
+      configKey: "mcpServers",
+      detected: false,
+    },
+    antigravity: {
+      name: "Antigravity",
+      configPath: isWindows
+        ? join(home, "AppData", "Roaming", "antigravity", "mcp_config.json")
+        : platform() === "darwin"
+          ? join(home, "Library", "Application Support", "antigravity", "mcp_config.json")
+          : join(home, ".config", "antigravity", "mcp_config.json"),
       configKey: "mcpServers",
       detected: false,
     },
