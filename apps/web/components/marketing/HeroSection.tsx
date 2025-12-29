@@ -68,7 +68,7 @@ function HeroStatic() {
         <div className="group relative inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-md">
           <span className="flex h-1.5 w-1.5 rounded-full bg-[#f4cf8b] animate-pulse shadow-[0_0_12px_rgba(244,207,139,0.8)]"></span>
           <span className="text-[11px] font-semibold text-neutral-300 tracking-[0.2em] uppercase">
-            v0.6.0-beta Now Available
+            v0.6.2-beta Now Available
           </span>
         </div>
 
@@ -108,7 +108,7 @@ const Hero = () => {
           <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_2s_infinite] bg-linear-to-r from-transparent via-white/5 to-transparent" />
           <span className="flex h-1.5 w-1.5 rounded-full bg-[#f4cf8b] animate-pulse shadow-[0_0_12px_rgba(244,207,139,0.8)]"></span>
           <span className="text-[11px] font-semibold text-neutral-300 tracking-[0.2em] uppercase">
-            v0.6.0-beta Now Available
+            v0.6.2-beta Now Available
           </span>
         </motion.div>
 
