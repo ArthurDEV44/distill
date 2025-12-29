@@ -1,0 +1,130 @@
+---
+title: Intégration Antigravity
+description: Guide pas à pas pour intégrer Distill avec Antigravity
+---
+
+# Intégration Antigravity
+
+Ce guide vous accompagne dans la configuration de Distill avec l'IDE Antigravity.
+
+## Prérequis
+
+- Antigravity installé ([télécharger](https://antigravity.google))
+- Node.js 18+ installé
+
+## Configuration rapide (30 secondes)
+
+```bash
+npm install -g distill-mcp
+distill-mcp setup --antigravity
+```
+
+Terminé ! Redémarrez Antigravity et vous êtes prêt.
+
+## Configuration manuelle
+
+Si la configuration automatique n'a pas fonctionné :
+
+1. Ouvrez Antigravity
+2. Cliquez sur **Agent session** dans le panneau latéral
+3. Cliquez sur le menu **"..."** en haut du panneau
+4. Sélectionnez **MCP Servers**
+5. Cliquez sur **Manage MCP Servers** puis **View raw config**
+6. Éditez le fichier `~/.gemini/antigravity/mcp_config.json` :
+
+```json
+{
+  "mcpServers": {
+    "distill": {
+      "command": "distill-mcp",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Ou avec npx (sans installation globale) :
+
+```json
+{
+  "mcpServers": {
+    "distill": {
+      "command": "npx",
+      "args": ["distill-mcp", "serve"]
+    }
+  }
+}
+```
+
+## Vérifier l'installation
+
+Redémarrez Antigravity, puis demandez dans le chat :
+
+```
+Quels outils MCP sont disponibles ?
+```
+
+Vous devriez voir les outils Distill listés.
+
+## Utilisation de Distill avec Antigravity
+
+### Lecture intelligente de fichiers
+
+Explorez votre code efficacement :
+
+```
+Utilise smart_file_read pour analyser src/components/App.tsx
+```
+
+### Compression des sorties de build
+
+Quand vous avez des erreurs de build :
+
+```
+Utilise auto_optimize pour compresser cette sortie : [collez les erreurs]
+```
+
+### Extraction de code spécifique
+
+Pour extraire une fonction ou classe :
+
+```
+Utilise smart_file_read sur src/api.ts avec target={"type":"function","name":"fetchData"}
+```
+
+### Statistiques de session
+
+Vérifiez vos économies de tokens :
+
+```
+Montre mes stats de session
+```
+
+## Bonnes pratiques
+
+1. **Utilisez smart_file_read** pour l'exploration de code au lieu d'ouvrir les fichiers directement
+2. **Compressez les sorties volumineuses** avant de les analyser
+3. **Vérifiez session_stats** périodiquement pour voir vos économies
+
+## Dépannage
+
+### Le serveur MCP ne démarre pas
+
+1. Vérifiez la version Node.js : `node --version` (nécessite 18+)
+2. Exécutez `distill-mcp doctor` pour diagnostiquer
+3. Vérifiez les logs dans Antigravity
+
+### Les outils n'apparaissent pas
+
+1. Redémarrez complètement Antigravity
+2. Vérifiez que la syntaxe JSON est valide dans `~/.gemini/antigravity/mcp_config.json`
+3. Essayez d'exécuter `npx distill-mcp serve` manuellement pour vérifier les erreurs
+4. Antigravity recommande de garder moins de 50 outils MCP activés pour des performances optimales
+
+### Problèmes de permissions
+
+Sur macOS/Linux :
+
+```bash
+chmod +x $(which distill-mcp)
+```

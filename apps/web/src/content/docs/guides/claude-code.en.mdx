@@ -9,7 +9,7 @@ This guide walks you through setting up Distill with Claude Code.
 
 ## Prerequisites
 
-- Claude Code installed ([download](https://claude.ai/code))
+- Claude Code installed (`npm install -g @anthropic-ai/claude-code` or [download](https://claude.com/download))
 - Node.js 18+ installed
 
 ## Quick Setup (30 seconds)
@@ -23,9 +23,17 @@ Done! Restart Claude Code and you're ready.
 
 ## Manual Setup
 
-If the automatic setup didn't work, configure manually:
+If the automatic setup didn't work:
 
-Edit `~/.claude/mcp.json`:
+### Option 1: Via CLI (recommended)
+
+```bash
+claude mcp add distill -- npx distill-mcp serve
+```
+
+### Option 2: Via configuration file
+
+Edit `~/.claude.json` (global) or `.mcp.json` (per-project):
 
 ```json
 {
@@ -53,7 +61,15 @@ Or with npx (no global install):
 
 ## Verify Installation
 
-Restart Claude Code, then ask:
+Check that the server is properly configured:
+
+```bash
+claude mcp list
+```
+
+Or in Claude Code, use the `/mcp` command to see connected servers.
+
+Then ask:
 
 ```
 Run the session_stats tool
@@ -124,9 +140,10 @@ This adds hooks to your project that:
 
 ### Tools Not Appearing
 
-1. Restart Claude Code completely
-2. Verify `mcp.json` syntax is valid JSON
+1. Check configuration: `claude mcp list`
+2. Verify JSON syntax is valid in `~/.claude.json`
 3. Try running `npx distill-mcp serve` manually to check for errors
+4. Use `/mcp` in Claude Code to see server status
 
 ### Permission Issues
 

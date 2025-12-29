@@ -9,7 +9,7 @@ Ce guide vous accompagne dans la configuration de Distill avec l'IDE Cursor.
 
 ## Prérequis
 
-- Cursor installé ([télécharger](https://cursor.sh))
+- Cursor installé ([télécharger](https://cursor.com))
 - Node.js 18+ installé
 
 ## Configuration rapide (30 secondes)
@@ -23,7 +23,11 @@ Terminé ! Redémarrez Cursor et vous êtes prêt.
 
 ## Configuration manuelle
 
-Si la configuration automatique n'a pas fonctionné, éditez `~/.cursor/mcp.json` :
+Si la configuration automatique n'a pas fonctionné :
+
+**Via l'interface :** File → Preferences → Cursor Settings → MCP → Add Custom MCP
+
+**Via fichier :** Éditez `~/.cursor/mcp.json` (global) ou `.cursor/mcp.json` (par projet) :
 
 ```json
 {
@@ -102,5 +106,6 @@ Compresse ce git diff : [collez le diff]
 ### Les outils ne fonctionnent pas
 
 1. Redémarrez complètement Cursor
-2. Vérifiez que la config JSON est valide
+2. Vérifiez que la config JSON est valide dans `~/.cursor/mcp.json`
 3. Assurez-vous que Node.js 18+ est dans votre PATH
+4. Vérifiez les logs dans le panneau Output (View → Output → MCP)

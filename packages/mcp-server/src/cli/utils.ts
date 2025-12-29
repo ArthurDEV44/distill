@@ -50,36 +50,32 @@ export function getIDEConfigPaths(): Record<IDE, IDEConfig> {
     claude: {
       name: "Claude Code",
       configPath: isWindows
-        ? join(home, "AppData", "Roaming", "claude", "settings.json")
-        : join(home, ".claude", "settings.json"),
+        ? join(home, ".claude.json")
+        : join(home, ".claude.json"),
       configKey: "mcpServers",
       detected: false,
     },
     cursor: {
       name: "Cursor",
       configPath: isWindows
-        ? join(home, "AppData", "Roaming", "Cursor", "User", "globalStorage", "cursor.mcp", "mcp.json")
-        : platform() === "darwin"
-          ? join(home, "Library", "Application Support", "Cursor", "User", "globalStorage", "cursor.mcp", "mcp.json")
-          : join(home, ".config", "Cursor", "User", "globalStorage", "cursor.mcp", "mcp.json"),
+        ? join(home, ".cursor", "mcp.json")
+        : join(home, ".cursor", "mcp.json"),
       configKey: "mcpServers",
       detected: false,
     },
     windsurf: {
       name: "Windsurf",
       configPath: isWindows
-        ? join(home, "AppData", "Roaming", "windsurf", "settings.json")
-        : join(home, ".windsurf", "settings.json"),
+        ? join(home, ".codeium", "windsurf", "mcp_config.json")
+        : join(home, ".codeium", "windsurf", "mcp_config.json"),
       configKey: "mcpServers",
       detected: false,
     },
     antigravity: {
       name: "Antigravity",
       configPath: isWindows
-        ? join(home, "AppData", "Roaming", "antigravity", "mcp_config.json")
-        : platform() === "darwin"
-          ? join(home, "Library", "Application Support", "antigravity", "mcp_config.json")
-          : join(home, ".config", "antigravity", "mcp_config.json"),
+        ? join(home, ".gemini", "antigravity", "mcp_config.json")
+        : join(home, ".gemini", "antigravity", "mcp_config.json"),
       configKey: "mcpServers",
       detected: false,
     },

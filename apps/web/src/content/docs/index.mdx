@@ -9,6 +9,9 @@ Distill est un serveur MCP open source qui vous aide à optimiser l'utilisation 
 
 **Pas d'authentification, pas de clés API, pas de services cloud** - installez et utilisez directement.
 
+> **Qu'est-ce que MCP ?**
+> MCP (Model Context Protocol) est un standard ouvert qui permet aux assistants IA (Claude Code, Antigravity, Cursor, Windsurf) de communiquer avec des serveurs externes. Distill est un serveur MCP qui aide votre IA à consommer moins de "tokens" (unités de texte facturées) en compressant intelligemment les informations qu'elle traite.
+
 ## Démarrage rapide
 
 Commencez avec Distill en 3 étapes simples :
@@ -25,7 +28,7 @@ npx distill-mcp
 
 ### 2. Configurer votre IDE
 
-Ajoutez le serveur MCP à la configuration de votre IDE. Pour Claude Code, éditez `~/.claude/mcp.json` :
+Ajoutez le serveur MCP à la configuration de votre IDE. Pour Claude Code, éditez `~/.claude.json` :
 
 ```json
 {
@@ -40,11 +43,11 @@ Ajoutez le serveur MCP à la configuration de votre IDE. Pour Claude Code, édit
 
 ### 3. Commencer à économiser des tokens
 
-Le serveur MCP fournit 19 outils d'optimisation. Utilisez `session_stats` pour voir vos économies en temps réel.
+Le serveur MCP fournit 21 outils d'optimisation. Utilisez `session_stats` pour voir vos économies en temps réel.
 
 ## Fonctionnalités
 
-- **19 outils d'optimisation** - Lecture intelligente de fichiers, compression des sorties de build, résumé des logs, et plus
+- **21 outils d'optimisation** - Lecture intelligente de fichiers, compression des sorties de build, résumé des logs, et plus
 - **Parsing AST** - Extraction de fonctions, classes et types depuis le code (TypeScript, Python, Go, Rust, PHP, Swift)
 - **Support universel des IDE** - Fonctionne avec Claude Code, Cursor, Windsurf et tout client compatible MCP
 - **50-95% d'économie de tokens** - Selon le type de contenu
@@ -60,6 +63,6 @@ Distill est en beta - vos retours orientent la roadmap !
 
 <Cards>
   <Card title="Installation" href="/docs/installation" description="Instructions d'installation détaillées pour toutes les plateformes" />
-  <Card title="Outils MCP" href="/docs/mcp-tools" description="Référence complète des 19 outils d'optimisation" />
+  <Card title="Outils MCP" href="/docs/mcp-tools" description="Référence complète des 21 outils d'optimisation" />
   <Card title="Guide Claude Code" href="/docs/guides/claude-code" description="Guide pas à pas pour l'intégration avec Claude Code" />
 </Cards>

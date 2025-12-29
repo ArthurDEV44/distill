@@ -9,7 +9,7 @@ Ce guide vous accompagne dans la configuration de Distill avec l'IDE Windsurf.
 
 ## Prérequis
 
-- Windsurf installé ([télécharger](https://codeium.com/windsurf))
+- Windsurf installé ([télécharger](https://windsurf.com))
 - Node.js 18+ installé
 
 ## Configuration rapide (30 secondes)
@@ -23,7 +23,11 @@ Terminé ! Redémarrez Windsurf et vous êtes prêt.
 
 ## Configuration manuelle
 
-Si la configuration automatique n'a pas fonctionné, éditez `~/.codeium/windsurf/mcp_config.json` :
+Si la configuration automatique n'a pas fonctionné :
+
+**Via l'interface :** Dans le chat Windsurf, cliquez sur l'icône **marteau (MCP servers)** → **Configure** → **View raw config**
+
+**Via fichier :** Éditez `~/.codeium/windsurf/mcp_config.json` (macOS/Linux) ou `%USERPROFILE%\.codeium\windsurf\mcp_config.json` (Windows) :
 
 ```json
 {
@@ -51,7 +55,7 @@ Ou avec npx (sans installation globale) :
 
 ## Vérifier l'installation
 
-Redémarrez Windsurf, puis demandez :
+Après avoir modifié la configuration, cliquez sur le bouton **Refresh** dans le panneau MCP servers, puis demandez :
 
 ```
 Liste les outils MCP disponibles
@@ -83,9 +87,10 @@ Déduplique ces erreurs : [collez la sortie de build]
 
 ### MCP ne charge pas
 
-1. Vérifiez l'emplacement du fichier de config : `~/.windsurf/mcp.json`
+1. Vérifiez l'emplacement du fichier de config : `~/.codeium/windsurf/mcp_config.json`
 2. Validez la syntaxe JSON
-3. Exécutez `distill-mcp doctor` pour vérifier l'installation
+3. Cliquez sur le bouton **Refresh** après modification
+4. Exécutez `distill-mcp doctor` pour vérifier l'installation
 
 ### Erreurs de permissions
 

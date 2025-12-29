@@ -62,13 +62,13 @@ export PATH="$(npm config get prefix)/bin:$PATH"
 **Solutions:**
 
 1. **Check config file exists:**
-   - Claude Code: `~/.claude/mcp.json`
+   - Claude Code: `~/.claude.json`
    - Cursor: `~/.cursor/mcp.json`
    - Windsurf: `~/.codeium/windsurf/mcp_config.json`
 
 2. **Validate JSON syntax:**
    ```bash
-   cat ~/.claude/mcp.json | python -m json.tool
+   cat ~/.claude.json | python -m json.tool
    ```
 
 3. **Test server manually:**

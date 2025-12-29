@@ -9,6 +9,9 @@ Distill is an open source MCP server that helps you optimize LLM token usage. It
 
 **No authentication, no API keys, no cloud services** - just install and use.
 
+> **What is MCP?**
+> MCP (Model Context Protocol) is an open standard that allows AI assistants (Claude Code, Antigravity, Cursor, Windsurf) to communicate with external servers. Distill is an MCP server that helps your AI consume fewer "tokens" (billed text units) by intelligently compressing the information it processes.
+
 ## Quick Start
 
 Get started with Distill in 3 simple steps:
@@ -25,7 +28,7 @@ npx distill-mcp
 
 ### 2. Configure your IDE
 
-Add the MCP server to your IDE configuration. For Claude Code, edit `~/.claude/mcp.json`:
+Add the MCP server to your IDE configuration. For Claude Code, edit `~/.claude.json`:
 
 ```json
 {
@@ -40,11 +43,11 @@ Add the MCP server to your IDE configuration. For Claude Code, edit `~/.claude/m
 
 ### 3. Start saving tokens
 
-The MCP server provides 19 optimization tools. Use `session_stats` to see your savings in real-time.
+The MCP server provides 21 optimization tools. Use `session_stats` to see your savings in real-time.
 
 ## Features
 
-- **19 Optimization Tools** - Smart file reading, build output compression, log summarization, and more
+- **21 Optimization Tools** - Smart file reading, build output compression, log summarization, and more
 - **AST-Aware Parsing** - Extract functions, classes, and types from code (TypeScript, Python, Go, Rust, PHP, Swift)
 - **Universal IDE Support** - Works with Claude Code, Cursor, Windsurf, and any MCP-compatible client
 - **50-95% Token Savings** - Depending on content type
@@ -60,6 +63,6 @@ Distill is in beta - your feedback shapes the roadmap!
 
 <Cards>
   <Card title="Installation" href="/docs/installation" description="Detailed installation instructions for all platforms" />
-  <Card title="MCP Tools" href="/docs/mcp-tools" description="Complete reference for all 19 optimization tools" />
+  <Card title="MCP Tools" href="/docs/mcp-tools" description="Complete reference for all 21 optimization tools" />
   <Card title="Claude Code Guide" href="/docs/guides/claude-code" description="Step-by-step guide for Claude Code integration" />
 </Cards>

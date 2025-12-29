@@ -9,7 +9,7 @@ Ce guide vous accompagne dans la configuration de Distill avec Claude Code.
 
 ## Prérequis
 
-- Claude Code installé ([télécharger](https://claude.ai/code))
+- Claude Code installé (`npm install -g @anthropic-ai/claude-code` ou [télécharger](https://claude.com/download))
 - Node.js 18+ installé
 
 ## Configuration rapide (30 secondes)
@@ -23,9 +23,17 @@ Terminé ! Redémarrez Claude Code et vous êtes prêt.
 
 ## Configuration manuelle
 
-Si la configuration automatique n'a pas fonctionné, configurez manuellement :
+Si la configuration automatique n'a pas fonctionné :
 
-Éditez `~/.claude/mcp.json` :
+### Option 1 : Via CLI (recommandé)
+
+```bash
+claude mcp add distill -- npx distill-mcp serve
+```
+
+### Option 2 : Via fichier de configuration
+
+Éditez `~/.claude.json` (global) ou `.mcp.json` (par projet) :
 
 ```json
 {
@@ -53,7 +61,15 @@ Ou avec npx (sans installation globale) :
 
 ## Vérifier l'installation
 
-Redémarrez Claude Code, puis demandez :
+Vérifiez que le serveur est bien configuré :
+
+```bash
+claude mcp list
+```
+
+Ou dans Claude Code, utilisez la commande `/mcp` pour voir les serveurs connectés.
+
+Puis demandez :
 
 ```
 Exécute l'outil session_stats
@@ -124,9 +140,10 @@ Cela ajoute des hooks à votre projet qui :
 
 ### Les outils n'apparaissent pas
 
-1. Redémarrez complètement Claude Code
-2. Vérifiez que la syntaxe de `mcp.json` est du JSON valide
+1. Vérifiez la configuration : `claude mcp list`
+2. Vérifiez que la syntaxe JSON est valide dans `~/.claude.json`
 3. Essayez d'exécuter `npx distill-mcp serve` manuellement pour vérifier les erreurs
+4. Utilisez `/mcp` dans Claude Code pour voir le statut des serveurs
 
 ### Problèmes de permissions
 
