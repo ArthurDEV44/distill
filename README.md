@@ -209,6 +209,13 @@ bun run build
 bun run dev
 ```
 
+## Community
+
+Distill is in beta - your feedback shapes the roadmap!
+
+- **[GitHub Discussions](https://github.com/ArthurDEV44/distill/discussions)** - Questions, ideas, feedback
+- **[Issues](https://github.com/ArthurDEV44/distill/issues)** - Bug reports
+
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
@@ -224,4 +231,4 @@ MIT
 
 ---
 
-**[npm](https://www.npmjs.com/package/distill-mcp)** · **[GitHub](https://github.com/ArthurDEV44/distill)** · **[Documentation](./docs)**
+**[npm](https://www.npmjs.com/package/distill-mcp)** · **[GitHub](https://github.com/ArthurDEV44/distill)** · **[Documentation](./docs)** · **[Discussions](https://github.com/ArthurDEV44/distill/discussions)**
