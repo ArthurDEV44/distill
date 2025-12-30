@@ -9,7 +9,6 @@ import Hero from '@/components/marketing/HeroSection';
 import Stats from '@/components/marketing/Stats';
 import Footer from '@/components/marketing/Footer';
 import NebulaShader from '@/components/canvas/NebulaShader';
-import StarDust from '@/components/canvas/StarDust';
 
 export default function HomePage() {
   const params = useParams();
@@ -22,7 +21,6 @@ export default function HomePage() {
         <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
           <Suspense fallback={null}>
             <NebulaShader />
-            <StarDust />
           </Suspense>
         </Canvas>
       </div>
