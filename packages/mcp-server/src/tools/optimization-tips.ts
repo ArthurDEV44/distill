@@ -140,7 +140,7 @@ export async function optimizationTips(
 
 ---
 *Tips from Distill - LLM Token Optimization*
-*Learn more at https://distill.dev*`;
+*Learn more at https://distill-mcp.com*`;
 
   return {
     content: [{ type: "text", text: result }],

@@ -62,7 +62,7 @@ ${COLORS.bright}Examples:${COLORS.reset}
   distill-mcp analyze -t 5000 --json   Custom threshold, JSON output
 
 ${COLORS.bright}Documentation:${COLORS.reset}
-  https://distill.dev/docs
+  https://distill-mcp.com/docs
 `);
 }
 

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://distill.dev",
+    url: "https://distill-mcp.com",
     siteName: "Distill",
     title: "Distill - Context Engineering for LLMs",
     description: "Open source MCP server for LLM token optimization.",

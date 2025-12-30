@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Distill MCP Server Installation Script
-# https://distill.dev
+# https://distill-mcp.com
 #
 # Usage:
-#   curl -fsSL https://distill.dev/install.sh | bash
+#   curl -fsSL https://distill-mcp.com/install.sh | bash
 #
 # This script will:
 #   1. Detect your OS and package manager
@@ -175,7 +175,7 @@ main() {
     echo "  1. Restart your IDE to load the MCP server"
     echo "  2. Run 'distill-mcp doctor' to verify everything is working"
     echo ""
-    echo -e "Documentation: ${CYAN}https://distill.dev/docs${NC}"
+    echo -e "Documentation: ${CYAN}https://distill-mcp.com/docs${NC}"
     echo ""
 }
 

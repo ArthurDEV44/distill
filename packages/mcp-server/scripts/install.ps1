@@ -1,8 +1,8 @@
 # Distill MCP Server Installation Script for Windows
-# https://distill.dev
+# https://distill-mcp.com
 #
 # Usage:
-#   irm https://distill.dev/install.ps1 | iex
+#   irm https://distill-mcp.com/install.ps1 | iex
 #
 # This script will:
 #   1. Detect your package manager
@@ -125,7 +125,7 @@ function Main {
     Write-Host "  2. Run 'distill-mcp doctor' to verify everything is working"
     Write-Host ""
     Write-Host "Documentation: " -NoNewline
-    Write-Host "https://distill.dev/docs" -ForegroundColor Cyan
+    Write-Host "https://distill-mcp.com/docs" -ForegroundColor Cyan
     Write-Host ""
 }
 

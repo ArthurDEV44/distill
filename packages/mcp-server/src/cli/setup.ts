@@ -137,7 +137,7 @@ async function setupInteractive(): Promise<void> {
   log(`\n${COLORS.dim}Next steps:${COLORS.reset}`);
   log("  1. Restart your IDE to load the MCP server");
   log("  2. Run 'distill-mcp doctor' to verify the installation");
-  log(`  3. Visit ${COLORS.cyan}https://distill.dev/docs${COLORS.reset} for documentation\n`);
+  log(`  3. Visit ${COLORS.cyan}https://distill-mcp.com/docs${COLORS.reset} for documentation\n`);
 }
 
 async function setupNonInteractive(options: SetupOptions): Promise<void> {
@@ -215,7 +215,7 @@ async function setupNonInteractive(options: SetupOptions): Promise<void> {
   log(`\n${COLORS.dim}Next steps:${COLORS.reset}`);
   log("  1. Restart your IDE to load the MCP server");
   log("  2. Run 'distill-mcp doctor' to verify the installation");
-  log(`  3. Visit ${COLORS.cyan}https://distill.dev/docs${COLORS.reset} for documentation\n`);
+  log(`  3. Visit ${COLORS.cyan}https://distill-mcp.com/docs${COLORS.reset} for documentation\n`);
 }
 
 export async function setup(options: SetupOptions = {}): Promise<void> {
