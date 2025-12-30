@@ -38,13 +38,7 @@ Après les commandes Bash qui produisent une sortie volumineuse (>500 caractère
 mcp__distill__auto_optimize content="<collez la sortie volumineuse>"
 \`\`\`
 
-### Règle 3 : Enregistrer le modèle au démarrage de la session
-
-\`\`\`
-mcp__distill__register_model model="claude-opus-4-5-20251101"
-\`\`\`
-
-### Règle 4 : SDK d'exécution de code pour les opérations complexes
+### Règle 3 : SDK d'exécution de code pour les opérations complexes
 
 Pour les opérations multi-étapes, utilisez `code_execute` au lieu de plusieurs appels d'outils (**98% d'économie de tokens**) :
 
@@ -53,16 +47,43 @@ mcp__distill__code_execute code="<code typescript>"
 \`\`\`
 
 **API du SDK (`ctx`) :**
+
+*Compression :*
 - `ctx.compress.auto(content, hint?)` - Détection auto et compression
 - `ctx.compress.logs(logs)` - Résumer les logs
 - `ctx.compress.diff(diff)` - Compresser les git diff
 - `ctx.compress.semantic(content, ratio?)` - Compression TF-IDF
+
+*Code :*
 - `ctx.code.parse(content, lang)` - Parser en structure AST
 - `ctx.code.extract(content, lang, {type, name})` - Extraire un élément
 - `ctx.code.skeleton(content, lang)` - Obtenir les signatures uniquement
+
+*Fichiers :*
 - `ctx.files.read(path)` - Lire le contenu d'un fichier
 - `ctx.files.exists(path)` - Vérifier si un fichier existe
 - `ctx.files.glob(pattern)` - Trouver des fichiers par pattern
+
+*Git :*
+- `ctx.git.diff(ref?)` - Obtenir le diff git
+- `ctx.git.log(limit?)` - Historique des commits
+- `ctx.git.status()` - Statut du repo
+- `ctx.git.branch()` - Info sur les branches
+- `ctx.git.blame(file, line?)` - Git blame d'un fichier
+
+*Recherche :*
+- `ctx.search.grep(pattern, glob?)` - Rechercher un pattern dans les fichiers
+- `ctx.search.symbols(query, glob?)` - Rechercher des symboles (fonctions, classes)
+- `ctx.search.files(pattern)` - Rechercher des fichiers par pattern
+- `ctx.search.references(symbol, glob?)` - Trouver les références d'un symbole
+
+*Analyse :*
+- `ctx.analyze.dependencies(file)` - Analyser les imports/exports
+- `ctx.analyze.callGraph(fn, file, depth?)` - Construire le graphe d'appels
+- `ctx.analyze.exports(file)` - Obtenir les exports d'un fichier
+- `ctx.analyze.structure(dir?, depth?)` - Structure du répertoire avec analyse
+
+*Utilitaires :*
 - `ctx.utils.countTokens(text)` - Compter les tokens
 - `ctx.utils.detectType(content)` - Détecter le type de contenu
 - `ctx.utils.detectLanguage(path)` - Détecter le langage depuis le chemin

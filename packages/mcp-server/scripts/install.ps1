@@ -30,15 +30,15 @@ function Test-NodeVersion {
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
         Write-Error "Node.js is not installed."
         Write-Host ""
-        Write-Host "Please install Node.js 18 or higher:"
+        Write-Host "Please install Node.js 20 or higher:"
         Write-Host "  https://nodejs.org/"
         Write-Host ""
         exit 1
     }
 
     $nodeVersion = (node -v).TrimStart('v').Split('.')[0]
-    if ([int]$nodeVersion -lt 18) {
-        Write-Error "Node.js version must be 18 or higher (found v$nodeVersion)."
+    if ([int]$nodeVersion -lt 20) {
+        Write-Error "Node.js version must be 20 or higher (found v$nodeVersion)."
         Write-Host ""
         Write-Host "Please upgrade Node.js:"
         Write-Host "  https://nodejs.org/"

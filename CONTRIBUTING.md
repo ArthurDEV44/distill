@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Distill! This document provides g
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - Bun 1.3+
 
 ### Development Setup

@@ -71,15 +71,15 @@ check_node() {
     if ! command -v node &> /dev/null; then
         error "Node.js is not installed."
         echo ""
-        echo "Please install Node.js 18 or higher:"
+        echo "Please install Node.js 20 or higher:"
         echo "  https://nodejs.org/"
         echo ""
         exit 1
     fi
 
     NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 18 ]; then
-        error "Node.js version must be 18 or higher (found v$NODE_VERSION)."
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        error "Node.js version must be 20 or higher (found v$NODE_VERSION)."
         echo ""
         echo "Please upgrade Node.js:"
         echo "  https://nodejs.org/"

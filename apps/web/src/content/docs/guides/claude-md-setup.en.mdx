@@ -38,13 +38,7 @@ After Bash commands that produce large output (>500 chars):
 mcp__distill__auto_optimize content="<paste the large output>"
 \`\`\`
 
-### Rule 3: Register Model at Session Start
-
-\`\`\`
-mcp__distill__register_model model="claude-opus-4-5-20251101"
-\`\`\`
-
-### Rule 4: Code Execution SDK for Complex Operations
+### Rule 3: Code Execution SDK for Complex Operations
 
 For multi-step operations, use `code_execute` instead of multiple tool calls (**98% token savings**):
 
@@ -53,16 +47,43 @@ mcp__distill__code_execute code="<typescript code>"
 \`\`\`
 
 **SDK API (`ctx`):**
+
+*Compression:*
 - `ctx.compress.auto(content, hint?)` - Auto-detect and compress
 - `ctx.compress.logs(logs)` - Summarize log output
 - `ctx.compress.diff(diff)` - Compress git diff
 - `ctx.compress.semantic(content, ratio?)` - TF-IDF compression
+
+*Code:*
 - `ctx.code.parse(content, lang)` - Parse to AST structure
 - `ctx.code.extract(content, lang, {type, name})` - Extract element
 - `ctx.code.skeleton(content, lang)` - Get signatures only
+
+*Files:*
 - `ctx.files.read(path)` - Read file content
 - `ctx.files.exists(path)` - Check if file exists
 - `ctx.files.glob(pattern)` - Find files by pattern
+
+*Git:*
+- `ctx.git.diff(ref?)` - Get git diff
+- `ctx.git.log(limit?)` - Get commit history
+- `ctx.git.status()` - Get repo status
+- `ctx.git.branch()` - Get branch info
+- `ctx.git.blame(file, line?)` - Git blame for a file
+
+*Search:*
+- `ctx.search.grep(pattern, glob?)` - Search for pattern in files
+- `ctx.search.symbols(query, glob?)` - Search for symbols (functions, classes)
+- `ctx.search.files(pattern)` - Search files by pattern
+- `ctx.search.references(symbol, glob?)` - Find references to a symbol
+
+*Analyze:*
+- `ctx.analyze.dependencies(file)` - Analyze imports/exports
+- `ctx.analyze.callGraph(fn, file, depth?)` - Build call graph
+- `ctx.analyze.exports(file)` - Get file exports
+- `ctx.analyze.structure(dir?, depth?)` - Directory structure with analysis
+
+*Utilities:*
 - `ctx.utils.countTokens(text)` - Count tokens
 - `ctx.utils.detectType(content)` - Detect content type
 - `ctx.utils.detectLanguage(path)` - Detect language from path
