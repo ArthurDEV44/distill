@@ -68,21 +68,72 @@ bun run format
 bun run build
 ```
 
+## Branch Strategy
+
+We use a three-branch workflow:
+
+```
+main          ← Production releases (protected)
+  ↑
+dev           ← Integration branch (protected)
+  ↑
+feature/*     ← Your contributions
+fix/*
+docs/*
+```
+
+| Branch | Purpose | Who can push |
+|--------|---------|--------------|
+| `main` | Stable releases | Maintainers only |
+| `dev` | Integration & testing | Maintainers only |
+| `feature/*`, `fix/*`, `docs/*` | Contributions | Everyone (via PR) |
+
 ## Making Changes
 
-1. **Fork the repository** and create your branch from `main`
-2. **Make your changes** with clear, focused commits
-3. **Add tests** for new functionality
-4. **Ensure all tests pass** (`bun run test`)
-5. **Run type checks** (`bun run check-types`)
-6. **Submit a pull request**
+### For External Contributors
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork** locally
+3. **Create a feature branch** from `dev`:
+   ```bash
+   git checkout dev
+   git pull origin dev
+   git checkout -b feature/your-feature-name
+   ```
+4. **Make your changes** with clear, focused commits
+5. **Add tests** for new functionality
+6. **Ensure all tests pass** (`bun run test`)
+7. **Run type checks** (`bun run check-types`)
+8. **Push to your fork** and submit a PR **targeting `dev`**
+
+### Branch Naming Convention
+
+- `feature/` - New features (e.g., `feature/java-parser`)
+- `fix/` - Bug fixes (e.g., `fix/cache-invalidation`)
+- `docs/` - Documentation (e.g., `docs/api-reference`)
+- `refactor/` - Code refactoring
+- `test/` - Test improvements
 
 ## Pull Request Guidelines
 
+- **Target branch**: Always target `dev`, not `main`
 - Keep PRs focused on a single feature or fix
 - Update documentation if needed
 - Add tests for new features
 - Follow existing code style
+- Use [Conventional Commits](https://www.conventionalcommits.org/) format:
+  - `feat:` new feature
+  - `fix:` bug fix
+  - `docs:` documentation
+  - `refactor:` code refactoring
+  - `test:` test improvements
+  - `chore:` maintenance
+
+### PR Flow
+
+```
+Your fork → PR to dev → Review → Merge to dev → Release to main
+```
 
 ## Priority Areas
 
