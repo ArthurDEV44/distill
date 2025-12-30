@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Suspense } from 'react';
+import { useParams } from 'next/navigation';
 import { Canvas } from '@react-three/fiber';
 import Navbar from '@/components/marketing/Navbar';
 import Hero from '@/components/marketing/HeroSection';
@@ -11,6 +12,9 @@ import NebulaShader from '@/components/canvas/NebulaShader';
 import StarDust from '@/components/canvas/StarDust';
 
 export default function HomePage() {
+  const params = useParams();
+  const lang = (params.lang as string) || 'fr';
+
   return (
     <div className="min-h-screen bg-obsidian text-white selection:bg-indigo-500/30 selection:text-white relative">
       {/* Unified Background Layer (Nebula + Particles) */}
@@ -26,8 +30,8 @@ export default function HomePage() {
       <div className="relative z-10">
         <Navbar />
         <main>
-          <Hero />
-          <Stats />
+          <Hero lang={lang} />
+          <Stats lang={lang} />
         </main>
         <Footer />
       </div>

@@ -11,26 +11,65 @@ interface Feature {
   description: string;
 }
 
-const features: Feature[] = [
-  {
-    Icon: FileCode,
-    title: 'AST-Aware Parsing',
-    subtitle: '7 LANGUAGES SUPPORTED',
-    description: 'Extract functions, classes, and types from code files with intelligent AST parsing. Supports TypeScript, JavaScript, Python, Go, Rust, PHP, and Swift.',
+interface StatsTranslations {
+  badge: string;
+  title: string;
+  titleHighlight: string;
+  features: Feature[];
+}
+
+const translations: { fr: StatsTranslations; en: StatsTranslations } = {
+  fr: {
+    badge: 'Fonctionnalités',
+    title: 'Pourquoi utiliser',
+    titleHighlight: 'Distill ?',
+    features: [
+      {
+        Icon: FileCode,
+        title: 'Analyse AST',
+        subtitle: '7 LANGAGES SUPPORTÉS',
+        description: "Extrayez fonctions, classes et types depuis vos fichiers de code grâce à l'analyse AST intelligente. Supporte TypeScript, JavaScript, Python, Go, Rust, PHP et Swift.",
+      },
+      {
+        Icon: Zap,
+        title: 'Compression Intelligente',
+        subtitle: "JUSQU'À 98% D'ÉCONOMIE",
+        description: "Détection automatique du type de contenu et compression optimale. Les sorties de build, logs, diffs et code sont traités intelligemment pour minimiser l'utilisation de tokens.",
+      },
+      {
+        Icon: Cpu,
+        title: 'SDK TypeScript',
+        subtitle: 'UN OUTIL, PLUSIEURS OPÉRATIONS',
+        description: "Exécutez des opérations complexes multi-étapes avec un seul appel d'outil. Enchaînez lectures de fichiers, extraction AST et compression dans du code TypeScript sandboxé.",
+      },
+    ],
   },
-  {
-    Icon: Zap,
-    title: 'Smart Compression',
-    subtitle: 'UP TO 98% SAVINGS',
-    description: 'Auto-detect content type and apply optimal compression. Build outputs, logs, diffs, and code are intelligently processed to minimize token usage.',
+  en: {
+    badge: 'Core Features',
+    title: 'Why use',
+    titleHighlight: 'Distill?',
+    features: [
+      {
+        Icon: FileCode,
+        title: 'AST-Aware Parsing',
+        subtitle: '7 LANGUAGES SUPPORTED',
+        description: 'Extract functions, classes, and types from code files with intelligent AST parsing. Supports TypeScript, JavaScript, Python, Go, Rust, PHP, and Swift.',
+      },
+      {
+        Icon: Zap,
+        title: 'Smart Compression',
+        subtitle: 'UP TO 98% SAVINGS',
+        description: 'Auto-detect content type and apply optimal compression. Build outputs, logs, diffs, and code are intelligently processed to minimize token usage.',
+      },
+      {
+        Icon: Cpu,
+        title: 'TypeScript SDK',
+        subtitle: 'ONE TOOL, MANY OPERATIONS',
+        description: 'Execute complex multi-step operations with a single tool call. Chain file reads, AST extraction, and compression in sandboxed TypeScript code.',
+      },
+    ],
   },
-  {
-    Icon: Cpu,
-    title: 'TypeScript SDK',
-    subtitle: 'ONE TOOL, MANY OPERATIONS',
-    description: 'Execute complex multi-step operations with a single tool call. Chain file reads, AST extraction, and compression in sandboxed TypeScript code.',
-  },
-];
+};
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -89,27 +128,24 @@ function FeatureCard({ feature }: { feature: Feature }) {
 }
 
 /** Static version rendered during SSR (hidden) */
-function FeaturesStatic() {
+function FeaturesStatic({ t }: { t: StatsTranslations }) {
   return (
     <section className="relative py-32 px-6 bg-transparent overflow-hidden" style={{ opacity: 0 }}>
-      {/* Background gradients */}
-      {/* Background gradients removed */}
-
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col items-center mb-20 text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(244,207,139,0.15)]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
             <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
-              Core Features
+              {t.badge}
             </span>
           </div>
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-            Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-[#f4cf8b] to-[#311c35]">Distill?</span>
+            {t.title} <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-[#f4cf8b] to-[#311c35]">{t.titleHighlight}</span>
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
+        <div className="grid grid-cols-3 gap-6 max-sm:grid-cols-1">
+          {t.features.map((feature, index) => (
             <FeatureCard key={index} feature={feature} />
           ))}
         </div>
@@ -119,12 +155,9 @@ function FeaturesStatic() {
 }
 
 /** Animated version rendered after hydration */
-function FeaturesAnimated() {
+function FeaturesAnimated({ t }: { t: StatsTranslations }) {
   return (
     <section className="relative py-32 px-6 bg-transparent overflow-hidden">
-      {/* Nebula / Cosmic dust background effects */}
-      {/* Nebula / Cosmic dust background effects removed */}
-
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section header */}
         <div className="flex flex-col items-center mb-20 text-center space-y-4">
@@ -138,7 +171,7 @@ function FeaturesAnimated() {
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
             <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
-              Core Features
+              {t.badge}
             </span>
           </motion.div>
 
@@ -150,7 +183,7 @@ function FeaturesAnimated() {
             transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
             className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2 leading-[1.05]"
           >
-            Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-100 to-neutral-400">Distill?</span>
+            {t.title} <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-100 to-neutral-400">{t.titleHighlight}</span>
           </motion.h2>
         </div>
 
@@ -160,9 +193,9 @@ function FeaturesAnimated() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          className="grid grid-cols-3 gap-6 max-sm:grid-cols-1"
         >
-          {features.map((feature, index) => (
+          {t.features.map((feature, index) => (
             <motion.div key={index} variants={itemVariants} className="h-full">
               <FeatureCard feature={feature} />
             </motion.div>
@@ -173,34 +206,38 @@ function FeaturesAnimated() {
   );
 }
 
-const Features = () => {
+interface FeaturesProps {
+  lang?: string;
+}
+
+const Features = ({ lang = 'fr' }: FeaturesProps) => {
   const mounted = useHydrated();
   const shouldReduceMotion = useReducedMotion();
+  const t = lang === 'en' ? translations.en : translations.fr;
 
   // Render static hidden content during SSR to prevent flash
   if (!mounted) {
-    return <FeaturesStatic />;
+    return <FeaturesStatic t={t} />;
   }
 
   // Skip animations for users who prefer reduced motion
   if (shouldReduceMotion) {
     return (
       <section className="relative py-32 px-6 bg-transparent overflow-hidden">
-        {/* Background gradients removed */}
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col items-center mb-20 text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-sm shadow-[0_0_15px_-3px_rgba(244,207,139,0.15)]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
               <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
-                Core Features
+                {t.badge}
               </span>
             </div>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-2 leading-[1.05]">
-              Why use <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-100 to-neutral-400">Distill?</span>
+              {t.title} <span className="text-transparent bg-clip-text bg-linear-to-br from-white via-neutral-100 to-neutral-400">{t.titleHighlight}</span>
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
+          <div className="grid grid-cols-3 gap-6 max-sm:grid-cols-1">
+            {t.features.map((feature, index) => (
               <FeatureCard key={index} feature={feature} />
             ))}
           </div>
@@ -209,7 +246,7 @@ const Features = () => {
     );
   }
 
-  return <FeaturesAnimated />;
+  return <FeaturesAnimated t={t} />;
 };
 
 export default Features;

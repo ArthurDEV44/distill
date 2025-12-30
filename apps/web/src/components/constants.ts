@@ -34,7 +34,6 @@ export interface NavLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-  { label: "Features", href: "#features" },
-  { label: "Docs", href: "/docs" },
-  { label: "GitHub", href: "https://github.com/ArthurDEV44/distill" },
+  { label: "À propos", href: "/about" },
+  { label: "Documentation", href: "/docs" },
 ];
