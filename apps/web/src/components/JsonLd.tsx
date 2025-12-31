@@ -15,11 +15,6 @@ export function SoftwareApplicationSchema() {
       price: "0",
       priceCurrency: "USD",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "5",
-      ratingCount: "1",
-    },
   };
 
   return (
