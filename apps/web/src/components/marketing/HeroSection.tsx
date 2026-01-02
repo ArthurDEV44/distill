@@ -21,7 +21,7 @@ interface HeroTranslations {
 
 const translations: Record<string, HeroTranslations> = {
   fr: {
-    badge: 'v0.7.1 Disponible',
+    badge: 'v0.8.0 Disponible',
     titleLine1: "Extrayez l'essentiel.",
     titleLine2: 'Économisez des tokens.',
     descriptionStart: ' compresse intelligemment le contexte LLM. Obtenez jusqu\'à ',
@@ -33,7 +33,7 @@ const translations: Record<string, HeroTranslations> = {
     languages: 'Langages',
   },
   en: {
-    badge: 'v0.7.1 Now Available',
+    badge: 'v0.8.0 Now Available',
     titleLine1: 'Extract the essence.',
     titleLine2: 'Save tokens.',
     descriptionStart: ' compresses LLM context intelligently. Get up to ',
