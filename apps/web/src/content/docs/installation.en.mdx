@@ -86,18 +86,20 @@ Or with npx (no global install):
 
 ### Cursor
 
-Edit `~/.cursor/mcp.json` (or Settings > MCP Servers):
+Edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project):
 
 ```json
 {
   "mcpServers": {
     "distill": {
-      "command": "distill-mcp",
-      "args": ["serve"]
+      "command": "npx",
+      "args": ["-y", "distill-mcp", "serve"]
     }
   }
 }
 ```
+
+The `-y` flag allows npx to automatically install the package if needed.
 
 ### Windsurf
 
@@ -107,27 +109,31 @@ Edit `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "distill": {
-      "command": "distill-mcp",
-      "args": ["serve"]
+      "command": "npx",
+      "args": ["-y", "distill-mcp", "serve"]
     }
   }
 }
 ```
 
+The `-y` flag allows npx to automatically install the package if needed.
+
 ### Antigravity
 
-Open Antigravity, click **Agent session** > **"..."** menu > **MCP Servers** > **Manage MCP Servers** > **View raw config**, then edit `~/.gemini/antigravity/mcp_config.json`:
+Open Antigravity, click **Agent session** > **"..."** menu > **MCP Servers** > **Manage MCP Servers** > **View raw config**, then edit `mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
     "distill": {
-      "command": "distill-mcp",
-      "args": ["serve"]
+      "command": "npx",
+      "args": ["-y", "distill-mcp", "serve"]
     }
   }
 }
 ```
+
+The `-y` flag allows npx to automatically install the package if needed.
 
 ## Verify Installation
 

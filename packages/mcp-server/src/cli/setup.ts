@@ -14,7 +14,7 @@ import {
   log,
   COLORS,
 } from "./utils.js";
-import { installHooks } from "./hooks.js";
+import { installHooks, updateClaudeMd } from "./hooks.js";
 
 export interface SetupOptions {
   claude?: boolean;
@@ -33,7 +33,7 @@ function configureIDE(ide: IDE, config: IDEConfig, force: boolean): boolean {
   }
 
   const mcpServers = (existingConfig.mcpServers as Record<string, unknown>) || {};
-  mcpServers.distill = getMCPServerConfig();
+  mcpServers.distill = getMCPServerConfig(ide);
   existingConfig.mcpServers = mcpServers;
 
   if (writeJSONFile(config.configPath, existingConfig)) {
@@ -72,10 +72,8 @@ async function setupInteractive(): Promise<void> {
     },
   ];
 
-  // Pre-select detected IDEs
-  const initialValues = (Object.entries(ideConfigs) as [IDE, IDEConfig][])
-    .filter(([_, config]) => config.detected)
-    .map(([ide]) => ide);
+  // Don't pre-select any IDEs - let users choose explicitly
+  const initialValues: IDE[] = [];
 
   const selectedIDEs = await p.multiselect({
     message: "Select IDEs to configure:",
@@ -112,7 +110,7 @@ async function setupInteractive(): Promise<void> {
     s.stop(`Configured: ${configuredIDEs.join(", ")}`);
   }
 
-  // Ask about hooks if Claude Code was selected
+  // Ask about hooks and CLAUDE.md if Claude Code was selected
   if (selectedIDEs.includes("claude")) {
     const shouldInstallHooks = await p.confirm({
       message: "Install Claude Code hooks? (recommended for optimal MCP usage)",
@@ -129,6 +127,16 @@ async function setupInteractive(): Promise<void> {
       hookSpinner.start("Installing hooks...");
       await installHooks({ force: false });
       hookSpinner.stop("Hooks installed");
+    }
+
+    // Update CLAUDE.md with Distill directives
+    const claudeMdSpinner = p.spinner();
+    claudeMdSpinner.start("Updating CLAUDE.md...");
+    const claudeMdUpdated = updateClaudeMd({ force: false });
+    if (claudeMdUpdated) {
+      claudeMdSpinner.stop("CLAUDE.md updated with Distill directives");
+    } else {
+      claudeMdSpinner.stop("CLAUDE.md not updated (see above)");
     }
   }
 
@@ -210,6 +218,12 @@ async function setupNonInteractive(options: SetupOptions): Promise<void> {
   // Install hooks if requested
   if (options.hooks) {
     await installHooks({ force: options.force });
+  }
+
+  // Update CLAUDE.md if Claude Code was configured
+  if (options.claude) {
+    log("");
+    updateClaudeMd({ force: options.force });
   }
 
   log(`\n${COLORS.dim}Next steps:${COLORS.reset}`);

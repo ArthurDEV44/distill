@@ -33,25 +33,14 @@ If the automatic setup didn't work:
 {
   "mcpServers": {
     "distill": {
-      "command": "distill-mcp",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-Or with npx (no global install):
-
-```json
-{
-  "mcpServers": {
-    "distill": {
       "command": "npx",
-      "args": ["distill-mcp", "serve"]
+      "args": ["-y", "distill-mcp", "serve"]
     }
   }
 }
 ```
+
+The `-y` flag allows npx to automatically install the package if needed.
 
 ## Verify Installation
 

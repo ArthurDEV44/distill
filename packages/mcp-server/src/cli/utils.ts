@@ -118,11 +118,20 @@ export function writeJSONFile(path: string, data: Record<string, unknown>): bool
   }
 }
 
-export function getMCPServerConfig(): Record<string, unknown> {
+export function getMCPServerConfig(ide?: IDE): Record<string, unknown> {
+  // Claude Code works best with direct command (globally installed)
+  if (ide === "claude") {
+    return {
+      command: "distill-mcp",
+      args: ["serve"],
+    };
+  }
+
+  // Cursor, Windsurf, and Antigravity: use npx -y for reliability
+  // This ensures the package is always available even without global install
   return {
-    command: "distill-mcp",
-    args: ["serve"],
-    env: {},
+    command: "npx",
+    args: ["-y", "distill-mcp", "serve"],
   };
 }
 

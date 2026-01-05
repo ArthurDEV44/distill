@@ -144,15 +144,40 @@ Utilisez Distill pour l'optimisation des tokens :
 
 ## Auto-installation avec la CLI
 
-Au lieu de créer manuellement le fichier, vous pouvez utiliser la CLI :
+Au lieu d'ajouter manuellement le template, utilisez la CLI :
 
-```bash
-distill-mcp setup --hooks
+### Prérequis : Créer CLAUDE.md
+
+Si vous n'avez pas encore de fichier `CLAUDE.md`, créez-le d'abord avec Claude Code :
+
+```
+/init
 ```
 
-Cela va :
-1. Créer ou mettre à jour votre `CLAUDE.md` avec la configuration recommandée
-2. Installer des hooks de prompt pour des rappels automatiques
+### Ajouter les directives Distill
+
+```bash
+distill-mcp setup --claude
+```
+
+Ou via le mode interactif :
+
+```bash
+distill-mcp setup
+# Sélectionnez Claude Code
+```
+
+Le setup va automatiquement ajouter les directives Distill à votre `CLAUDE.md` existant.
+
+### Avec les hooks (optionnel)
+
+Pour une intégration maximale, ajoutez aussi les hooks :
+
+```bash
+distill-mcp setup --claude --hooks
+```
+
+Les hooks ajoutent des rappels automatiques pour utiliser les outils MCP.
 
 ## Notes spécifiques aux IDE
 

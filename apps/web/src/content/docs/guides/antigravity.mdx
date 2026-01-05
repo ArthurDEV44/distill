@@ -30,31 +30,20 @@ Si la configuration automatique n'a pas fonctionné :
 3. Cliquez sur le menu **"..."** en haut du panneau
 4. Sélectionnez **MCP Servers**
 5. Cliquez sur **Manage MCP Servers** puis **View raw config**
-6. Éditez le fichier `~/.gemini/antigravity/mcp_config.json` :
-
-```json
-{
-  "mcpServers": {
-    "distill": {
-      "command": "distill-mcp",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-Ou avec npx (sans installation globale) :
+6. Éditez le fichier `mcp_config.json` :
 
 ```json
 {
   "mcpServers": {
     "distill": {
       "command": "npx",
-      "args": ["distill-mcp", "serve"]
+      "args": ["-y", "distill-mcp", "serve"]
     }
   }
 }
 ```
+
+Le flag `-y` permet à npx d'installer automatiquement le package si nécessaire.
 
 ## Vérifier l'installation
 
