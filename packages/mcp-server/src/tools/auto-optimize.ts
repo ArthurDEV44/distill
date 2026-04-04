@@ -1,15 +1,21 @@
 /**
  * Auto-Optimize Tool
  *
- * Unified tool that auto-detects content type and applies
- * the appropriate optimization automatically.
+ * Unified compression tool that absorbs all compression strategies.
+ * Auto-detects content type or accepts an explicit strategy parameter
+ * to bypass detection and force a specific compression path.
  */
 
 import type { ToolDefinition } from "./registry.js";
+import isSafeRegex from "safe-regex2";
 
 import { detectContentType } from "../utils/content-detector.js";
 import type { ContentType } from "../compressors/types.js";
 import { compressContent } from "../compressors/index.js";
+import { compressDiff } from "../compressors/diff.js";
+import { semanticCompressor } from "../compressors/semantic.js";
+import { stacktraceCompressor } from "../compressors/stacktrace.js";
+import { configCompressor } from "../compressors/config.js";
 import { getSummarizer } from "../summarizers/index.js";
 import { analyzeBuildOutput } from "../parsers/index.js";
 import { groupBySignature, formatGroups, calculateStats } from "../utils/signature-grouper.js";
@@ -17,28 +23,48 @@ import { countTokens } from "../utils/token-counter.js";
 
 type OutputFormat = "plain" | "markdown";
 
+type Strategy = "auto" | "logs" | "build" | "diff" | "stacktrace" | "code" | "semantic" | "config" | "errors";
+
+type ResponseFormat = "minimal" | "normal" | "detailed";
+
 // Input schema with semantic descriptions for better LLM understanding
 const autoOptimizeSchema = {
   type: "object" as const,
   properties: {
     content: {
       type: "string",
-      description: "The content to optimize (build output, logs, errors, or any text)",
-      minLength: 100,
+      description: "The content to optimize (build output, logs, diffs, errors, code, config, or any text)",
     },
-    hint: {
-      enum: ["build", "logs", "errors", "code", "auto"],
-      description: "Content type hint: build (compiler errors), logs (server/test logs), errors (stack traces), code (source code), auto (detect)",
+    strategy: {
+      enum: ["auto", "logs", "build", "diff", "stacktrace", "code", "semantic", "config", "errors"],
+      description:
+        "Compression strategy: auto (detect), logs (server/test logs), build (compiler errors), " +
+        "diff (git diff), stacktrace (stack traces), code/semantic (TF-IDF importance), " +
+        "config (JSON/YAML), errors (deduplication)",
       default: "auto",
+    },
+    response_format: {
+      enum: ["minimal", "normal", "detailed"],
+      description:
+        "Output verbosity: minimal (savings % + content), normal (stats line + content), " +
+        "detailed (full metadata block + content)",
+      default: "normal",
     },
     aggressive: {
       type: "boolean",
       description: "Enable aggressive compression for maximum token savings",
       default: false,
     },
+    preservePatterns: {
+      type: "array",
+      items: { type: "string" },
+      description: "Regex patterns for content that must never be compressed (e.g. ['ERROR.*critical', 'TODO'])",
+      maxItems: 20,
+      default: [],
+    },
     format: {
       enum: ["plain", "markdown"],
-      description: "Output format",
+      description: "Output format for structured sections (plain or markdown)",
       default: "plain",
     },
   },
@@ -74,14 +100,17 @@ const autoOptimizeOutputSchema = {
       description: "The optimized content",
     },
   },
-  required: ["detectedType", "originalTokens", "optimizedTokens", "savingsPercent", "optimizedContent"],
+  required: ["detectedType", "originalTokens", "optimizedTokens", "savingsPercent", "method", "optimizedContent"],
 };
 
 interface AutoOptimizeArgs {
   content: string;
+  strategy?: Strategy;
   hint?: "build" | "logs" | "errors" | "code" | "auto";
   aggressive?: boolean;
+  preservePatterns?: string[];
   format?: OutputFormat;
+  response_format?: ResponseFormat;
 }
 
 interface OptimizationResult {
@@ -93,8 +122,29 @@ interface OptimizationResult {
   method: string;
 }
 
+/**
+ * Parse user-provided regex strings into RegExp objects.
+ * Invalid patterns and unsafe patterns (ReDoS risk via safe-regex2) are filtered out.
+ */
+function parsePreservePatterns(patterns?: string[]): { parsed: RegExp[] | undefined; warnings: string[] } {
+  const warnings: string[] = [];
+  if (!patterns || patterns.length === 0) return { parsed: undefined, warnings };
+  const parsed: RegExp[] = [];
+  for (const p of patterns) {
+    if (p.length > 500 || !isSafeRegex(p)) {
+      warnings.push(`Skipped unsafe regex pattern (ReDoS risk): ${JSON.stringify(p.slice(0, 50))}`);
+      continue;
+    }
+    try {
+      parsed.push(new RegExp(p));
+    } catch {
+      warnings.push(`Skipped invalid regex pattern: ${JSON.stringify(p.slice(0, 50))}`);
+    }
+  }
+  return { parsed: parsed.length > 0 ? parsed : undefined, warnings };
+}
+
 function isBuildOutput(content: string): boolean {
-  // Detect if content is build output
   return (
     content.includes("error TS") ||
     content.includes("warning TS") ||
@@ -105,6 +155,18 @@ function isBuildOutput(content: string): boolean {
     content.includes("ERROR in")
   );
 }
+
+function isDiffOutput(content: string): boolean {
+  return (
+    content.includes("diff --git ") ||
+    (content.includes("--- a/") && content.includes("+++ b/")) ||
+    /^@@\s+-\d+/m.test(content)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Strategy-specific optimization functions
+// ---------------------------------------------------------------------------
 
 function optimizeBuildOutput(content: string): OptimizationResult {
   const originalTokens = countTokens(content);
@@ -120,12 +182,14 @@ function optimizeBuildOutput(content: string): OptimizationResult {
   };
 }
 
-function optimizeLogs(content: string, format: OutputFormat = "plain"): OptimizationResult {
+function optimizeLogs(
+  content: string,
+  format: OutputFormat = "plain",
+): OptimizationResult {
   const originalTokens = countTokens(content);
   const summarizer = getSummarizer(content);
   const summaryResult = summarizer.summarize(content, { detail: "normal" });
 
-  // Format summary as text
   const summaryText = formatLogSummary(summaryResult, format);
   const optimizedTokens = countTokens(summaryText);
 
@@ -141,7 +205,7 @@ function optimizeLogs(content: string, format: OutputFormat = "plain"): Optimiza
 
 function formatLogSummary(
   summary: import("../summarizers/types.js").LogSummary,
-  format: OutputFormat = "plain"
+  format: OutputFormat = "plain",
 ): string {
   const parts: string[] = [];
   const md = format === "markdown";
@@ -153,7 +217,7 @@ function formatLogSummary(
     if (md) parts.push("### Errors");
     else parts.push("ERRORS:");
     for (const error of summary.errors.slice(0, 10)) {
-      const count = error.count > 1 ? ` (×${error.count})` : "";
+      const count = error.count > 1 ? ` (x${error.count})` : "";
       const ts = error.timestamp ? `${error.timestamp} ` : "";
       parts.push(md ? `- ${ts}${error.message}${count}` : `  ${ts}${error.message}${count}`);
     }
@@ -164,7 +228,7 @@ function formatLogSummary(
     if (md) parts.push("### Warnings");
     else parts.push("WARNINGS:");
     for (const warning of summary.warnings.slice(0, 5)) {
-      const count = warning.count > 1 ? ` (×${warning.count})` : "";
+      const count = warning.count > 1 ? ` (x${warning.count})` : "";
       const ts = warning.timestamp ? `${warning.timestamp} ` : "";
       parts.push(md ? `- ${ts}${warning.message}${count}` : `  ${ts}${warning.message}${count}`);
     }
@@ -183,6 +247,76 @@ function formatLogSummary(
   return parts.join("\n");
 }
 
+function optimizeDiff(content: string, aggressive: boolean): OptimizationResult {
+  const originalTokens = countTokens(content);
+  const strategy = aggressive ? "summary" : "hunks-only";
+  const result = compressDiff(content, { strategy });
+
+  return {
+    optimizedContent: result.compressed,
+    detectedType: "diff",
+    originalTokens,
+    optimizedTokens: result.stats.compressedTokens,
+    savingsPercent: result.stats.reductionPercent,
+    method: result.stats.technique,
+  };
+}
+
+function optimizeStacktrace(content: string, aggressive: boolean): OptimizationResult {
+  const originalTokens = countTokens(content);
+  const result = stacktraceCompressor.compress(content, {
+    detail: aggressive ? "minimal" : "normal",
+  });
+
+  return {
+    optimizedContent: result.compressed,
+    detectedType: "stacktrace",
+    originalTokens,
+    optimizedTokens: result.stats.compressedTokens,
+    savingsPercent: result.stats.reductionPercent,
+    method: result.stats.technique,
+  };
+}
+
+function optimizeSemantic(
+  content: string,
+  aggressive: boolean,
+  preservePatterns?: RegExp[],
+): OptimizationResult {
+  const originalTokens = countTokens(content);
+  const targetRatio = aggressive ? 0.3 : 0.5;
+  const result = semanticCompressor.compress(content, {
+    detail: aggressive ? "minimal" : "normal",
+    targetRatio,
+    preservePatterns,
+  });
+
+  return {
+    optimizedContent: result.compressed,
+    detectedType: "semantic",
+    originalTokens,
+    optimizedTokens: result.stats.compressedTokens,
+    savingsPercent: result.stats.reductionPercent,
+    method: result.stats.technique,
+  };
+}
+
+function optimizeConfig(content: string, aggressive: boolean): OptimizationResult {
+  const originalTokens = countTokens(content);
+  const result = configCompressor.compress(content, {
+    detail: aggressive ? "minimal" : "normal",
+  });
+
+  return {
+    optimizedContent: result.compressed,
+    detectedType: "config",
+    originalTokens,
+    optimizedTokens: result.stats.compressedTokens,
+    savingsPercent: result.stats.reductionPercent,
+    method: result.stats.technique,
+  };
+}
+
 function optimizeErrors(content: string, format: OutputFormat = "plain"): OptimizationResult {
   const originalTokens = countTokens(content);
   const lines = content.split("\n").filter((l) => l.trim());
@@ -194,7 +328,7 @@ function optimizeErrors(content: string, format: OutputFormat = "plain"): Optimi
   const formatted = formatGroups(result, format);
 
   const header = md
-    ? `**${stats.originalLines} lines → ${stats.uniqueErrors} unique patterns** (${stats.totalDuplicates} duplicates removed)\n\n`
+    ? `**${stats.originalLines} lines -> ${stats.uniqueErrors} unique patterns** (${stats.totalDuplicates} duplicates removed)\n\n`
     : `${stats.originalLines} lines -> ${stats.uniqueErrors} unique patterns (${stats.totalDuplicates} duplicates removed)\n\n`;
   const optimizedContent = header + formatted;
   const optimizedTokens = countTokens(optimizedContent);
@@ -209,10 +343,15 @@ function optimizeErrors(content: string, format: OutputFormat = "plain"): Optimi
   };
 }
 
-function optimizeGeneric(content: string, aggressive: boolean): OptimizationResult {
+function optimizeGeneric(
+  content: string,
+  aggressive: boolean,
+  preservePatterns?: RegExp[],
+): OptimizationResult {
   const originalTokens = countTokens(content);
   const result = compressContent(content, {
     detail: aggressive ? "minimal" : "normal",
+    preservePatterns,
   });
 
   return {
@@ -225,68 +364,219 @@ function optimizeGeneric(content: string, aggressive: boolean): OptimizationResu
   };
 }
 
-async function autoOptimize(
-  args: AutoOptimizeArgs
-): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
-  const { content, hint = "auto", aggressive = false, format = "plain" } = args;
-  const md = format === "markdown";
+// ---------------------------------------------------------------------------
+// Strategy resolution
+// ---------------------------------------------------------------------------
 
-  // Minimum threshold for optimization (500 chars ~ 125 tokens)
-  if (content.length < 500) {
-    const msg = md
-      ? `## Already Optimal\n\nContent is too short (${content.length} chars) to benefit from optimization.\n\n${content}`
-      : `Already Optimal: Content too short (${content.length} chars)\n\n${content}`;
-    return {
-      content: [{ type: "text", text: msg }],
-    };
-  }
+/**
+ * Resolve the effective strategy from explicit strategy, legacy hint, and auto-detection.
+ */
+function resolveStrategy(content: string, strategy: Strategy, hint?: string): Strategy {
+  // Explicit strategy always wins (unless "auto")
+  if (strategy !== "auto") return strategy;
 
-  let result: OptimizationResult;
-
-  // Determine content type
-  if (hint === "build" || (hint === "auto" && isBuildOutput(content))) {
-    result = optimizeBuildOutput(content);
-  } else if (hint === "logs" || (hint === "auto" && detectContentType(content) === "logs")) {
-    result = optimizeLogs(content, format);
-  } else if (hint === "errors") {
-    result = optimizeErrors(content, format);
-  } else {
-    // Use automatic type detection
-    const detectedType: ContentType = detectContentType(content);
-
-    switch (detectedType) {
+  // Legacy hint support
+  if (hint && hint !== "auto") {
+    switch (hint) {
+      case "build":
+        return "build";
       case "logs":
-        result = optimizeLogs(content, format);
-        break;
-      case "stacktrace":
-        result = optimizeErrors(content, format);
-        break;
-      default:
-        result = optimizeGeneric(content, aggressive);
+        return "logs";
+      case "errors":
+        return "errors";
+      case "code":
+        return "semantic";
     }
   }
 
-  // Format output - minimal header to save tokens
-  const stats = `[${result.detectedType}] ${result.originalTokens}→${result.optimizedTokens} tokens (-${result.savingsPercent}%)`;
-  const output = `${stats}\n${result.optimizedContent}`;
+  // Auto-detection
+  if (isBuildOutput(content)) return "build";
+  if (isDiffOutput(content)) return "diff";
+
+  const detectedType: ContentType = detectContentType(content);
+  switch (detectedType) {
+    case "logs":
+      return "logs";
+    case "stacktrace":
+      return "stacktrace";
+    case "config":
+      return "config";
+    case "code":
+      return "semantic";
+    default:
+      return "auto"; // will fall through to generic
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Output formatting by response_format
+// ---------------------------------------------------------------------------
+
+function formatOutput(result: OptimizationResult, responseFormat: ResponseFormat): string {
+  const savings = Math.max(0, result.savingsPercent);
+  switch (responseFormat) {
+    case "minimal":
+      return `(-${savings}%)\n${result.optimizedContent}`;
+    case "detailed":
+      return [
+        `Strategy: ${result.detectedType}`,
+        `Method: ${result.method}`,
+        `Tokens: ${result.originalTokens} -> ${result.optimizedTokens} (-${savings}%)`,
+        `---`,
+        result.optimizedContent,
+      ].join("\n");
+    case "normal":
+    default:
+      return `[${result.detectedType}] ${result.originalTokens}->${result.optimizedTokens} tokens (-${savings}%)\n${result.optimizedContent}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main execute function
+// ---------------------------------------------------------------------------
+
+async function autoOptimize(
+  args: AutoOptimizeArgs,
+): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean; structuredContent?: Record<string, unknown> }> {
+  const {
+    content,
+    strategy: rawStrategy = "auto",
+    hint,
+    aggressive = false,
+    preservePatterns: rawPreserve,
+    format = "plain",
+    response_format: responseFormat = "normal",
+  } = args;
+
+  // Handle empty or missing content
+  if (!content || content.trim().length === 0) {
+    return {
+      content: [{ type: "text", text: "No content provided. Pass content to optimize." }],
+      isError: true,
+      structuredContent: {
+        detectedType: "none",
+        originalTokens: 0,
+        optimizedTokens: 0,
+        savingsPercent: 0,
+        method: "none",
+        optimizedContent: "",
+      },
+    };
+  }
+
+  const { parsed: preservePatterns, warnings: regexWarnings } = parsePreservePatterns(rawPreserve);
+
+  // Minimum threshold for optimization (500 chars ~ 125 tokens)
+  if (content.length < 500) {
+    const tokens = countTokens(content);
+    const shortResult: OptimizationResult = {
+      optimizedContent: content,
+      detectedType: "none",
+      originalTokens: tokens,
+      optimizedTokens: tokens,
+      savingsPercent: 0,
+      method: "none",
+    };
+    return {
+      content: [{ type: "text", text: formatOutput(shortResult, responseFormat) }],
+      structuredContent: {
+        detectedType: "none",
+        originalTokens: tokens,
+        optimizedTokens: tokens,
+        savingsPercent: 0,
+        method: "none",
+        optimizedContent: content,
+      },
+    };
+  }
+
+  const resolved = resolveStrategy(content, rawStrategy, hint);
+
+  let result: OptimizationResult;
+
+  switch (resolved) {
+    case "build":
+      result = optimizeBuildOutput(content);
+      break;
+    case "logs":
+      result = optimizeLogs(content, format);
+      break;
+    case "diff":
+      result = optimizeDiff(content, aggressive);
+      break;
+    case "stacktrace":
+      result = optimizeStacktrace(content, aggressive);
+      break;
+    case "code":
+    case "semantic":
+      result = optimizeSemantic(content, aggressive, preservePatterns);
+      break;
+    case "config":
+      result = optimizeConfig(content, aggressive);
+      break;
+    case "errors":
+      result = optimizeErrors(content, format);
+      break;
+    default:
+      // "auto" that didn't resolve to a specific strategy -> generic
+      result = optimizeGeneric(content, aggressive, preservePatterns);
+  }
+
+  // Format output based on response_format
+  let output = formatOutput(result, responseFormat);
+
+  // Append regex warnings if any patterns were filtered
+  if (regexWarnings.length > 0) {
+    output += "\n\n[WARN] " + regexWarnings.join("\n[WARN] ");
+  }
 
   return {
     content: [{ type: "text", text: output }],
+    structuredContent: {
+      detectedType: result.detectedType,
+      originalTokens: result.originalTokens,
+      optimizedTokens: result.optimizedTokens,
+      savingsPercent: result.savingsPercent,
+      method: result.method,
+      optimizedContent: result.optimizedContent,
+    },
   };
 }
 
-export const autoOptimizeTool: ToolDefinition = {
-  name: "auto_optimize",
-  description:
-    "Auto-compress verbose output (build errors, logs, stack traces). " +
-    "Detects content type and applies optimal compression. " +
-    "Typical savings: build errors 95%, logs 80-90%, generic 40-60%.",
-  inputSchema: autoOptimizeSchema,
-  outputSchema: autoOptimizeOutputSchema,
-  annotations: {
-    title: "Auto Optimize Content",
-    readOnlyHint: true,
-    idempotentHint: true,
-  },
-  execute: async (args) => autoOptimize(args as AutoOptimizeArgs),
-};
+// ---------------------------------------------------------------------------
+// Tool definition
+// ---------------------------------------------------------------------------
+
+export function createAutoOptimizeTool(): ToolDefinition {
+  return {
+    name: "auto_optimize",
+    description:
+      "Compress large content to save tokens — build output, logs, diffs, code, configs, stack traces, errors.\n\n" +
+      "WHEN TO USE: After running builds, tests, or commands that produce verbose output (>500 chars). " +
+      "Before pasting logs, diffs, or error output into context. Ideal for tool results that would consume excessive tokens.\n\n" +
+      "HOW TO FORMAT:\n" +
+      '- Auto-detect: auto_optimize({ content: "<paste build output>" })\n' +
+      '- Force strategy: auto_optimize({ content: "<paste>", strategy: "build" })\n' +
+      '- Preserve patterns: auto_optimize({ content: "<paste>", preservePatterns: ["ERROR.*critical"] })\n' +
+      '- Control verbosity: auto_optimize({ content: "<paste>", response_format: "minimal" })\n\n' +
+      "Strategies and typical savings: build (95%), logs (80-90%), errors (70-90%), diff (60-80%), " +
+      "stacktrace (50-80%), code/semantic (40-60%), config (30-60%). " +
+      'Leave strategy as "auto" to detect automatically.\n\n' +
+      "WHAT TO EXPECT: Compressed content with stats header. " +
+      "response_format controls verbosity: minimal (savings % + content), normal (stats line + content), detailed (full metadata + content).",
+    inputSchema: autoOptimizeSchema,
+    outputSchema: autoOptimizeOutputSchema,
+    annotations: {
+      title: "Auto Optimize",
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
+    execute: async (args) => autoOptimize(args as AutoOptimizeArgs),
+  };
+}
+
+/**
+ * Default export for backward compatibility with existing imports.
+ * The dynamic-loader imports `autoOptimizeTool` from this module.
+ */
+export const autoOptimizeTool: ToolDefinition = createAutoOptimizeTool();
