@@ -21,6 +21,7 @@ import {
   type ExtractedContent,
 } from "../ast/index.js";
 import { detectLanguageFromPath } from "../utils/language-detector.js";
+import { countTokens } from "../utils/token-counter.js";
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache } from "../cache/smart-cache.js";
 import type { FileStructure, SupportedLanguage } from "../ast/types.js";
@@ -117,9 +118,16 @@ export const smartFileReadSchema = {
       type: "string",
       description: "Path to the file to read (relative to working directory)",
     },
+    mode: {
+      type: "string",
+      enum: ["auto", "full", "skeleton", "extract", "search"],
+      default: "auto",
+      description:
+        "auto=detect from params. skeleton=signatures only. extract=element by type+name. search=find by query. full=structure overview.",
+    },
     target: {
       type: "object",
-      description: "Extract a specific code element by type and name",
+      description: "Extract a specific code element by type and name (extract mode)",
       properties: {
         type: {
           enum: ["function", "class", "interface", "type", "variable", "method"],
@@ -134,21 +142,22 @@ export const smartFileReadSchema = {
     },
     query: {
       type: "string",
-      description: "Search query to find matching elements in the file",
+      description: "Search query to find matching elements (search mode)",
     },
     lines: {
       type: "object",
-      description: "Extract specific line range",
+      description: "Extract specific line range (works in any mode)",
       properties: {
         start: { type: "number", description: "Start line (1-indexed)" },
         end: { type: "number", description: "End line (inclusive)" },
       },
       required: ["start", "end"],
     },
-    skeleton: {
-      type: "boolean",
-      description: "Return only function/class signatures without bodies (70-90% savings)",
-      default: false,
+    depth: {
+      type: "number",
+      enum: [1, 2, 3],
+      default: 1,
+      description: "Skeleton depth: 1=signatures, 2=+doc preview, 3=+full docs",
     },
   },
   required: ["filePath"],
@@ -166,7 +175,7 @@ const smartFileReadOutputSchema = {
     content: { type: "string", description: "Extracted content or structure summary" },
     mode: {
       type: "string",
-      enum: ["structure", "target", "query", "lines", "skeleton"],
+      enum: ["full", "skeleton", "extract", "search", "lines"],
       description: "Extraction mode used",
     },
   },
@@ -175,6 +184,7 @@ const smartFileReadOutputSchema = {
 
 const inputSchema = z.object({
   filePath: z.string(),
+  mode: z.enum(["auto", "full", "skeleton", "extract", "search"]).optional().default("auto"),
   target: z
     .object({
       type: z.enum(["function", "class", "interface", "type", "variable", "method"]),
@@ -190,7 +200,7 @@ const inputSchema = z.object({
       end: z.number(),
     })
     .optional(),
-  skeleton: z.boolean().optional().default(false),
+  depth: z.number().int().min(1).max(3).optional().default(1),
   cache: z.boolean().optional().default(true),
   language: z.string().optional(),
   format: z.enum(["plain", "markdown"]).optional().default("plain"),
@@ -310,141 +320,120 @@ function formatSearchResults(
 }
 
 /**
- * Format file structure as a skeleton (signatures only, no bodies)
- * This provides a compact overview of a file's API surface.
- * @param quickMode When true, only shows start line (from quick scan mode)
+ * Format file structure as a code skeleton with actual signatures.
+ * Absorbs the deleted code_skeleton tool's formatSkeletonByDepth.
+ *
+ * Depth levels:
+ * - 1: Signatures only (minimal)
+ * - 2: Signatures + inline doc preview (first line of JSDoc)
+ * - 3: Full signatures with complete documentation
  */
 function formatSkeletonOutput(
   structure: FileStructure,
   filePath: string,
   languageId: string,
   totalLines: number,
+  originalContent: string,
+  depth: number = 1,
   format: OutputFormat = "plain",
-  quickMode: boolean = false
 ): string {
   const parts: string[] = [];
   const md = format === "markdown";
-  // Format line reference: quick mode shows only start line, full mode shows range
-  const lineRef = (el: { startLine: number; endLine: number }) =>
-    quickMode || el.startLine === el.endLine ? `(${el.startLine})` : `(${el.startLine}-${el.endLine})`;
+  const skeletonLines: string[] = [];
 
-  parts.push(md ? `## File Skeleton: ${filePath}` : `${filePath} (${languageId}, ${totalLines} lines)`);
-  if (md) {
-    parts.push("");
-    parts.push(`**Language:** ${languageId}`);
-    parts.push(`**Total Lines:** ${totalLines}`);
-    parts.push("");
-  }
-
-  let elementCount = 0;
-
-  // Imports summary (collapsed, max 3)
-  if (structure.imports?.length) {
-    if (md) {
-      parts.push(`### Imports (${structure.imports.length})`);
-      const displayImports = structure.imports.slice(0, 3);
-      for (const imp of displayImports) {
-        parts.push(`- \`${imp}\``);
-      }
-      if (structure.imports.length > 3) {
-        parts.push(`- ... and ${structure.imports.length - 3} more`);
-      }
-      parts.push("");
+  // Helper to emit a signature line with optional documentation based on depth.
+  // depth 1: signature only. depth 2: signature // first-line-doc. depth 3: full /** doc */ block before signature.
+  const emitWithDoc = (sig: string, doc: string | undefined, indent: string = "") => {
+    if (doc && depth === 3) {
+      skeletonLines.push(`${indent}/** ${doc} */`);
+      skeletonLines.push(`${indent}${sig}`);
+    } else if (doc && depth === 2) {
+      skeletonLines.push(`${indent}${sig} // ${doc.split("\n")[0]}`);
     } else {
-      const importList = structure.imports.slice(0, 3).join(", ");
-      const more = structure.imports.length > 3 ? ` +${structure.imports.length - 3}` : "";
-      parts.push(`IMPORTS: ${importList}${more}`);
+      skeletonLines.push(`${indent}${sig}`);
     }
-  }
+  };
 
-  // Types and Interfaces (no line numbers in plain - minor elements)
+  // Types
   if (structure.types?.length) {
-    if (md) {
-      parts.push("### Types/Interfaces");
-      for (const t of structure.types) {
-        const exported = t.isExported ? "export " : "";
-        parts.push(`- \`${exported}${t.signature || t.name}\``);
-        elementCount++;
-      }
-      parts.push("");
-    } else {
-      const typeList = structure.types.map(t => t.name).join(", ");
-      parts.push(`TYPES: ${typeList}`);
-      elementCount += structure.types.length;
+    for (const t of structure.types) {
+      const exported = t.isExported ? "export " : "";
+      emitWithDoc(`${exported}${t.signature || `type ${t.name}`}`, t.documentation);
     }
+    skeletonLines.push("");
   }
 
-  // Functions (signatures only)
-  const functions = structure.functions?.filter((f) => !f.parent) || [];
-  if (functions.length) {
-    if (md) {
-      parts.push("### Functions");
-      for (const fn of functions) {
-        const exported = fn.isExported ? "export " : "";
-        const asyncMod = fn.isAsync ? "async " : "";
-        const sig = fn.signature || `${fn.name}()`;
-        parts.push(`- \`${exported}${asyncMod}${sig}\` (lines ${lineRef(fn).slice(1, -1)})`);
-        elementCount++;
-      }
-      parts.push("");
-    } else {
-      const fnList = functions.map(fn => `${fn.name} ${lineRef(fn)}`).join(", ");
-      parts.push(`FUNCTIONS: ${fnList}`);
-      elementCount += functions.length;
+  // Interfaces
+  if (structure.interfaces?.length) {
+    for (const iface of structure.interfaces) {
+      const exported = iface.isExported ? "export " : "";
+      emitWithDoc(`${exported}${iface.signature || `interface ${iface.name}`}`, iface.documentation);
     }
+    skeletonLines.push("");
   }
 
-  // Classes with method signatures
+  // Top-level functions (not methods)
+  const topLevelFunctions = structure.functions?.filter((f) => !f.parent) || [];
+  if (topLevelFunctions.length > 0) {
+    for (const fn of topLevelFunctions) {
+      const exported = fn.isExported ? "export " : "";
+      const asyncMod = fn.isAsync ? "async " : "";
+      const sig = fn.signature || `function ${fn.name}()`;
+      emitWithDoc(`${exported}${asyncMod}${sig}`, fn.documentation);
+    }
+    skeletonLines.push("");
+  }
+
+  // Classes with methods
   if (structure.classes?.length) {
-    if (md) {
-      parts.push("### Classes");
-      for (const cls of structure.classes) {
-        const exported = cls.isExported ? "export " : "";
-        parts.push(`- \`${exported}class ${cls.name}\` (lines ${lineRef(cls).slice(1, -1)})`);
-        elementCount++;
+    for (const cls of structure.classes) {
+      const exported = cls.isExported ? "export " : "";
+      emitWithDoc(`${exported}class ${cls.name} {`, cls.documentation);
 
-        const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
-        for (const m of methods) {
-          const asyncMod = m.isAsync ? "async " : "";
-          const sig = m.signature || `${m.name}()`;
-          parts.push(`  - \`${asyncMod}${sig}\``);
-        }
+      const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
+      for (const m of methods) {
+        const asyncMod = m.isAsync ? "async " : "";
+        const sig = m.signature || `${m.name}()`;
+        emitWithDoc(`${asyncMod}${sig}`, m.documentation, "  ");
       }
-      parts.push("");
-    } else {
-      const clsList = structure.classes.map(cls => {
-        const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
-        const methodNames = methods.length > 0 ? ` [${methods.map(m => m.name).join(", ")}]` : "";
-        return `${cls.name} ${lineRef(cls)}${methodNames}`;
-      }).join(", ");
-      parts.push(`CLASSES: ${clsList}`);
-      elementCount += structure.classes.length;
+      skeletonLines.push("}");
+      skeletonLines.push("");
     }
   }
 
-  // Variables (exported only for skeleton)
+  // Exported variables
   const exportedVars = structure.variables?.filter((v) => v.isExported) || [];
-  if (exportedVars.length) {
-    if (md) {
-      parts.push("### Exported Variables");
-      for (const v of exportedVars) {
-        parts.push(`- \`${v.signature || v.name}\``);
-        elementCount++;
-      }
-      parts.push("");
-    } else {
-      const varList = exportedVars.map(v => v.name).join(", ");
-      parts.push(`EXPORTS: ${varList}`);
-      elementCount += exportedVars.length;
+  if (exportedVars.length > 0) {
+    for (const v of exportedVars) {
+      emitWithDoc(`export ${v.signature || `const ${v.name}`}`, v.documentation);
     }
+    skeletonLines.push("");
   }
 
-  // Skeleton summary
+  const skeleton = skeletonLines.join("\n").trim();
+
+  // Token statistics (use fast approximation for very large files to avoid blocking event loop)
+  const originalTokens = originalContent.length > 200_000
+    ? Math.ceil(originalContent.length / 4)
+    : countTokens(originalContent);
+  const skeletonTokens = countTokens(skeleton);
+  const savings = originalTokens > 0 ? Math.round((1 - skeletonTokens / originalTokens) * 100) : 0;
+  const depthLabels = ["", "signatures", "signatures+docs", "full"];
+
   if (md) {
-    parts.push("---");
-    parts.push(
-      `**Skeleton:** ${elementCount} elements extracted (use \`target\` to get full implementation)`
-    );
+    parts.push(`## Code Skeleton: ${filePath}`);
+    parts.push("");
+    parts.push(`**Language:** ${languageId} | **Depth:** ${depth} (${depthLabels[depth]})`);
+    parts.push(`**Tokens:** ${skeletonTokens} (was ${originalTokens}) | **Savings:** ${savings}%`);
+    parts.push("");
+    parts.push("```" + languageId);
+    parts.push(skeleton);
+    parts.push("```");
+  } else {
+    parts.push(`${filePath} (${languageId}, ${totalLines} lines)`);
+    parts.push(`Depth: ${depth} (${depthLabels[depth]}) | Tokens: ${skeletonTokens}/${originalTokens} (${savings}% saved)`);
+    parts.push("");
+    parts.push(skeleton);
   }
 
   return parts.join("\n");
@@ -500,12 +489,21 @@ export async function executeSmartFileRead(
   const languageId =
     language === "typescript" ? "typescript" : language === "javascript" ? "javascript" : language;
 
+  // Resolve effective mode from explicit mode or param presence
+  let effectiveMode = input.mode;
+  if (effectiveMode === "auto") {
+    if (input.target) effectiveMode = "extract";
+    else if (input.query) effectiveMode = "search";
+    else effectiveMode = "full";
+  }
+
   // Cache setup
   const cache = getGlobalCache();
   const cacheKey = `smart-read:${resolvedPath}:${JSON.stringify({
+    mode: effectiveMode,
     target: input.target,
     query: input.query,
-    skeleton: input.skeleton,
+    depth: input.depth,
     lines: input.lines,
     language: input.language,
     format: input.format,
@@ -515,7 +513,7 @@ export async function executeSmartFileRead(
   if (input.cache !== false) {
     const cached = await cache.get<string>(cacheKey);
     if (cached.hit && cached.value) {
-      return { content: [{ type: "text", text: cached.value + "\n\n_📦 (from cache)_" }] };
+      return { content: [{ type: "text", text: cached.value + "\n\n_(from cache)_" }] };
     }
   }
 
@@ -527,7 +525,7 @@ export async function executeSmartFileRead(
     return { content: [{ type: "text" as const, text: result }] };
   };
 
-  // Priority 1: Extract specific line range (no caching - simple operation)
+  // Line extraction always works regardless of mode
   if (input.lines) {
     const extracted = extractLines(content, input.lines.start, input.lines.end);
     const result = formatExtractedContent(
@@ -541,9 +539,22 @@ export async function executeSmartFileRead(
     return { content: [{ type: "text", text: result }] };
   }
 
-  // Check if we have parser support
+  // Skeleton mode: handle before hasParserSupport to return empty (not error) for unsupported langs
+  if (effectiveMode === "skeleton") {
+    if (!hasParserSupport(language)) {
+      // Return empty skeleton for unsupported languages (not an error per US-006)
+      const emptyResult = `${input.filePath} (${languageId}, ${totalLines} lines)\nNo AST support for ${languageId} — skeleton not available. Use mode \"full\" or \"lines\" instead.`;
+      return cacheAndReturn(emptyResult);
+    }
+    const structure = parseFile(content, language); // full AST parse for real signatures
+    const skeleton = formatSkeletonOutput(
+      structure, input.filePath, languageId, totalLines, content, input.depth, input.format
+    );
+    return cacheAndReturn(skeleton);
+  }
+
+  // Check parser support for remaining modes
   if (!hasParserSupport(language)) {
-    // Fallback: return full file with warning
     const parts: string[] = [];
     const md = input.format === "markdown";
     if (md) {
@@ -562,15 +573,13 @@ export async function executeSmartFileRead(
     return { content: [{ type: "text", text: parts.join("\n") }] };
   }
 
-  // Priority 2: Skeleton mode - signatures only overview (uses quick regex scan)
-  if (input.skeleton) {
-    const structure = parseFile(content, language, "quick");
-    const skeleton = formatSkeletonOutput(structure, input.filePath, languageId, totalLines, input.format, true);
-    return cacheAndReturn(skeleton);
-  }
-
-  // Priority 3: Extract specific target element
-  if (input.target) {
+  // Extract mode
+  if (effectiveMode === "extract") {
+    if (!input.target) {
+      return {
+        content: [{ type: "text", text: "Extract mode requires 'target' param with type and name." }],
+      };
+    }
     const extracted = extractElement(content, language, input.target, {
       includeImports: input.includeImports,
       includeComments: input.includeComments,
@@ -598,14 +607,19 @@ export async function executeSmartFileRead(
     return cacheAndReturn(result);
   }
 
-  // Priority 4: Search by query
-  if (input.query) {
+  // Search mode
+  if (effectiveMode === "search") {
+    if (!input.query) {
+      return {
+        content: [{ type: "text", text: "Search mode requires 'query' param." }],
+      };
+    }
     const results = searchElements(content, language, input.query);
     const result = formatSearchResults(results, input.filePath, input.query, input.format);
     return cacheAndReturn(result);
   }
 
-  // Default: Return file structure summary
+  // Full mode (default): return file structure summary
   const structure = parseFile(content, language);
   const summary = formatStructureSummary(structure, input.filePath, input.format);
 
@@ -615,10 +629,10 @@ export async function executeSmartFileRead(
 export const smartFileReadTool: ToolDefinition = {
   name: "smart_file_read",
   description:
-    "Read code with AST extraction. Supports 5 modes: " +
-    "structure (file overview), target (extract function/class by name), " +
-    "query (search elements), lines (specific range), skeleton (signatures only). " +
-    "Typical savings: 50-70% vs full file read.",
+    "Read code with AST extraction — get functions, classes, signatures without loading full files. " +
+    "5 modes: auto (detect from params), skeleton (signatures only, depth 1-3), " +
+    "extract (element by type+name), search (find by query), full (structure overview). " +
+    "Supports TS, JS, Python, Go, Rust, PHP, Swift. Typical savings: 50-90% vs full file read.",
   inputSchema: smartFileReadSchema,
   outputSchema: smartFileReadOutputSchema,
   annotations: {
