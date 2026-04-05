@@ -27,10 +27,12 @@ import {
 const GIT_TIMEOUT = 5000 as const satisfies number; // 5 seconds
 
 /**
- * Blocked git commands that could access network or modify remote state
- * Uses satisfies to ensure type safety while preserving literal types
+ * Blocked git commands — network operations and write operations.
+ * Read-only commands (diff, log, blame, status, branch, show, tag, rev-parse)
+ * remain allowed. For 'stash', subcommand-level checking is applied separately.
  */
 const BLOCKED_GIT_COMMANDS = [
+  // Network operations
   "push",
   "fetch",
   "pull",
@@ -39,9 +41,33 @@ const BLOCKED_GIT_COMMANDS = [
   "submodule",
   "ls-remote",
   "archive",
+  // Write operations — prevent model-generated code from modifying git history
+  "commit",
+  "add",
+  "reset",
+  "checkout",
+  "rm",
+  "merge",
+  "rebase",
+  "cherry-pick",
+  "revert",
+  "clean",
+  "switch",
+  "restore",
+  "worktree",
+  "notes",
 ] as const satisfies readonly string[];
 
 type BlockedGitCommand = (typeof BLOCKED_GIT_COMMANDS)[number];
+
+/**
+ * Allowed stash subcommands (allowlist approach).
+ * Only read-only stash operations are permitted; everything else is blocked.
+ */
+const ALLOWED_STASH_SUBCOMMANDS = [
+  "list",
+  "show",
+] as const satisfies readonly string[];
 
 /**
  * Sanitize git argument to prevent shell injection.
@@ -65,13 +91,28 @@ function sanitizeGitArg(arg: string): Result<SanitizedGitArg, GitError> {
 }
 
 /**
- * Validate git command is not blocked
+ * Validate git command is not blocked.
+ * For 'stash', also checks the subcommand (args[1]).
  */
-function validateGitCommand(command: string): Result<void, GitError> {
+export function validateGitCommand(command: string, subcommand?: string): Result<void, GitError> {
   const cmd = command.toLowerCase();
   if (BLOCKED_GIT_COMMANDS.includes(cmd as BlockedGitCommand)) {
     return err(gitError.blockedCommand(command));
   }
+
+  // Stash: allowlist approach — only 'stash list' and 'stash show' are permitted.
+  // Bare 'stash' (no subcommand) is equivalent to 'stash push' — blocked.
+  // Unknown subcommands and flags (e.g., 'stash --') are also blocked.
+  if (cmd === "stash") {
+    if (!subcommand) {
+      return err(gitError.blockedCommand("stash"));
+    }
+    const sub = subcommand.toLowerCase();
+    if (!ALLOWED_STASH_SUBCOMMANDS.includes(sub as (typeof ALLOWED_STASH_SUBCOMMANDS)[number])) {
+      return err(gitError.blockedCommand(`stash ${subcommand}`));
+    }
+  }
+
   return ok(undefined);
 }
 
@@ -80,9 +121,9 @@ function validateGitCommand(command: string): Result<void, GitError> {
  * All arguments are sanitized to SanitizedGitArg before execution.
  */
 function execGit(args: string[], workingDir: string): Result<string, GitError> {
-  // Validate the git subcommand
+  // Validate the git subcommand (pass args[1] for stash subcommand checking)
   if (args.length > 0 && args[0]) {
-    const cmdResult = validateGitCommand(args[0]);
+    const cmdResult = validateGitCommand(args[0], args[1]);
     if (cmdResult.isErr()) return err(cmdResult.error);
   }
 

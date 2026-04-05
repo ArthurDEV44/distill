@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { createGitAPILegacy } from "./git.js";
+import { createGitAPILegacy, validateGitCommand } from "./git.js";
 import { execSync } from "child_process";
 
 // Check if git is available in the test environment
@@ -179,6 +179,96 @@ describe.skipIf(!gitAvailable || !repoRoot)("Git SDK", () => {
     it("should throw for non-git directory", () => {
       const nonGitApi = createGitAPILegacy("/tmp");
       expect(() => nonGitApi.status()).toThrow("Not a git repository");
+    });
+  });
+});
+
+describe("Git Command Validation", () => {
+  describe("blocked write commands", () => {
+    const blockedWriteCommands = [
+      "commit", "add", "reset", "checkout", "rm",
+      "merge", "rebase", "cherry-pick", "revert", "clean",
+      "switch", "restore", "worktree", "notes",
+    ];
+
+    for (const cmd of blockedWriteCommands) {
+      it(`should block '${cmd}' command`, () => {
+        const result = validateGitCommand(cmd);
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.message).toContain("blocked");
+          expect(result.error.message).toContain(cmd);
+        }
+      });
+    }
+  });
+
+  describe("blocked network commands", () => {
+    const blockedNetworkCommands = [
+      "push", "fetch", "pull", "clone", "remote", "submodule", "ls-remote", "archive",
+    ];
+
+    for (const cmd of blockedNetworkCommands) {
+      it(`should block '${cmd}' command`, () => {
+        const result = validateGitCommand(cmd);
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.message).toContain("blocked");
+        }
+      });
+    }
+  });
+
+  describe("blocked stash subcommands", () => {
+    const blockedStashOps = ["drop", "pop", "push", "apply", "save", "clear"];
+
+    for (const sub of blockedStashOps) {
+      it(`should block 'stash ${sub}'`, () => {
+        const result = validateGitCommand("stash", sub);
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.message).toContain("blocked");
+          expect(result.error.message).toContain("stash");
+        }
+      });
+    }
+
+    it("should block bare 'stash' (equivalent to stash push)", () => {
+      const result = validateGitCommand("stash");
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("should block 'stash' with flag-only args (e.g., stash --)", () => {
+      const result = validateGitCommand("stash", "--");
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("should block unknown stash subcommands (e.g., stash branch)", () => {
+      const result = validateGitCommand("stash", "branch");
+      expect(result.isErr()).toBe(true);
+    });
+  });
+
+  describe("allowed read-only commands", () => {
+    const allowedCommands = [
+      "diff", "log", "blame", "status", "branch", "show", "tag", "rev-parse",
+    ];
+
+    for (const cmd of allowedCommands) {
+      it(`should allow '${cmd}' command`, () => {
+        const result = validateGitCommand(cmd);
+        expect(result.isOk()).toBe(true);
+      });
+    }
+
+    it("should allow 'stash list'", () => {
+      const result = validateGitCommand("stash", "list");
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("should allow 'stash show'", () => {
+      const result = validateGitCommand("stash", "show");
+      expect(result.isOk()).toBe(true);
     });
   });
 });
