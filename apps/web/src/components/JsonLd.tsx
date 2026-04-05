@@ -9,7 +9,7 @@ export function SoftwareApplicationSchema() {
       "Open source MCP server for LLM token optimization. Reduce costs by up to 98% with intelligent context compression.",
     url: "https://distill-mcp.com",
     downloadUrl: "https://www.npmjs.com/package/distill-mcp",
-    softwareVersion: "0.7.1",
+    softwareVersion: "0.8.1",
     offers: {
       "@type": "Offer",
       price: "0",

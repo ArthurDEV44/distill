@@ -1,256 +1,88 @@
 ---
-title: Référence des outils MCP
-description: Référence complète des 21 outils d'optimisation Distill
+title: Reference des outils MCP
+description: Reference des 3 outils Distill — auto_optimize, smart_file_read, code_execute
 ---
 
-# Référence des outils MCP
+# Reference des outils MCP
 
-Distill fournit 21 outils pour optimiser l'utilisation des tokens LLM. Chaque outil est conçu pour des cas d'usage spécifiques.
+Distill fournit 3 outils toujours actifs pour optimiser l'utilisation des tokens LLM.
 
-## Outils de lecture de fichiers
+## `auto_optimize` — Compression universelle
 
-### smart_file_read
+Detecte automatiquement le type de contenu et applique la strategie optimale.
 
-Lire des fichiers de code avec extraction AST. Retourne un aperçu de la structure ou des éléments spécifiques.
+| Strategie | Type de contenu | Economies |
+|-----------|----------------|-----------|
+| `build` | Erreurs compilateur (tsc, rustc, webpack) | 95% |
+| `logs` | Logs serveur/tests/build | 80-90% |
+| `errors` | Lignes d'erreur repetees | 70-90% |
+| `diff` | Git diffs | 60-80% |
+| `stacktrace` | Stack traces | 50-80% |
+| `code` / `semantic` | Code source (TF-IDF) | 40-60% |
+| `config` | Configs JSON/YAML | 30-60% |
+| `auto` | Detection automatique | variable |
 
-```
-smart_file_read filePath="src/server.ts"
-smart_file_read filePath="src/server.ts" target={"type":"function","name":"createServer"}
-smart_file_read filePath="src/utils.ts" query="parse"
-smart_file_read filePath="src/server.ts" skeleton=true
-```
+**Parametres :**
+- `content` (requis) — Le contenu a compresser
+- `strategy` — Strategie explicite ou `auto` (defaut)
+- `aggressive` — Mode compression maximale
+- `preservePatterns` — Regex des patterns a conserver
+- `format` — `plain` ou `markdown`
 
-**Économie :** 50-70% par rapport à la lecture de fichiers complets
+## `smart_file_read` — Lecture AST
 
-**Langages supportés :** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
+Lit du code avec extraction AST — obtenez fonctions, classes, signatures sans charger le fichier entier.
 
-### code_skeleton
+**5 modes :**
+- `skeleton` — Signatures uniquement (profondeur 1-3)
+- `extract` — Element specifique par type et nom
+- `search` — Recherche par requete
+- `full` — Vue d'ensemble de la structure
+- `auto` — Detection depuis les parametres
 
-Extraire uniquement les signatures de fonctions/classes sans les corps d'implémentation.
+**7 langages :** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
 
-```
-code_skeleton filePath="src/api.ts" depth=2
-```
+**Parametres :**
+- `filePath` (requis) — Chemin du fichier
+- `mode` — Mode de lecture (`auto` par defaut)
+- `target` — Pour le mode extract : `{type, name}`
+- `query` — Pour le mode search
+- `depth` — Profondeur skeleton (1-3)
 
-**Économie :** 70-90%
+## `code_execute` — SDK TypeScript sandboxe
 
-## Outils de compression
+Execute du TypeScript dans un sandbox securise. Remplace 5-10 appels d'outils en un seul.
 
-### auto_optimize
+**SDK `ctx.*` :**
 
-Détecter automatiquement le type de contenu et appliquer la compression optimale.
+```typescript
+ctx.files.read(path)         // Lire un fichier
+ctx.files.glob(pattern)      // Chercher des fichiers
+ctx.files.exists(path)       // Verifier existence
 
-```
-auto_optimize content="<sortie de build ou logs>"
-```
+ctx.code.parse(content, lang)                  // Parser en structure
+ctx.code.extract(content, lang, {type, name})  // Extraire un element
+ctx.code.skeleton(content, lang)               // Signatures uniquement
 
-**Économie :** 40-95% selon le contenu
+ctx.compress.auto(content, hint?)    // Compression auto
+ctx.compress.logs(logs)              // Resume de logs
+ctx.compress.diff(diff)              // Compression diff
+ctx.compress.semantic(content, ratio?) // Compression TF-IDF
 
-### compress_context
+ctx.git.diff(ref?)        // Obtenir le diff
+ctx.git.log(limit?)       // Historique des commits
+ctx.git.blame(file, line?) // Blame
 
-Compression générique pour tout contenu textuel.
+ctx.search.grep(pattern, glob?)  // Recherche dans les fichiers
+ctx.search.symbols(query)        // Recherche de symboles
 
-```
-compress_context content="<texte volumineux>" targetRatio=0.5
-```
-
-**Économie :** 40-60%
-
-### semantic_compress
-
-Compression basée sur TF-IDF qui conserve les segments importants.
-
-```
-semantic_compress content="<document>" targetRatio=0.5
-```
-
-**Économie :** 40-60%
-
-### diff_compress
-
-Compresser les sorties de git diff tout en préservant les changements essentiels.
-
-```
-diff_compress diff="<sortie git diff>" strategy="hunks-only"
-```
-
-Stratégies : `hunks-only`, `summary`, `semantic`
-
-**Économie :** 50-95%
-
-### conversation_compress
-
-Compresser l'historique de conversation tout en préservant les informations clés.
-
-```
-conversation_compress messages=[...] strategy="hybrid" maxTokens=1000
+ctx.utils.countTokens(text)      // Compter les tokens
+ctx.utils.detectType(content)    // Detecter le type
+ctx.utils.detectLanguage(path)   // Detecter le langage
 ```
 
-Stratégies : `rolling-summary`, `key-extraction`, `hybrid`
+**Parametres :**
+- `code` (requis) — Code TypeScript a executer
+- `timeout` — Timeout en ms (1000-30000, defaut 5000)
 
-**Économie :** 40-70%
-
-## Outils de build et erreurs
-
-### analyze_build_output
-
-Parser et compresser les erreurs de build de npm, tsc, webpack, etc.
-
-```
-analyze_build_output output="<sortie de build>" buildTool="tsc"
-```
-
-**Économie :** 95%+
-
-### deduplicate_errors
-
-Grouper les erreurs répétées et afficher le nombre d'occurrences.
-
-```
-deduplicate_errors content="<sortie avec erreurs répétées>"
-```
-
-**Économie :** 80-95%
-
-### summarize_logs
-
-Résumer les logs verbeux (serveur, test, build, application).
-
-```
-summarize_logs logs="<contenu des logs>" focus=["errors","warnings"]
-```
-
-**Économie :** 80-90%
-
-### detect_retry_loop
-
-Détecter si Claude est bloqué dans une boucle de réessai.
-
-```
-detect_retry_loop command="npm run build"
-```
-
-## Outils d'analyse
-
-### analyze_context
-
-Analyser le contenu pour l'utilisation des tokens et obtenir des suggestions d'optimisation.
-
-```
-analyze_context content="<prompt ou contexte>"
-```
-
-### context_budget
-
-Estimation préalable des tokens avant envoi au LLM.
-
-```
-context_budget content="<contenu>" budgetTokens=5000
-```
-
-### session_stats
-
-Voir les statistiques de la session en cours.
-
-```
-session_stats detail="detailed"
-```
-
-### get_stats
-
-Obtenir les statistiques d'utilisation de la session.
-
-```
-get_stats period="session"
-```
-
-### optimization_tips
-
-Obtenir les bonnes pratiques de context engineering.
-
-```
-optimization_tips focus="prompts"
-```
-
-## Outils de découverte
-
-### discover_tools
-
-Trouver et charger des outils d'optimisation à la demande. Supporte le format TOON pour une sortie compacte.
-
-```
-discover_tools category="compress" load=true
-discover_tools query="logs"
-discover_tools format="toon"
-discover_tools format="toon-tabular"
-```
-
-**Catégories :** `compress`, `analyze`, `logs`, `code`, `pipeline`
-
-**Formats :**
-- `list` - Format lisible par défaut
-- `toon` - Format TOON groupé par catégorie (55% de tokens en moins)
-- `toon-tabular` - Format TOON tabulaire (le plus compact)
-
-**Exemple de sortie TOON :**
-```
-tools[15]:
-  auto_optimize(content hint?:build|logs|... aggressive?:bool) → Auto-compress 80-95%
-  smart_file_read(filePath target?:{type,name} query?) → AST code extraction
-  compress_context(content contentType?:logs|...) → Compress verbose text 40-90%
-  ...
-
-[tokens] json:1189 → toon:531 (-55%)
-```
-
-## Outils utilitaires
-
-### smart_cache
-
-Interagir avec le cache de fichiers pour le contenu parsé.
-
-```
-smart_cache action="stats"
-smart_cache action="get" key="file:/path/to/file.ts"
-```
-
-### smart_pipeline
-
-Chaîner plusieurs outils de compression automatiquement.
-
-```
-smart_pipeline content="<contenu mixte>" mode="auto"
-```
-
-### register_model
-
-Enregistrer le modèle Claude utilisé pour un suivi précis des coûts.
-
-```
-register_model model="claude-opus-4-5-20251101"
-```
-
-## Résumé des économies de tokens
-
-| Outil | Cas d'usage | Économie |
-|-------|-------------|----------|
-| smart_file_read | Exploration de code | 50-70% |
-| code_skeleton | Aperçu d'API | 70-90% |
-| auto_optimize | Toute sortie volumineuse | 40-95% |
-| analyze_build_output | Erreurs de build | 95%+ |
-| deduplicate_errors | Erreurs répétées | 80-95% |
-| summarize_logs | Fichiers de logs | 80-90% |
-| diff_compress | Diffs Git | 50-95% |
-| conversation_compress | Historique de chat | 40-70% |
-| semantic_compress | Documents | 40-60% |
-| discover_tools (TOON) | Listes d'outils | 55% |
-
-## À propos du format TOON
-
-[TOON (Token-Oriented Object Notation)](https://toonformat.dev/) est un format compact et lisible conçu spécifiquement pour les entrées LLM. Il fournit :
-
-- **55% de tokens en moins** par rapport à JSON pour les listes d'outils
-- **Représentation sans perte** des données structurées
-- **Syntaxe lisible** avec indentation style YAML
-
-TOON est particulièrement efficace pour les données tabulaires et les tableaux uniformes, ce qui le rend idéal pour présenter des catalogues d'outils aux LLM.
+**Securite :** Sandbox avec 7 couches de protection, limite memoire 128MB, blocage de `eval`, `require`, `import()`, `process`.

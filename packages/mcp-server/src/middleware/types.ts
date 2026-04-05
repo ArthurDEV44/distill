@@ -27,6 +27,8 @@ export interface ToolResult {
     text: string;
   }>;
   isError?: boolean;
+  /** Structured JSON matching outputSchema (MCP 2025-06-18) */
+  structuredContent?: Record<string, unknown>;
   tokensIn: number;
   tokensOut: number;
   tokensSaved: number;

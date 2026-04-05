@@ -13,8 +13,8 @@ export interface Feature {
 export const FEATURES: Feature[] = [
   {
     icon: Zap,
-    title: "21 Optimization Tools",
-    description: "Smart file reading, build output compression, log summarization, error deduplication, and more.",
+    title: "3 Precision Tools",
+    description: "Auto Compress, Smart Read, and Code Execute — zero friction, always loaded, no discovery step.",
   },
   {
     icon: Brain,

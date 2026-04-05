@@ -39,6 +39,8 @@ export interface ToolDefinition {
 export interface ToolExecuteResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
+  /** Structured JSON matching outputSchema (MCP 2025-06-18) */
+  structuredContent?: Record<string, unknown>;
 }
 
 export class ToolRegistry {
@@ -115,7 +117,6 @@ export class ToolRegistry {
     name: string;
     description: string;
     inputSchema: Record<string, unknown>;
-    outputSchema?: Record<string, unknown>;
     annotations?: ToolAnnotations;
   }> {
     return this.list().map((tool) => {
@@ -123,7 +124,6 @@ export class ToolRegistry {
         name: string;
         description: string;
         inputSchema: Record<string, unknown>;
-        outputSchema?: Record<string, unknown>;
         annotations?: ToolAnnotations;
       } = {
         name: tool.name,
@@ -131,10 +131,9 @@ export class ToolRegistry {
         inputSchema: tool.inputSchema,
       };
 
-      // Include outputSchema if defined (MCP 2025-06-18)
-      if (tool.outputSchema) {
-        def.outputSchema = tool.outputSchema;
-      }
+      // NOTE: outputSchema intentionally excluded from tools/list response.
+      // Older Claude Code versions silently drop tools with outputSchema (Issue #25081).
+      // structuredContent is still returned in tool call results.
 
       // Include annotations if defined
       if (tool.annotations) {
@@ -205,6 +204,7 @@ export class ToolRegistry {
       let result: ToolResult = {
         content: executeResult.content,
         isError: executeResult.isError ?? false,
+        structuredContent: executeResult.structuredContent,
         tokensIn,
         tokensOut,
         tokensSaved: 0,

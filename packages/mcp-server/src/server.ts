@@ -1,8 +1,8 @@
 /**
- * CtxOpt MCP Server
+ * Distill MCP Server
  *
- * Main server implementation with dynamic tool loading.
- * Only core tools are loaded at startup to minimize token consumption.
+ * Main server implementation with 3 always-loaded tools:
+ * auto_optimize, smart_file_read, code_execute.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -15,23 +15,12 @@ import { createLoggingMiddleware } from "./middleware/logging.js";
 
 // Tools
 import { createToolRegistry, type ToolRegistry } from "./tools/registry.js";
-import { getDynamicLoader, resetDynamicLoader } from "./tools/dynamic-loader.js";
-import { discoverToolsTool } from "./tools/discover-tools.js";
-import { lazyMcpTools, setLazyMcpRegistry, calculateLazySavings } from "./tools/lazy-mcp.js";
-
-export type LoadingMode = "lazy" | "core" | "all";
+import { autoOptimizeTool } from "./tools/auto-optimize.js";
+import { smartFileReadTool } from "./tools/smart-file-read.js";
+import { codeExecuteTool } from "./tools/code-execute.js";
 
 export interface ServerConfig {
   verbose?: boolean;
-  /** Load all tools at startup instead of using dynamic loading */
-  loadAllTools?: boolean;
-  /**
-   * Tool loading mode:
-   * - "lazy": Only 2 meta-tools (browse_tools, run_tool) - 95% token savings
-   * - "core": Core tools + discover_tools (default)
-   * - "all": Load all tools at startup
-   */
-  mode?: LoadingMode;
 }
 
 export interface ServerInstance {
@@ -44,13 +33,6 @@ export interface ServerInstance {
  * Create and configure the MCP server
  */
 export async function createServer(config: ServerConfig = {}): Promise<ServerInstance> {
-  // Determine loading mode (support legacy loadAllTools option)
-  const mode: LoadingMode = config.mode ?? (config.loadAllTools ? "all" : "core");
-
-  // Reset dynamic loader for fresh start
-  resetDynamicLoader();
-  const loader = getDynamicLoader();
-
   // Create middleware chain
   const middleware = createMiddlewareChain();
   middleware.use(createLoggingMiddleware({ verbose: config.verbose ?? false }));
@@ -59,94 +41,93 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
   const tools = createToolRegistry();
   tools.setMiddlewareChain(middleware);
 
-  // Load tools based on mode
-  if (mode === "lazy") {
-    // Lazy mode: Only 2 meta-tools (95% token savings)
-    for (const tool of lazyMcpTools) {
-      tools.register(tool);
-    }
-    // Connect registry to lazy-mcp for run_tool execution
-    setLazyMcpRegistry({
-      execute: async (name, args) => {
-        const result = await tools.execute(name, args);
-        return { content: result.content, isError: result.isError };
-      },
-    });
+  // Register the 3 core tools
+  tools.register(autoOptimizeTool);
+  tools.register(smartFileReadTool);
+  tools.register(codeExecuteTool);
 
-    if (config.verbose) {
-      const savings = calculateLazySavings();
-      console.error(`[distill] Lazy mode: ${savings.savingsPercent}% token savings`);
-    }
-  } else if (mode === "all") {
-    // All mode: Load all tools at startup
-    tools.register(discoverToolsTool);
-    const allTools = await loader.loadAllTools();
-    for (const tool of allTools) {
-      tools.register(tool);
-    }
-  } else {
-    // Core mode (default): Core tools + discover_tools
-    tools.register(discoverToolsTool);
-    const coreTools = await loader.loadCoreTools();
-    for (const tool of coreTools) {
-      tools.register(tool);
-    }
-  }
-
-  // Connect dynamic loader to registry
-  loader.onToolsChanged(() => {
-    // Register newly loaded tools
-    for (const tool of loader.getLoadedTools()) {
-      if (!tools.get(tool.name)) {
-        tools.register(tool);
-      }
-    }
-  });
+  // Server-level instructions for Claude Code's ToolSearch discovery.
+  // Static content only — no timestamps, versions, or dynamic data (breaks prompt caching).
+  const instructions =
+    "Distill optimizes LLM token usage through 3 tools:\n" +
+    "- auto_optimize: Compress large tool output (build logs, diffs, errors) before it enters context. Use after any command producing >500 chars.\n" +
+    "- smart_file_read: Read code with AST extraction — get functions, classes, signatures without full file. Use instead of Read for supported languages (TS, JS, Python, Go, Rust, PHP, Swift).\n" +
+    "- code_execute: Run TypeScript in sandbox with ctx.* SDK. Batch 5-10 operations (read, compress, git, search) in one call to save ~80% token overhead.";
 
   // Create MCP server
   const server = new Server(
     {
       name: "distill-mcp",
-      version: "0.1.0",
+      version: "0.8.1",
     },
     {
       capabilities: {
         tools: {},
       },
+      instructions,
     }
   );
 
-  // Handle ListTools request
+  // Per-tool searchHint for Claude Code's ToolSearch discovery
+  // No newlines — Claude Code collapses whitespace but newlines inject lines into the system prompt.
+  const searchHints: Record<string, string> = {
+    auto_optimize: "compress optimize token reduce build logs diff errors stacktrace",
+    smart_file_read: "read code file AST extract function class skeleton signature",
+    code_execute: "execute typescript sandbox batch SDK script multi-operation",
+  };
+
+  // Handle ListTools request — include _meta for always-load, search hints, and result size
+  // NOTE: maxResultSizeChars is set in _meta because the MCP SDK's ToolSchema strips
+  // unknown top-level properties via Zod. Claude Code reads maxResultSizeChars from the
+  // Tool object directly (not _meta), so this may not take effect for MCP tools.
+  // See: Claude Code Issue #25081, MCP SDK ToolSchema uses z.core.$strip.
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: tools.getToolDefinitions(),
+    tools: tools.getToolDefinitions().map((tool) => ({
+      ...tool,
+      _meta: {
+        "anthropic/alwaysLoad": true,
+        "anthropic/searchHint": searchHints[tool.name] ?? "",
+        maxResultSizeChars: 100_000,
+      },
+    })),
   }));
 
   // Handle CallTool request
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    // Try to load tool dynamically if not found
     if (!tools.get(name)) {
-      const loaded = await loader.loadByNames([name]);
-      for (const tool of loaded) {
-        tools.register(tool);
-      }
+      return {
+        content: [{ type: "text" as const, text: `Unknown tool: ${name}` }],
+        isError: true,
+      };
     }
 
     const result = await tools.execute(name, args);
 
-    return {
+    const response: Record<string, unknown> = {
       content: result.content,
       isError: result.isError,
     };
+
+    // Include structuredContent when available (MCP 2025-06-18)
+    if (result.structuredContent) {
+      response.structuredContent = result.structuredContent;
+    }
+
+    return response;
   });
 
   // Set up notification for tool list changes
+  // Wrapped in try/catch because notification may fire before stdio transport is connected
   tools.onToolsChanged(() => {
-    // Send notification to client that tool list has changed
-    server.notification({
-      method: "notifications/tools/list_changed",
-    });
+    try {
+      server.notification({
+        method: "notifications/tools/list_changed",
+      });
+    } catch {
+      // Ignore — transport may not be connected yet during startup registration
+    }
   });
 
   return {

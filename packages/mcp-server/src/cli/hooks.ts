@@ -118,7 +118,7 @@ return ctx.code.extract(content, "typescript", { type: "function", name: "handle
 | Lire du code pour exploration | \`mcp__distill__smart_file_read filePath="file.ts"\` |
 | Obtenir une fonction/classe | \`mcp__distill__smart_file_read filePath="file.ts" target={"type":"function","name":"myFunc"}\` |
 | Compresser les erreurs de build | \`mcp__distill__auto_optimize content="..."\` |
-| Résumer les logs | \`mcp__distill__summarize_logs logs="..."\` |
+| Résumer les logs | \`mcp__distill__auto_optimize content="..." strategy="logs"\` |
 | Opérations multi-étapes | \`mcp__distill__code_execute code="return ctx.files.glob('src/**/*.ts')"\` |
 | Avant d'éditer | Utiliser l'outil natif \`Read\` |
 
@@ -183,7 +183,7 @@ if echo "$TOOL_RESPONSE" | grep -qiE "(error TS|warning TS|error\\[E|npm ERR|ERR
 fi
 
 if echo "$TOOL_RESPONSE" | grep -qiE "(\\[INFO\\]|\\[ERROR\\]|\\[WARN\\]|\\[DEBUG\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2})"; then
-  echo '{"systemMessage": "TIP: Large log output detected. Use mcp__distill__summarize_logs to compress (80-90% reduction)."}'
+  echo '{"systemMessage": "TIP: Large log output detected. Use mcp__distill__auto_optimize with strategy=logs to compress (80-90% reduction)."}'
   exit 0
 fi
 
@@ -200,8 +200,8 @@ cat << 'EOF'
 <user-prompt-submit-hook>
 DISTILL REMINDER: Use MCP tools for token optimization:
 - Code files: mcp__distill__smart_file_read (50-70% savings vs Read)
-- Build/test output: mcp__distill__auto_optimize
-- Session stats: mcp__distill__session_stats
+- Build/test output: mcp__distill__auto_optimize (95%+ reduction)
+- Multi-step ops: mcp__distill__code_execute (98% savings via SDK)
 </user-prompt-submit-hook>
 EOF
 exit 0
@@ -377,7 +377,7 @@ export async function installHooks(options: InstallHooksOptions = {}): Promise<b
     log(`\n${COLORS.dim}Token savings:${COLORS.reset}`);
     log(`  • smart_file_read:  50-70% reduction vs Read`);
     log(`  • auto_optimize:    95%+ reduction on build errors`);
-    log(`  • summarize_logs:   80-90% reduction on logs\n`);
+    log(`  • auto_optimize:    80-90% reduction on logs\n`);
     return true;
   } else {
     warn("No changes made. Use --force to overwrite existing files.");

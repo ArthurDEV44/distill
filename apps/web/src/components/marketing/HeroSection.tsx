@@ -180,7 +180,7 @@ const HeroContent = ({ t, isStatic = false }: { t: HeroTranslations; isStatic?: 
       <Item {...itemProps} className="pt-12 @md:pt-16 grid grid-cols-3 gap-8 @md:gap-12 w-full max-w-2xl justify-items-center z-20 relative">
         <TechIndicator icon={Zap} label={t.tokenSavings} value="40-98%" />
         <div className="hidden @sm:block h-12 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent absolute left-[30%]" />
-        <TechIndicator icon={Gauge} label={t.tools} value="21" />
+        <TechIndicator icon={Gauge} label={t.tools} value="3" />
         <div className="hidden @sm:block h-12 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent absolute right-[30%]" />
         <TechIndicator icon={Sparkles} label={t.languages} value="7" />
       </Item>

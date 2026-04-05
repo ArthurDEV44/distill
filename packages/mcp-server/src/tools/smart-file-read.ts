@@ -8,6 +8,7 @@
  */
 
 import * as fs from "fs/promises";
+import * as fsSync from "fs";
 import * as path from "path";
 import { z } from "zod";
 
@@ -24,6 +25,7 @@ import { detectLanguageFromPath } from "../utils/language-detector.js";
 import { countTokens } from "../utils/token-counter.js";
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache } from "../cache/smart-cache.js";
+import { getBlockedPatterns } from "../sandbox/security/path-validator.js";
 import type { FileStructure, SupportedLanguage } from "../ast/types.js";
 
 // Parseable languages (excluding json, yaml, unknown)
@@ -56,17 +58,8 @@ function validateLanguage(lang: string): SupportedLanguage | null {
   return aliases[normalized] || null;
 }
 
-// Sensitive file patterns that should never be read
-const BLOCKED_PATTERNS = [
-  /\.env($|\.)/i, // .env files
-  /\.pem$/i, // Private keys
-  /\.key$/i, // Key files
-  /id_rsa/i, // SSH keys
-  /id_ed25519/i, // SSH keys
-  /credentials/i, // Credentials files
-  /secrets?\./i, // Secret files
-  /\.keystore$/i, // Java keystores
-];
+// Use canonical blocked patterns from sandbox security layer (single source of truth)
+const BLOCKED_PATTERNS = getBlockedPatterns();
 
 /**
  * Validate that a file path is safe to read
@@ -93,6 +86,21 @@ function validatePath(
       safe: false,
       error: `Access denied: Path '${filePath}' is outside the working directory. Only files within '${workingDir}' can be read.`,
     };
+  }
+
+  // Resolve symlinks to prevent escaping the working directory via symlinks
+  let realPath: string;
+  try {
+    realPath = fsSync.realpathSync(normalizedResolved);
+    if (!realPath.startsWith(normalizedWorkingDir + path.sep) &&
+        realPath !== normalizedWorkingDir) {
+      return {
+        safe: false,
+        error: `Access denied: Path '${filePath}' resolves outside the working directory via symlink.`,
+      };
+    }
+  } catch {
+    // File doesn't exist yet or can't be resolved — fall through to fs.access check later
   }
 
   // Check for blocked patterns
@@ -441,7 +449,7 @@ function formatSkeletonOutput(
 
 export async function executeSmartFileRead(
   args: unknown
-): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean; structuredContent?: Record<string, unknown> }> {
   const input = inputSchema.parse(args);
   const workingDir = process.cwd();
 
@@ -450,6 +458,7 @@ export async function executeSmartFileRead(
   if (!validation.safe || !validation.resolvedPath) {
     return {
       content: [{ type: "text", text: validation.error || "Invalid path" }],
+      isError: true,
     };
   }
 
@@ -460,7 +469,8 @@ export async function executeSmartFileRead(
     await fs.access(resolvedPath);
   } catch {
     return {
-      content: [{ type: "text", text: `File not found: ${resolvedPath}` }],
+      content: [{ type: "text", text: `File not found: ${input.filePath}` }],
+      isError: true,
     };
   }
 
@@ -480,6 +490,7 @@ export async function executeSmartFileRead(
             text: `Unsupported language: '${input.language}'. Supported: ${PARSEABLE_LANGUAGES.join(", ")} (or aliases: ts, js, py, golang, rs)`,
           },
         ],
+        isError: true,
       };
     }
     language = forcedLang;
@@ -497,6 +508,15 @@ export async function executeSmartFileRead(
     else effectiveMode = "full";
   }
 
+  // Helper to build structuredContent for MCP 2025-06-18
+  const buildStructured = (text: string, mode: string) => ({
+    filePath: input.filePath,
+    language: languageId,
+    totalLines,
+    content: text,
+    mode,
+  });
+
   // Cache setup
   const cache = getGlobalCache();
   const cacheKey = `smart-read:${resolvedPath}:${JSON.stringify({
@@ -513,16 +533,22 @@ export async function executeSmartFileRead(
   if (input.cache !== false) {
     const cached = await cache.get<string>(cacheKey);
     if (cached.hit && cached.value) {
-      return { content: [{ type: "text", text: cached.value + "\n\n_(from cache)_" }] };
+      return {
+        content: [{ type: "text", text: cached.value + "\n\n_(from cache)_" }],
+        structuredContent: buildStructured(cached.value, effectiveMode),
+      };
     }
   }
 
-  // Helper to cache and return result
-  const cacheAndReturn = async (result: string) => {
+  // Helper to cache and return result with structuredContent
+  const cacheAndReturn = async (result: string, mode: string) => {
     if (input.cache !== false) {
       await cache.set(cacheKey, result, { filePath: resolvedPath });
     }
-    return { content: [{ type: "text" as const, text: result }] };
+    return {
+      content: [{ type: "text" as const, text: result }],
+      structuredContent: buildStructured(result, mode),
+    };
   };
 
   // Line extraction always works regardless of mode
@@ -536,7 +562,10 @@ export async function executeSmartFileRead(
       false,
       input.format
     );
-    return { content: [{ type: "text", text: result }] };
+    return {
+      content: [{ type: "text", text: result }],
+      structuredContent: buildStructured(result, "lines"),
+    };
   }
 
   // Skeleton mode: handle before hasParserSupport to return empty (not error) for unsupported langs
@@ -544,13 +573,13 @@ export async function executeSmartFileRead(
     if (!hasParserSupport(language)) {
       // Return empty skeleton for unsupported languages (not an error per US-006)
       const emptyResult = `${input.filePath} (${languageId}, ${totalLines} lines)\nNo AST support for ${languageId} — skeleton not available. Use mode \"full\" or \"lines\" instead.`;
-      return cacheAndReturn(emptyResult);
+      return cacheAndReturn(emptyResult, "skeleton");
     }
     const structure = parseFile(content, language); // full AST parse for real signatures
     const skeleton = formatSkeletonOutput(
       structure, input.filePath, languageId, totalLines, content, input.depth, input.format
     );
-    return cacheAndReturn(skeleton);
+    return cacheAndReturn(skeleton, "skeleton");
   }
 
   // Check parser support for remaining modes
@@ -570,7 +599,11 @@ export async function executeSmartFileRead(
     parts.push(content);
     if (md) parts.push("```");
 
-    return { content: [{ type: "text", text: parts.join("\n") }] };
+    const text = parts.join("\n");
+    return {
+      content: [{ type: "text", text }],
+      structuredContent: buildStructured(text, "full"),
+    };
   }
 
   // Extract mode
@@ -578,6 +611,7 @@ export async function executeSmartFileRead(
     if (!input.target) {
       return {
         content: [{ type: "text", text: "Extract mode requires 'target' param with type and name." }],
+        isError: true,
       };
     }
     const extracted = extractElement(content, language, input.target, {
@@ -593,6 +627,7 @@ export async function executeSmartFileRead(
             text: `${input.target.type} '${input.target.name}' not found in ${input.filePath}`,
           },
         ],
+        isError: true,
       };
     }
 
@@ -604,7 +639,7 @@ export async function executeSmartFileRead(
       input.includeImports,
       input.format
     );
-    return cacheAndReturn(result);
+    return cacheAndReturn(result, "extract");
   }
 
   // Search mode
@@ -612,27 +647,37 @@ export async function executeSmartFileRead(
     if (!input.query) {
       return {
         content: [{ type: "text", text: "Search mode requires 'query' param." }],
+        isError: true,
       };
     }
     const results = searchElements(content, language, input.query);
     const result = formatSearchResults(results, input.filePath, input.query, input.format);
-    return cacheAndReturn(result);
+    return cacheAndReturn(result, "search");
   }
 
   // Full mode (default): return file structure summary
   const structure = parseFile(content, language);
   const summary = formatStructureSummary(structure, input.filePath, input.format);
 
-  return cacheAndReturn(summary);
+  return cacheAndReturn(summary, "full");
 }
 
 export const smartFileReadTool: ToolDefinition = {
   name: "smart_file_read",
   description:
-    "Read code with AST extraction — get functions, classes, signatures without loading full files. " +
-    "5 modes: auto (detect from params), skeleton (signatures only, depth 1-3), " +
-    "extract (element by type+name), search (find by query), full (structure overview). " +
-    "Supports TS, JS, Python, Go, Rust, PHP, Swift. Typical savings: 50-90% vs full file read.",
+    "Read code with AST extraction — get functions, classes, signatures without loading the full file.\n\n" +
+    "WHEN TO USE: Instead of built-in Read when you need specific code elements from supported languages " +
+    "(TypeScript, JavaScript, Python, Go, Rust, PHP, Swift). Saves 50-90% tokens vs full file read.\n\n" +
+    "HOW TO FORMAT:\n" +
+    '- Extract a function: smart_file_read({ filePath: "src/server.ts", mode: "extract", target: { type: "function", name: "createServer" } })\n' +
+    '- Code skeleton: smart_file_read({ filePath: "src/server.ts", mode: "skeleton", depth: 2 })\n' +
+    '- Search elements: smart_file_read({ filePath: "src/server.ts", mode: "search", query: "handle" })\n' +
+    '- Structure overview: smart_file_read({ filePath: "src/server.ts" })\n' +
+    '- Line range: smart_file_read({ filePath: "src/server.ts", lines: { start: 10, end: 50 } })\n\n' +
+    "Modes: auto (detect from params), skeleton (signatures, depth 1-3), extract (element by type+name), " +
+    "search (find by query), full (structure overview).\n\n" +
+    "WHAT TO EXPECT: Extracted content with file metadata and token savings stats. " +
+    "For unsupported languages, returns full file content (graceful fallback, not error).",
   inputSchema: smartFileReadSchema,
   outputSchema: smartFileReadOutputSchema,
   annotations: {

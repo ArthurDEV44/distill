@@ -7,7 +7,7 @@
  */
 
 import { Result, ok, err } from "neverthrow";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import type {
   GitDiff,
   GitFileChange,
@@ -48,8 +48,13 @@ type BlockedGitCommand = (typeof BLOCKED_GIT_COMMANDS)[number];
  * Returns a branded SanitizedGitArg on success.
  */
 function sanitizeGitArg(arg: string): Result<SanitizedGitArg, GitError> {
+  // Strip git format specifiers %(…) before checking — these are legitimate
+  // (e.g., --format=%(refname:short)). Shell injection via $() is still caught
+  // because $ is blocked independently.
+  const withoutFormatSpecs = arg.replace(/%\([^)]*\)/g, "");
+
   // Block shell metacharacters that could enable command injection
-  if (/[;&|`$(){}[\]<>\\!'"]/.test(arg)) {
+  if (/[;&|`$(){}[\]<>\\!'"]/.test(withoutFormatSpecs)) {
     return err(gitError.invalidArg(`contains shell metacharacters: ${arg}`));
   }
   // Block newlines which could inject additional commands
@@ -90,20 +95,25 @@ function execGit(args: string[], workingDir: string): Result<string, GitError> {
   }
 
   try {
-    const result = execSync(`git ${sanitizedArgs.join(" ")}`, {
+    // Use execFileSync to bypass shell interpretation — args are passed
+    // directly to git without /bin/sh processing (no shell injection risk).
+    // LC_ALL=C forces English error messages for reliable parsing.
+    const result = execFileSync("git", sanitizedArgs.map(String), {
       cwd: workingDir,
       timeout: GIT_TIMEOUT,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, LC_ALL: "C" },
     });
     return ok(result.trim());
   } catch (error) {
     const e = error as { stderr?: string; message?: string };
     const stderr = e.stderr?.toString().trim() || "";
-    if (stderr.includes("not a git repository")) {
+    const errMsg = e.message || "";
+    if (stderr.includes("not a git repository") || errMsg.includes("not a git repository")) {
       return err(gitError.notRepo(workingDir));
     }
-    return err(gitError.commandFailed(`git ${args[0] || ""}`, stderr || e.message || "Git command failed"));
+    return err(gitError.commandFailed(`git ${args[0] || ""}`, stderr || errMsg || "Git command failed"));
   }
 }
 

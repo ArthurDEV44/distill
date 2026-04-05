@@ -164,6 +164,123 @@ const SAMPLE_GENERIC = Array.from(
   (_, i) => `This is a line of generic text content number ${i + 1} that should be compressed using the default generic strategy without any special handling.`
 ).join("\n");
 
+// Rust compiler errors (triggers "error[E" in isBuildOutput)
+const SAMPLE_BUILD_RUST = [
+  "error[E0433]: failed to resolve: use of undeclared crate or module `serde`",
+  "  --> src/main.rs:1:5",
+  "   |",
+  "1  | use serde::Serialize;",
+  '   |     ^^^^^ use of undeclared crate or module `serde`',
+  "",
+  "error[E0599]: no method named `map` found for struct `Vec<i32>` in the current scope",
+  "  --> src/lib.rs:10:8",
+  "   |",
+  "10 |     v.map(|x| x * 2);",
+  '   |       ^^^ method not found in `Vec<i32>`',
+  "",
+  "error[E0308]: mismatched types",
+  "  --> src/handler.rs:22:12",
+  "   |",
+  "22 |     return Ok(value);",
+  '   |            ^^^^^^^^^^ expected `String`, found `i32`',
+  "",
+  "error[E0277]: the trait bound `MyStruct: Serialize` is not satisfied",
+  "  --> src/api.rs:15:5",
+  "   |",
+  "15 |     serde_json::to_string(&data)?;",
+  "   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Serialize` is not implemented for `MyStruct`",
+  "",
+  "error: aborting due to 4 previous errors",
+].join("\n");
+
+// Webpack errors (triggers "ERROR in" in isBuildOutput)
+const SAMPLE_BUILD_WEBPACK = [
+  "ERROR in ./src/index.tsx",
+  "Module not found: Error: Can't resolve './components/App'",
+  " @ ./src/index.tsx 3:0-35",
+  "",
+  "ERROR in ./src/pages/Home.tsx",
+  "Module not found: Error: Can't resolve '@/utils/helpers'",
+  " @ ./src/pages/Home.tsx 1:0-42 5:15-22",
+  "",
+  "ERROR in ./src/components/Header.tsx 12:4",
+  "Module parse failed: Unexpected token (12:4)",
+  "You may need an appropriate loader to handle this file type.",
+  "|   return (",
+  "|     <div className={styles.header}>",
+  "|       <Logo />",
+  "",
+  "ERROR in ./src/styles/main.css",
+  "Module build failed: Error: ENOENT: no such file or directory",
+  " @ ./src/App.tsx 2:0-28",
+  "",
+  "webpack 5.91.0 compiled with 4 errors in 2341 ms",
+].join("\n");
+
+// Python traceback (should NOT trigger isBuildOutput — "ValueError:" has capital E)
+const SAMPLE_STACKTRACE_PYTHON = [
+  "Traceback (most recent call last):",
+  '  File "/app/main.py", line 42, in <module>',
+  "    result = process_data(raw_input)",
+  '  File "/app/processor.py", line 18, in process_data',
+  "    validated = validate(data)",
+  '  File "/app/validator.py", line 55, in validate',
+  "    schema.check(data)",
+  '  File "/app/lib/schema.py", line 102, in check',
+  "    self._validate_field(field, value)",
+  '  File "/app/lib/schema.py", line 78, in _validate_field',
+  "    raise ValueError(f\"Field '{field}' expected type {expected}, got {type(value).__name__}\")",
+  "ValueError: Field 'age' expected type int, got str",
+  "",
+  "During handling of the above exception, another exception occurred:",
+  "",
+  "Traceback (most recent call last):",
+  '  File "/app/main.py", line 45, in <module>',
+  "    handle_error(e)",
+  '  File "/app/error_handler.py", line 12, in handle_error',
+  "    logger.critical(str(error))",
+  "AttributeError: 'NoneType' object has no attribute 'critical'",
+].join("\n");
+
+// YAML config (should detect as config via isLikelyYAML)
+const SAMPLE_CONFIG_YAML = [
+  "apiVersion: apps/v1",
+  "kind: Deployment",
+  "metadata:",
+  "  name: distill-server",
+  "  namespace: production",
+  "  labels:",
+  "    app: distill",
+  '    version: "1.0.0"',
+  "spec:",
+  "  replicas: 3",
+  "  selector:",
+  "    matchLabels:",
+  "      app: distill",
+  "  template:",
+  "    metadata:",
+  "      labels:",
+  "        app: distill",
+  "    spec:",
+  "      containers:",
+  "        - name: server",
+  "          image: distill-mcp:1.0.0",
+  "          ports:",
+  "            - containerPort: 8080",
+  "          resources:",
+  "            limits:",
+  '              memory: "256Mi"',
+  '              cpu: "500m"',
+  "            requests:",
+  '              memory: "128Mi"',
+  '              cpu: "250m"',
+  "          env:",
+  "            - name: NODE_ENV",
+  '              value: "production"',
+  "            - name: LOG_LEVEL",
+  '              value: "info"',
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -209,8 +326,7 @@ describe("auto_optimize", () => {
 
     it("should detect stacktrace", async () => {
       const { sc } = await optimize({ content: SAMPLE_STACKTRACE });
-      // Stacktrace detection depends on content detector; may fall to generic
-      expect(sc?.detectedType).toBeDefined();
+      expect(sc?.detectedType).toBe("stacktrace");
     });
 
     it("should detect config (JSON)", async () => {
@@ -339,6 +455,15 @@ describe("auto_optimize", () => {
       expect(sc).toBeDefined();
     });
 
+    it("should preserve content matching patterns in semantic output", async () => {
+      const { sc } = await optimize({
+        content: SAMPLE_CODE,
+        strategy: "semantic",
+        preservePatterns: ["createServer"],
+      });
+      expect(sc?.optimizedContent).toContain("createServer");
+    });
+
     it("should silently ignore invalid regex patterns", async () => {
       const { sc } = await optimize({
         content: SAMPLE_CODE,
@@ -346,6 +471,16 @@ describe("auto_optimize", () => {
         preservePatterns: ["[invalid", "valid.*pattern"],
       });
       expect(sc).toBeDefined();
+    });
+
+    it("should warn about unsafe regex patterns (ReDoS)", async () => {
+      const { text } = await optimize({
+        content: SAMPLE_CODE,
+        strategy: "semantic",
+        preservePatterns: ["(a+)+b"],
+      });
+      expect(text).toContain("[WARN]");
+      expect(text).toContain("ReDoS");
     });
   });
 
@@ -360,6 +495,76 @@ describe("auto_optimize", () => {
     it("should support markdown format for errors", async () => {
       const { text } = await optimize({ content: SAMPLE_ERRORS, strategy: "errors", format: "markdown" });
       expect(text).toBeDefined();
+    });
+  });
+
+  describe("empty input", () => {
+    it("should return isError for empty string", async () => {
+      const { result } = await optimize({ content: "" });
+      expect(result.isError).toBe(true);
+    });
+
+    it("should return 0% savings for empty input", async () => {
+      const { sc } = await optimize({ content: "" });
+      expect(sc?.savingsPercent).toBe(0);
+    });
+
+    it("should return error message for whitespace-only input", async () => {
+      const { result } = await optimize({ content: "   \n  \t  " });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("response_format", () => {
+    it("should produce different output for minimal vs normal vs detailed", async () => {
+      const minimal = await optimize({ content: SAMPLE_BUILD, response_format: "minimal" });
+      const normal = await optimize({ content: SAMPLE_BUILD, response_format: "normal" });
+      const detailed = await optimize({ content: SAMPLE_BUILD, response_format: "detailed" });
+
+      // All should have content
+      expect(minimal.text.length).toBeGreaterThan(0);
+      expect(normal.text.length).toBeGreaterThan(0);
+      expect(detailed.text.length).toBeGreaterThan(0);
+
+      // Detailed should be longer than minimal
+      expect(detailed.text.length).toBeGreaterThan(minimal.text.length);
+    });
+
+    it("should include savings percentage in minimal format", async () => {
+      const { text } = await optimize({ content: SAMPLE_BUILD, response_format: "minimal" });
+      expect(text).toMatch(/\(-?\d+%\)/);
+    });
+
+    it("should include strategy info in detailed format", async () => {
+      const { text } = await optimize({ content: SAMPLE_BUILD, response_format: "detailed" });
+      expect(text).toContain("Strategy:");
+      expect(text).toContain("Method:");
+      expect(text).toContain("Tokens:");
+    });
+
+    it("should default to normal format", async () => {
+      const withDefault = await optimize({ content: SAMPLE_BUILD });
+      const withExplicit = await optimize({ content: SAMPLE_BUILD, response_format: "normal" });
+      expect(withDefault.text).toBe(withExplicit.text);
+    });
+  });
+
+  describe("very large input", () => {
+    it("should handle >100K chars without crashing", async () => {
+      const largeContent = "INFO server log line with some data and context\n".repeat(3000);
+      expect(largeContent.length).toBeGreaterThan(100_000);
+      const { sc } = await optimize({ content: largeContent, strategy: "logs" });
+      expect(sc).toBeDefined();
+      expect(sc?.detectedType).toMatch(/^logs/);
+    }, 30_000);
+  });
+
+  describe("invalid strategy", () => {
+    it("should handle unknown strategy value gracefully", async () => {
+      // Unknown strategy should fall through to auto-detection
+      const { sc } = await optimize({ content: SAMPLE_BUILD, strategy: "nonexistent" });
+      expect(sc).toBeDefined();
+      expect(typeof sc?.savingsPercent).toBe("number");
     });
   });
 
@@ -379,6 +584,332 @@ describe("auto_optimize", () => {
       const { sc } = await optimize({ content: SAMPLE_BUILD });
       expect(typeof sc?.optimizedContent).toBe("string");
       expect((sc?.optimizedContent as string).length).toBeGreaterThan(0);
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — auto-detection sub-types
+  // =========================================================================
+
+  describe("auto-detection — build sub-types", () => {
+    it("should detect TypeScript errors as build-tsc", async () => {
+      const { sc } = await optimize({ content: SAMPLE_BUILD });
+      expect(sc?.detectedType).toBe("build-tsc");
+    });
+
+    it("should detect Rust compiler errors as build-rust", async () => {
+      const { sc } = await optimize({ content: SAMPLE_BUILD_RUST });
+      expect(sc?.detectedType).toBe("build-rust");
+    });
+
+    it("should detect Webpack errors as build-webpack", async () => {
+      const { sc } = await optimize({ content: SAMPLE_BUILD_WEBPACK });
+      expect(sc?.detectedType).toBe("build-webpack");
+    });
+  });
+
+  describe("auto-detection — stacktrace variants", () => {
+    it("should detect Python traceback as stacktrace", async () => {
+      const { sc } = await optimize({ content: SAMPLE_STACKTRACE_PYTHON });
+      expect(sc?.detectedType).toBe("stacktrace");
+    });
+  });
+
+  describe("auto-detection — config variants", () => {
+    it("should detect YAML config", async () => {
+      const { sc } = await optimize({ content: SAMPLE_CONFIG_YAML });
+      expect(sc?.detectedType).toBe("config");
+    });
+  });
+
+  describe("auto-detection — code", () => {
+    it("should detect code as semantic", async () => {
+      const { sc } = await optimize({ content: SAMPLE_CODE });
+      expect(sc?.detectedType).toBe("semantic");
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — aggressive mode differential
+  // =========================================================================
+
+  describe("aggressive mode — differential compression", () => {
+    it("should produce different output for diff strategy", async () => {
+      const normal = await optimize({ content: SAMPLE_DIFF, strategy: "diff", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_DIFF, strategy: "diff", aggressive: true });
+      // aggressive uses "summary" strategy vs "hunks-only"
+      expect(aggr.sc?.optimizedContent).not.toBe(normal.sc?.optimizedContent);
+    });
+
+    it("should produce equal or higher compression for stacktrace", async () => {
+      const normal = await optimize({ content: SAMPLE_STACKTRACE, strategy: "stacktrace", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_STACKTRACE, strategy: "stacktrace", aggressive: true });
+      expect(aggr.sc?.optimizedTokens as number).toBeLessThanOrEqual(normal.sc?.optimizedTokens as number);
+    });
+
+    it("should produce equal or higher compression for config", async () => {
+      const normal = await optimize({ content: SAMPLE_CONFIG, strategy: "config", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_CONFIG, strategy: "config", aggressive: true });
+      expect(aggr.sc?.optimizedTokens as number).toBeLessThanOrEqual(normal.sc?.optimizedTokens as number);
+    });
+
+    it("should produce equal or higher compression for semantic", async () => {
+      const normal = await optimize({ content: SAMPLE_CODE, strategy: "semantic", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_CODE, strategy: "semantic", aggressive: true });
+      expect(aggr.sc?.optimizedTokens as number).toBeLessThanOrEqual(normal.sc?.optimizedTokens as number);
+    });
+
+    it("should produce equal or higher compression for generic", async () => {
+      const normal = await optimize({ content: SAMPLE_GENERIC, aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_GENERIC, aggressive: true });
+      expect(aggr.sc?.optimizedTokens as number).toBeLessThanOrEqual(normal.sc?.optimizedTokens as number);
+    });
+
+    it("should not affect build strategy (build ignores aggressive)", async () => {
+      const normal = await optimize({ content: SAMPLE_BUILD, strategy: "build", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_BUILD, strategy: "build", aggressive: true });
+      expect(normal.sc?.optimizedContent).toBe(aggr.sc?.optimizedContent);
+    });
+
+    it("should not affect logs strategy (logs ignores aggressive)", async () => {
+      const normal = await optimize({ content: SAMPLE_LOGS, strategy: "logs", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_LOGS, strategy: "logs", aggressive: true });
+      expect(normal.sc?.optimizedContent).toBe(aggr.sc?.optimizedContent);
+    });
+
+    it("should not affect errors strategy (errors ignores aggressive)", async () => {
+      const normal = await optimize({ content: SAMPLE_ERRORS, strategy: "errors", aggressive: false });
+      const aggr = await optimize({ content: SAMPLE_ERRORS, strategy: "errors", aggressive: true });
+      expect(normal.sc?.optimizedContent).toBe(aggr.sc?.optimizedContent);
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — preservePatterns expanded
+  // =========================================================================
+
+  describe("preservePatterns — generic strategy", () => {
+    it("should preserve patterns in generic compression", async () => {
+      const markedContent = SAMPLE_GENERIC + "\nSPECIAL_MARKER_XYZ_12345 must survive compression";
+      const { sc } = await optimize({
+        content: markedContent,
+        preservePatterns: ["SPECIAL_MARKER_XYZ_12345"],
+      });
+      expect(sc?.optimizedContent).toContain("SPECIAL_MARKER_XYZ_12345");
+    });
+
+    it("should work with empty preservePatterns array", async () => {
+      const { sc } = await optimize({
+        content: SAMPLE_CODE,
+        strategy: "semantic",
+        preservePatterns: [],
+      });
+      expect(sc).toBeDefined();
+      expect(sc?.detectedType).toBe("semantic");
+    });
+
+    it("should filter patterns longer than 500 chars", async () => {
+      const longPattern = "a".repeat(501);
+      const { text } = await optimize({
+        content: SAMPLE_CODE,
+        strategy: "semantic",
+        preservePatterns: [longPattern],
+      });
+      // Length >500 triggers the same warning branch as unsafe regex (both guarded by same condition)
+      expect(text).toContain("[WARN]");
+      expect(text).toContain("unsafe regex");
+    });
+
+    it("should handle all patterns being invalid", async () => {
+      const { sc } = await optimize({
+        content: SAMPLE_CODE,
+        strategy: "semantic",
+        preservePatterns: ["[invalid", "another[bad"],
+      });
+      expect(sc).toBeDefined();
+      expect(sc?.detectedType).toBe("semantic");
+    });
+
+    it("should include warning text for unsafe regex", async () => {
+      const { text } = await optimize({
+        content: SAMPLE_CODE,
+        strategy: "semantic",
+        preservePatterns: ["[invalid"],
+      });
+      expect(text).toContain("[WARN]");
+      // safe-regex2 catches this before new RegExp() — flagged as ReDoS risk
+      expect(text).toContain("ReDoS");
+    });
+
+    it("should not error when preservePatterns used with build strategy", async () => {
+      const { sc } = await optimize({
+        content: SAMPLE_BUILD,
+        strategy: "build",
+        preservePatterns: ["error TS2345"],
+      });
+      expect(sc).toBeDefined();
+      expect(sc?.detectedType).toMatch(/^build/);
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — short input boundary
+  // =========================================================================
+
+  describe("short input boundary", () => {
+    it("should bypass compression for 499-char content", async () => {
+      const content = "x".repeat(499);
+      const { sc } = await optimize({ content });
+      expect(sc?.detectedType).toBe("none");
+      expect(sc?.method).toBe("none");
+      expect(sc?.savingsPercent).toBe(0);
+      expect(sc?.optimizedContent).toBe(content);
+    });
+
+    it("should attempt compression for 500-char content", async () => {
+      // 500 chars is NOT < 500, so it passes the threshold
+      const content = "a ".repeat(250);
+      const { sc } = await optimize({ content });
+      expect(sc?.detectedType).not.toBe("none");
+    });
+
+    it("should report matching token counts for short input", async () => {
+      const content = "hello world tokens";
+      const { sc } = await optimize({ content });
+      expect(sc?.originalTokens).toBeGreaterThan(0);
+      expect(sc?.optimizedTokens).toBe(sc?.originalTokens);
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — stats mathematical consistency
+  // =========================================================================
+
+  describe("stats mathematical consistency", () => {
+    it("should have consistent savingsPercent for logs", async () => {
+      const { sc } = await optimize({ content: SAMPLE_LOGS, strategy: "logs" });
+      const original = sc?.originalTokens as number;
+      const optimized = sc?.optimizedTokens as number;
+      const savings = sc?.savingsPercent as number;
+      const expected = Math.round((1 - optimized / original) * 100);
+      expect(savings).toBe(expected);
+    });
+
+    it("should have all numeric fields as finite numbers", async () => {
+      const { sc } = await optimize({ content: SAMPLE_BUILD });
+      expect(Number.isFinite(sc?.originalTokens)).toBe(true);
+      expect(Number.isFinite(sc?.optimizedTokens)).toBe(true);
+      expect(Number.isFinite(sc?.savingsPercent)).toBe(true);
+    });
+
+    it("should have non-negative originalTokens and optimizedTokens", async () => {
+      const { sc } = await optimize({ content: SAMPLE_DIFF, strategy: "diff" });
+      expect(sc?.originalTokens as number).toBeGreaterThanOrEqual(0);
+      expect(sc?.optimizedTokens as number).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should allow negative savingsPercent in structuredContent for build", async () => {
+      // Build strategy can produce larger output (adds markdown formatting)
+      const { sc } = await optimize({ content: SAMPLE_BUILD, strategy: "build" });
+      expect(typeof sc?.savingsPercent).toBe("number");
+      // savingsPercent may be negative — verify it's within reasonable bounds
+      expect(sc?.savingsPercent as number).toBeLessThanOrEqual(100);
+    });
+
+    it("should clamp savingsPercent to >= 0 in text output", async () => {
+      const { text } = await optimize({ content: SAMPLE_BUILD, strategy: "build" });
+      // Normal format: [type] X->Y tokens (-N%)
+      const match = text.match(/\(-(\d+)%\)/);
+      if (match) {
+        expect(parseInt(match[1]!)).toBeGreaterThanOrEqual(0);
+      }
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — empty/short structuredContent details
+  // =========================================================================
+
+  describe("empty/short input — structuredContent details", () => {
+    it("should have all 6 correct fields for empty input", async () => {
+      const { sc } = await optimize({ content: "" });
+      expect(sc).toHaveProperty("detectedType", "none");
+      expect(sc).toHaveProperty("originalTokens", 0);
+      expect(sc).toHaveProperty("optimizedTokens", 0);
+      expect(sc).toHaveProperty("savingsPercent", 0);
+      expect(sc).toHaveProperty("method", "none");
+      expect(sc).toHaveProperty("optimizedContent", "");
+    });
+
+    it("should have correct structuredContent for whitespace-only input", async () => {
+      const { sc, result } = await optimize({ content: "   \n  \t  " });
+      expect(result.isError).toBe(true);
+      expect(sc?.detectedType).toBe("none");
+      expect(sc?.optimizedContent).toBe("");
+    });
+
+    it("should have matching original and optimized tokens for short input", async () => {
+      const { sc } = await optimize({ content: "short text here" });
+      expect(sc?.originalTokens).toBe(sc?.optimizedTokens);
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — isError semantics
+  // =========================================================================
+
+  describe("isError semantics", () => {
+    it("should set isError for empty input", async () => {
+      const { result } = await optimize({ content: "" });
+      expect(result.isError).toBe(true);
+    });
+
+    it("should not set isError for short non-empty input", async () => {
+      const { result } = await optimize({ content: "short" });
+      expect(result.isError).toBeUndefined();
+    });
+
+    it("should not set isError for normal compressed content", async () => {
+      const { result } = await optimize({ content: SAMPLE_BUILD });
+      expect(result.isError).toBeUndefined();
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — format param with logs
+  // =========================================================================
+
+  describe("format param with logs", () => {
+    it("should support markdown format for logs strategy", async () => {
+      const { text } = await optimize({ content: SAMPLE_LOGS, strategy: "logs", format: "markdown" });
+      expect(text).toMatch(/##/);
+    });
+
+    it("should default to plain format for logs (no markdown headers)", async () => {
+      const { text } = await optimize({ content: SAMPLE_LOGS, strategy: "logs" });
+      // Plain format (default) should NOT contain markdown headers
+      expect(text).not.toMatch(/^##\s/m);
+    });
+  });
+
+  // =========================================================================
+  // Comprehensive tests — legacy hint code mapping
+  // =========================================================================
+
+  describe("legacy hint — code mapping", () => {
+    it("should map hint code to semantic strategy", async () => {
+      const { sc } = await optimize({ content: SAMPLE_GENERIC, hint: "code" });
+      expect(sc?.detectedType).toBe("semantic");
+    });
+
+    it("should map hint logs correctly", async () => {
+      const { sc } = await optimize({ content: SAMPLE_GENERIC, hint: "logs" });
+      expect(sc?.detectedType).toMatch(/^logs/);
+    });
+
+    it("should map hint errors correctly", async () => {
+      const { sc } = await optimize({ content: SAMPLE_GENERIC, hint: "errors" });
+      expect(sc?.detectedType).toBe("errors");
     });
   });
 });

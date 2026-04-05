@@ -7,7 +7,7 @@
  */
 
 // Server
-export { createServer, runServer, type ServerConfig, type ServerInstance, type LoadingMode } from "./server.js";
+export { createServer, runServer, type ServerConfig, type ServerInstance } from "./server.js";
 
 // State management
 
@@ -18,27 +18,8 @@ export * from "./cache/index.js";
 export * from "./middleware/index.js";
 
 // Tools
-export { analyzeContext } from "./tools/analyze-context.js";
-export { optimizationTips } from "./tools/optimization-tips.js";
-export { analyzeBuildOutputTool, executeAnalyzeBuildOutput } from "./tools/analyze-build-output.js";
-export { smartCacheTool, executeSmartCache } from "./tools/smart-cache-tool.js";
 export { createToolRegistry, type ToolRegistry, type ToolDefinition } from "./tools/registry.js";
-export {
-  getDynamicLoader,
-  resetDynamicLoader,
-  TOOL_CATALOG,
-  type ToolCategory,
-  type ToolMetadata,
-  DynamicToolLoader,
-} from "./tools/dynamic-loader.js";
-export { discoverToolsTool } from "./tools/discover-tools.js";
-export {
-  browseToolsTool,
-  runToolTool,
-  lazyMcpTools,
-  setLazyMcpRegistry,
-  calculateLazySavings,
-} from "./tools/lazy-mcp.js";
+export { getAllTools } from "./tools/dynamic-loader.js";
 
 // Parsers
 export * from "./parsers/index.js";

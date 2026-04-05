@@ -114,7 +114,7 @@ return ctx.code.extract(content, "typescript", { type: "function", name: "handle
 | Read code for exploration | `mcp__distill__smart_file_read filePath="file.ts"` |
 | Get function/class | `mcp__distill__smart_file_read filePath="file.ts" target={"type":"function","name":"myFunc"}` |
 | Compress build errors | `mcp__distill__auto_optimize content="..."` |
-| Summarize logs | `mcp__distill__summarize_logs logs="..."` |
+| Summarize logs | `mcp__distill__auto_optimize content="..."` |
 | Multi-step operations | `mcp__distill__code_execute code="return ctx.files.glob('src/**/*.ts')"` |
 | Before editing | Use native `Read` tool |
 ```
@@ -140,7 +140,6 @@ Use Distill for token optimization:
 | `smart_file_read` | 50-70% | Reading source code |
 | `auto_optimize` | 40-95% | Build errors, logs |
 | `code_execute` | **98%** | Multi-step operations |
-| `discover_tools` (TOON) | 55% | Tool discovery |
 
 ## Auto-Install with CLI
 
@@ -201,10 +200,4 @@ After adding the `CLAUDE.md`, verify Distill is working:
 2. Ask Claude to read a source file
 3. Check if it uses `smart_file_read` instead of `Read`
 
-You can also check session statistics:
-
-```
-Show my session stats
-```
-
-This will display tokens saved and compression ratios.
+You can also verify by asking to compress a large output with `auto_optimize`.

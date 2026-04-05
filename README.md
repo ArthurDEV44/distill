@@ -1,20 +1,25 @@
 # Distill
 
-> Extract the essence. Compress the context. Save tokens.
+> 3 tools. Zero friction. Maximum token savings.
 
-**Distill** is an open-source MCP server that optimizes LLM token usage through intelligent context compression. Works with Claude Code, Cursor, and Windsurf.
+**Distill** is an open-source MCP server that optimizes LLM token usage through intelligent context compression. 3 always-loaded tools replace dozens of individual calls. Works with Claude Code, Cursor, and Windsurf.
 
 [![npm version](https://img.shields.io/npm/v/distill-mcp.svg)](https://www.npmjs.com/package/distill-mcp)
+[![smithery badge](https://smithery.ai/badge/@ArthurDEV44/distill-mcp)](https://smithery.ai/server/@ArthurDEV44/distill-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Why Distill?
 
-| Problem | Distill Solution | Savings |
-|---------|------------------|---------|
-| Large build outputs | Auto-compress errors | 80-95% |
-| Reading entire files | AST-based extraction | 50-70% |
-| Multiple tool calls | TypeScript SDK execution | **98%** |
-| Verbose logs | Smart summarization | 80-90% |
+Claude Code already compresses context *after* it enters the window. Distill compresses *before* — catching large outputs at the source.
+
+| Problem | Distill Tool | How | Savings |
+|---------|-------------|-----|---------|
+| Large build output, logs, diffs | `auto_optimize` | Auto-detects type, applies best compressor | 40-95% |
+| Reading entire files for one function | `smart_file_read` | AST extraction for 7 languages | 50-90% |
+| Chaining 5-10 tool calls | `code_execute` | TypeScript SDK in sandbox — one call | **98%** |
+
+**Before:** 5 tool calls (Read + Grep + Read + Read + compress) = ~2,500 tokens overhead
+**After:** 1 `code_execute` call = ~500 tokens overhead
 
 ## Quick Start
 
@@ -25,7 +30,7 @@ npx distill-mcp
 # Or install globally
 npm install -g distill-mcp
 
-# Configure your IDE
+# Auto-configure your IDE
 distill-mcp setup
 ```
 
@@ -35,112 +40,125 @@ distill-mcp setup
 claude mcp add distill -- npx distill-mcp
 ```
 
-## Features
+All 3 tools are available immediately — no discovery step, no loading modes.
 
-- **Smart File Reading** - Extract functions, classes, or signatures without loading entire files
-- **Auto Compression** - Detects content type and applies optimal compression
-- **Code Execution SDK** - Write TypeScript instead of chaining tool calls
-- **Lazy Loading** - Only loads tools when needed (85% token overhead reduction)
-- **7 Languages** - TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
+## The 3 Tools
 
-## MCP Tools
+### `auto_optimize` — Compress Any Content
 
-### Core Tools (Always Loaded)
+Auto-detects content type and applies the optimal compression strategy.
 
-| Tool | Purpose | Savings |
-|------|---------|---------|
-| `auto_optimize` | Auto-detect and compress content | 40-95% |
-| `smart_file_read` | Read code with AST extraction | 50-70% |
-| `code_execute` | Execute TypeScript with SDK | **98%** |
-| `discover_tools` | Browse/load additional tools | - |
+| Strategy | Content Type | Typical Savings |
+|----------|-------------|-----------------|
+| `build` | Compiler errors (tsc, rustc, webpack) | 95% |
+| `logs` | Server/test/build logs | 80-90% |
+| `errors` | Repeated error lines | 70-90% |
+| `diff` | Git diffs | 60-80% |
+| `stacktrace` | Stack traces | 50-80% |
+| `code` / `semantic` | Source code (TF-IDF) | 40-60% |
+| `config` | JSON/YAML configs | 30-60% |
+| `auto` | Auto-detect best strategy | varies |
 
-### On-Demand Tools
-
-| Tool | Purpose | Savings |
-|------|---------|---------|
-| `semantic_compress` | TF-IDF based compression | 40-60% |
-| `summarize_logs` | Summarize server/test/build logs | 80-90% |
-| `analyze_build_output` | Parse build errors | 95%+ |
-| `deduplicate_errors` | Group repeated errors | 80-95% |
-| `diff_compress` | Compress git diffs | 50-80% |
-| `context_budget` | Pre-flight token estimation | - |
-| `session_stats` | Usage analytics | - |
-
-## Usage Examples
-
-### Smart File Reading
-
-```bash
-# Get file structure overview
-mcp__distill__smart_file_read filePath="src/server.ts"
-
-# Extract specific function
-mcp__distill__smart_file_read filePath="src/server.ts" target={"type":"function","name":"createServer"}
-
-# Get skeleton (signatures only)
-mcp__distill__smart_file_read filePath="src/server.ts" skeleton=true
+```
+auto_optimize content="<large build output>" strategy="auto"
 ```
 
-### Compress Build Output
+### `smart_file_read` — AST-Powered Code Reading
 
-```bash
-# After a failed build, compress the output
-mcp__distill__auto_optimize content="<paste npm/tsc/webpack output>"
+Read code with precision — extract exactly what you need.
+
+**5 modes:**
+- `skeleton` — Function/class signatures only (depth 1-3)
+- `extract` — Pull a specific function, class, or interface by name
+- `search` — Find elements matching a query
+- `full` — Complete file structure overview
+- `auto` — Detect mode from params
+
+**7 languages:** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
+
+```
+smart_file_read filePath="src/server.ts" mode="skeleton"
+smart_file_read filePath="src/server.ts" mode="extract" target={"type":"function","name":"createServer"}
+smart_file_read filePath="src/server.ts" mode="search" query="register"
 ```
 
-### Code Execution SDK
+### `code_execute` — TypeScript SDK in Sandbox
 
-The `code_execute` tool provides **98% token savings** by letting LLMs write TypeScript:
+Write TypeScript instead of chaining tool calls. Access files, git, search, and compress via the `ctx.*` SDK.
 
-```bash
-mcp__distill__code_execute code="return ctx.compress.auto(ctx.files.read('logs.txt'))"
+```
+code_execute code="return ctx.compress.auto(ctx.files.read('build.log'))"
+```
+
+**Batch multiple operations in one call:**
+
+```typescript
+// Read 3 files, extract key functions, compress the result — 1 tool call instead of 7
+const files = ["src/server.ts", "src/registry.ts", "src/executor.ts"];
+const skeletons = files.map(f => ctx.code.skeleton(ctx.files.read(f), "typescript"));
+return ctx.compress.auto(skeletons.join("\n---\n"));
 ```
 
 **SDK API:**
 
 ```typescript
 // File operations
-ctx.files.read(path)
-ctx.files.glob(pattern)
-ctx.files.exists(path)
+ctx.files.read(path)         // Read file content
+ctx.files.glob(pattern)      // Find files by pattern
+ctx.files.exists(path)       // Check if file exists
 
 // Code analysis
-ctx.code.skeleton(content, lang)
-ctx.code.extract(content, lang, {type, name})
-ctx.code.parse(content, lang)
+ctx.code.parse(content, lang)                  // Parse to structure
+ctx.code.extract(content, lang, {type, name})  // Extract element
+ctx.code.skeleton(content, lang)               // Signatures only
 
 // Compression
-ctx.compress.auto(content, hint?)
-ctx.compress.logs(logs)
-ctx.compress.diff(diff)
-ctx.compress.semantic(content, ratio?)
+ctx.compress.auto(content, hint?)    // Auto-detect and compress
+ctx.compress.logs(logs)              // Log summarization
+ctx.compress.diff(diff)              // Diff compression
+ctx.compress.semantic(content, ratio?) // TF-IDF compression
 
-// Git operations
-ctx.git.diff(ref?)
-ctx.git.log(limit?)
-ctx.git.blame(file, line?)
+// Git
+ctx.git.diff(ref?)         // Get diff
+ctx.git.log(limit?)        // Commit history
+ctx.git.blame(file, line?) // Blame info
+ctx.git.status()           // Working tree status
+ctx.git.branch()           // Current branch info
 
 // Search
-ctx.search.grep(pattern, glob?)
-ctx.search.symbols(query)
+ctx.search.grep(pattern, glob?)       // Search file contents
+ctx.search.symbols(query, glob?)      // Find code symbols
+ctx.search.files(pattern)             // Find files by pattern
+ctx.search.references(symbol, glob?)  // Find symbol references
 
 // Analysis
-ctx.analyze.dependencies(file)
-ctx.analyze.callGraph(fn)
+ctx.analyze.dependencies(file)           // File dependencies
+ctx.analyze.callGraph(fn, file, depth?)  // Call graph
+ctx.analyze.exports(file)               // Exported symbols
+ctx.analyze.structure(dir, depth?)       // Directory structure
+
+// Pipeline
+ctx.pipeline(steps)                  // Run step array
+ctx.pipeline.codebaseOverview(dir?)  // Quick overview
+ctx.pipeline.findUsages(symbol)      // Find all usages
+ctx.pipeline.analyzeDeps(file)       // Dependency analysis
+
+// Utilities
+ctx.utils.countTokens(text)      // Count tokens
+ctx.utils.detectType(content)    // Detect content type
+ctx.utils.detectLanguage(path)   // Detect language from path
 ```
 
-### Discover Tools
+## Token Overhead
 
-```bash
-# Browse available tools (metadata only)
-mcp__distill__discover_tools category="compress"
+Distill's 3 tools add minimal overhead to every API call:
 
-# Load tools when needed
-mcp__distill__discover_tools category="compress" load=true
+| | Tool Schemas | Description |
+|--|-------------|-------------|
+| **Distill** | ~2,000 tokens | 3 always-loaded tools |
+| **Equivalent** | ~10,000+ tokens | 20+ individual tools doing the same |
 
-# TOON format for compact output
-mcp__distill__discover_tools format="toon"
-```
+All 3 tools use `_meta['anthropic/alwaysLoad']` — present from turn 1 with zero discovery friction.
 
 ## CLI Commands
 
@@ -175,46 +193,30 @@ After running `distill-mcp setup`, your config will include:
 
 Configuration is automatically added to the appropriate settings file.
 
-## Token Overhead
-
-Distill uses **lazy loading** to minimize overhead:
-
-| Mode | Tokens | Description |
-|------|--------|-------------|
-| Core only | 264 | Default (4 tools) |
-| All tools | 1,108 | Full suite (21 tools) |
-| **Savings** | **76%** | Lazy vs eager loading |
-
 ## Security
 
-Code execution runs in a sandboxed environment:
-- Blocked: `eval`, `require`, `import()`, `process`, `global`
-- File access restricted to working directory
-- Sensitive files blocked (`.env`, credentials, keys)
-- Memory limit: 128MB, Timeout: 30s
+Code execution runs in a sandboxed environment with 7 security layers:
+- **Static analysis** blocks `eval`, `require`, `import()`, `process`, `Reflect`, `Proxy`
+- **File access** restricted to working directory
+- **Sensitive files** blocked (`.env`, credentials, keys)
+- **Git commands** allowlisted (no push, fetch, clone)
+- **Memory limit:** 128MB | **Timeout:** 30s | **Output cap:** 4000 tokens
 
 ## Development
 
 ```bash
-# Install dependencies
-bun install
-
-# Run tests
-bun run test
-
-# Build
-bun run build
-
-# Start dev server
-bun run dev
+bun install          # Install dependencies
+bun run build        # Build all packages
+bun run test         # Run tests
+bun run dev          # Start dev server
+bun run check-types  # TypeScript type check
+bun run lint         # ESLint
 ```
 
 ## Community
 
-Distill is in beta - your feedback shapes the roadmap!
-
-- **[GitHub Discussions](https://github.com/ArthurDEV44/distill/discussions)** - Questions, ideas, feedback
-- **[Issues](https://github.com/ArthurDEV44/distill/issues)** - Bug reports
+- **[GitHub Discussions](https://github.com/ArthurDEV44/distill/discussions)** — Questions, ideas, feedback
+- **[Issues](https://github.com/ArthurDEV44/distill/issues)** — Bug reports
 
 ## Contributing
 

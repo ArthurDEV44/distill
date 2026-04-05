@@ -5,6 +5,7 @@
  * Reduces MCP token overhead by ~98% compared to individual tool calls.
  */
 
+import { z } from "zod";
 import type { ToolDefinition } from "./registry.js";
 import { executeSandbox, DEFAULT_LIMITS } from "../sandbox/index.js";
 
@@ -55,8 +56,26 @@ interface CodeExecuteArgs {
  */
 async function executeCodeExecute(
   args: unknown
-): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
-  const { code, timeout = DEFAULT_LIMITS.timeout } = args as CodeExecuteArgs;
+): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean; structuredContent?: Record<string, unknown> }> {
+  const parsed = z.object({
+    code: z.string(),
+    timeout: z.number().optional(),
+  }).safeParse(args);
+
+  if (!parsed.success) {
+    return {
+      content: [{ type: "text", text: `[ERR] Invalid input: ${parsed.error.message}` }],
+      isError: true,
+      structuredContent: {
+        success: false,
+        output: `Invalid input: ${parsed.error.message}`,
+        executionTimeMs: 0,
+        tokensUsed: 0,
+      },
+    };
+  }
+
+  const { code, timeout = DEFAULT_LIMITS.timeout } = parsed.data;
 
   // Validate timeout
   const safeTimeout = Math.min(
@@ -81,6 +100,12 @@ async function executeCodeExecute(
         },
       ],
       isError: true,
+      structuredContent: {
+        success: false,
+        output: result.error ?? "Unknown error",
+        executionTimeMs: result.stats.executionTimeMs,
+        tokensUsed: result.stats.tokensUsed,
+      },
     };
   }
 
@@ -103,21 +128,37 @@ async function executeCodeExecute(
         text: `${header}\n\n${output}`,
       },
     ],
+    structuredContent: {
+      success: true,
+      output,
+      executionTimeMs: result.stats.executionTimeMs,
+      tokensUsed: result.stats.tokensUsed,
+    },
   };
 }
 
 /**
- * Tool description with SDK reference
+ * Tool description with SDK reference — Anthropic 3-element pattern
  */
-const DESCRIPTION = `Execute TypeScript with Distill SDK. 98% fewer tokens than tool calls.
-
-SDK (ctx):
-  compress: auto(content,hint?) logs(logs) diff(diff) semantic(content,ratio?)
-  code: parse(content,lang) extract(content,lang,{type,name}) skeleton(content,lang)
-  files: read(path) exists(path) glob(pattern)
-  utils: countTokens(text) detectType(content) detectLanguage(path)
-
-Example: return ctx.compress.auto(ctx.files.read("logs.txt"))`;
+const DESCRIPTION =
+  "Execute TypeScript in a QuickJS sandbox — replace 5-10 tool calls with one script.\n\n" +
+  "WHEN TO USE: When you need to chain multiple operations (read files, compress, search, git) " +
+  "in a single call. Each separate MCP tool call adds ~500 tokens overhead; batching saves 80-90%.\n\n" +
+  "HOW TO FORMAT:\n" +
+  '- Compress a file: code_execute({ code: \'return ctx.compress.auto(ctx.files.read("build.log"))\' })\n' +
+  "- Batch reads: code_execute({ code: 'return [\"a.ts\",\"b.ts\"].map(f => ctx.code.skeleton(ctx.files.read(f), \"typescript\"))' })\n" +
+  '- Git + compress: code_execute({ code: \'return ctx.compress.diff(ctx.git.diff("HEAD~3"))\' })\n\n' +
+  "SDK (ctx.* namespaces):\n" +
+  "- ctx.compress: auto(content,hint?), logs(logs), diff(diff), semantic(content,ratio?)\n" +
+  "- ctx.code: parse(content,lang), extract(content,lang,{type,name}), skeleton(content,lang)\n" +
+  "- ctx.files: read(path), exists(path), glob(pattern)\n" +
+  "- ctx.git: diff(ref?), log(limit?), blame(file,line), status(), branch()\n" +
+  "- ctx.search: grep(pattern,glob?), symbols(query,glob?), files(pattern), references(symbol,glob?)\n" +
+  "- ctx.analyze: dependencies(file), callGraph(fn,file,depth?), exports(file), structure(dir,depth?)\n" +
+  "- ctx.pipeline: steps(arr), codebaseOverview(dir?), findUsages(symbol,glob?), analyzeDeps(file,depth?)\n" +
+  "- ctx.utils: countTokens(text), detectType(content), detectLanguage(path)\n\n" +
+  "WHAT TO EXPECT: Execution result with timing stats. Use 'return' to output results. " +
+  "Timeout default 5s (max 30s). Memory limit 128MB. Output auto-compressed if >4000 tokens.";
 
 export const codeExecuteTool: ToolDefinition = {
   name: "code_execute",
@@ -125,7 +166,7 @@ export const codeExecuteTool: ToolDefinition = {
   inputSchema: codeExecuteSchema,
   outputSchema: codeExecuteOutputSchema,
   annotations: {
-    title: "Execute TypeScript Code",
+    title: "Code Execute",
     readOnlyHint: false, // Can modify files via ctx.files
     idempotentHint: false, // Results depend on filesystem state
     longRunningHint: true, // May take up to 30s

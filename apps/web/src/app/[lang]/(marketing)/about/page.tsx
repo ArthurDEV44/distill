@@ -211,7 +211,7 @@ export default function AboutPage() {
               <h2 className="text-2xl font-semibold text-white mb-6">{t.whatTitle}</h2>
               <div className="p-8 rounded-2xl bg-[#311c35]/50 border border-[#f4cf8b]/30 backdrop-blur-md">
                 <p className="text-neutral-300 leading-relaxed mb-4">
-                  {t.whatP1}<strong className="text-white">{t.whatP1Strong}</strong> {lang === 'fr' ? "open-source qui fournit 21 outils spécialisés pour optimiser l'utilisation des tokens LLM." : "that provides 21 specialized tools for optimizing LLM token usage."}
+                  {t.whatP1}<strong className="text-white">{t.whatP1Strong}</strong> {lang === 'fr' ? "open-source qui fournit 3 outils de precision pour optimiser l'utilisation des tokens LLM." : "that provides 3 precision tools for optimizing LLM token usage."}
                 </p>
                 <p className="text-neutral-300 leading-relaxed mb-4">
                   {t.whatP2}
