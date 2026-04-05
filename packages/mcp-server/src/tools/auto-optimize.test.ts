@@ -912,4 +912,61 @@ describe("auto_optimize", () => {
       expect(sc?.detectedType).toBe("errors");
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Output budget cap (US-006)
+  // ---------------------------------------------------------------------------
+
+  describe("Output Budget Cap", () => {
+    it("should include outputChars and truncated in structuredContent", async () => {
+      const { sc, text } = await optimize({ content: SAMPLE_BUILD });
+      expect(sc?.outputChars).toBe(text.length);
+      expect(sc?.truncated).toBe(false);
+    });
+
+    it("should include outputChars for short content below threshold", async () => {
+      const { sc, text } = await optimize({ content: "short" });
+      expect(sc?.outputChars).toBe(text.length);
+      expect(sc?.truncated).toBe(false);
+    });
+
+    it("should cap output to under 45,000 chars for large input", async () => {
+      // Generate a large repetitive log (200K chars) that will compress but may still exceed 45K
+      const line = "Jan 15 10:00:01 app-server [INFO] Processing request id=12345 method=GET path=/api/data status=200 duration=42ms user_agent=Mozilla/5.0\n";
+      const largeContent = line.repeat(Math.ceil(200_000 / line.length));
+      expect(largeContent.length).toBeGreaterThan(200_000);
+
+      const { text, sc } = await optimize({ content: largeContent, strategy: "logs" });
+      expect(text.length).toBeLessThanOrEqual(45_000);
+      expect(sc?.outputChars).toBe(text.length);
+    });
+
+    it("should not apply cap logic for small inputs", async () => {
+      const { sc } = await optimize({ content: SAMPLE_BUILD });
+      // SAMPLE_BUILD is < 45K, so no recompression or truncation
+      expect(sc?.truncated).toBe(false);
+      expect((sc?.method as string) ?? "").not.toContain("recompressed");
+    });
+
+    it("should include truncation message when content is truncated", async () => {
+      // Generate incompressible content (random-looking) that's very large
+      const chars = "abcdefghijklmnopqrstuvwxyz0123456789 ";
+      let incompressible = "";
+      for (let i = 0; i < 60_000; i++) {
+        incompressible += chars[i % chars.length];
+        if (i % 80 === 79) incompressible += "\n";
+      }
+
+      const { text, sc } = await optimize({ content: incompressible });
+      if (text.length >= 45_000) {
+        // If the compressor couldn't bring it under budget, it should be truncated
+        expect(text.length).toBeLessThanOrEqual(45_000);
+        expect(sc?.truncated).toBe(true);
+        expect(text).toContain("chars truncated");
+      } else {
+        // Compressor managed to bring it under budget — that's also fine
+        expect(sc?.truncated).toBe(false);
+      }
+    });
+  });
 });

@@ -20,6 +20,7 @@ import { getSummarizer } from "../summarizers/index.js";
 import { analyzeBuildOutput } from "../parsers/index.js";
 import { groupBySignature, formatGroups, calculateStats } from "../utils/signature-grouper.js";
 import { countTokens } from "../utils/token-counter.js";
+import { MAX_OUTPUT_CHARS } from "../constants.js";
 
 type OutputFormat = "plain" | "markdown";
 
@@ -450,8 +451,9 @@ async function autoOptimize(
 
   // Handle empty or missing content
   if (!content || content.trim().length === 0) {
+    const errorText = "No content provided. Pass content to optimize.";
     return {
-      content: [{ type: "text", text: "No content provided. Pass content to optimize." }],
+      content: [{ type: "text", text: errorText }],
       isError: true,
       structuredContent: {
         detectedType: "none",
@@ -460,6 +462,8 @@ async function autoOptimize(
         savingsPercent: 0,
         method: "none",
         optimizedContent: "",
+        outputChars: errorText.length,
+        truncated: false,
       },
     };
   }
@@ -477,8 +481,9 @@ async function autoOptimize(
       savingsPercent: 0,
       method: "none",
     };
+    const shortOutput = formatOutput(shortResult, responseFormat);
     return {
-      content: [{ type: "text", text: formatOutput(shortResult, responseFormat) }],
+      content: [{ type: "text", text: shortOutput }],
       structuredContent: {
         detectedType: "none",
         originalTokens: tokens,
@@ -486,6 +491,8 @@ async function autoOptimize(
         savingsPercent: 0,
         method: "none",
         optimizedContent: content,
+        outputChars: shortOutput.length,
+        truncated: false,
       },
     };
   }
@@ -530,6 +537,37 @@ async function autoOptimize(
     output += "\n\n[WARN] " + regexWarnings.join("\n[WARN] ");
   }
 
+  // Output budget cap: re-compress or truncate if over MAX_OUTPUT_CHARS
+  // Note: re-compression uses the generic compressor and drops preservePatterns —
+  // acceptable since the goal is to meet the size budget, not preserve formatting.
+  // Regex warnings appended above are also lost on re-compression (acceptable trade-off).
+  let truncated = false;
+  if (output.length > MAX_OUTPUT_CHARS) {
+    // Re-compress with aggressive settings
+    const recompressed = compressContent(result.optimizedContent, {
+      detail: "minimal",
+      targetRatio: 0.2,
+    });
+    result = {
+      ...result,
+      optimizedContent: recompressed.compressed,
+      optimizedTokens: recompressed.stats.compressedTokens,
+      savingsPercent: Math.round(
+        ((result.originalTokens - recompressed.stats.compressedTokens) / result.originalTokens) * 100,
+      ),
+      method: `${result.method}+recompressed`,
+    };
+    output = formatOutput(result, responseFormat);
+  }
+
+  if (output.length > MAX_OUTPUT_CHARS) {
+    // Truncate as last resort — hard cap to ensure we never exceed budget
+    truncated = true;
+    const overBy = output.length - MAX_OUTPUT_CHARS;
+    const truncMsg = `\n\n[... ${overBy} chars truncated. Use auto_optimize with smaller chunks.]`;
+    output = output.slice(0, MAX_OUTPUT_CHARS - truncMsg.length) + truncMsg;
+  }
+
   return {
     content: [{ type: "text", text: output }],
     structuredContent: {
@@ -539,6 +577,8 @@ async function autoOptimize(
       savingsPercent: result.savingsPercent,
       method: result.method,
       optimizedContent: result.optimizedContent,
+      outputChars: output.length,
+      truncated,
     },
   };
 }
