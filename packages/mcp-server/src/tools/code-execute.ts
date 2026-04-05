@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition } from "./registry.js";
-import { executeSandbox, DEFAULT_LIMITS } from "../sandbox/index.js";
+import { executeSandbox, DEFAULT_LIMITS, isQuickJSEnabled } from "../sandbox/index.js";
 
 /**
  * Input schema with semantic descriptions
@@ -57,20 +57,25 @@ interface CodeExecuteArgs {
 async function executeCodeExecute(
   args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean; structuredContent?: Record<string, unknown> }> {
+  const sandboxMode = isQuickJSEnabled() ? "quickjs" : "legacy";
   const parsed = z.object({
     code: z.string(),
     timeout: z.number().optional(),
   }).safeParse(args);
 
   if (!parsed.success) {
+    const errText = `[ERR] Invalid input: ${parsed.error.message}`;
     return {
-      content: [{ type: "text", text: `[ERR] Invalid input: ${parsed.error.message}` }],
+      content: [{ type: "text", text: errText }],
       isError: true,
       structuredContent: {
         success: false,
         output: `Invalid input: ${parsed.error.message}`,
         executionTimeMs: 0,
         tokensUsed: 0,
+        sandboxMode: sandboxMode,
+        outputChars: errText.length,
+        truncated: false,
       },
     };
   }
@@ -92,19 +97,18 @@ async function executeCodeExecute(
   });
 
   if (!result.success) {
+    const errText = `[ERR] ${result.error}\n\nExecution time: ${result.stats.executionTimeMs}ms`;
     return {
-      content: [
-        {
-          type: "text",
-          text: `[ERR] ${result.error}\n\nExecution time: ${result.stats.executionTimeMs}ms`,
-        },
-      ],
+      content: [{ type: "text", text: errText }],
       isError: true,
       structuredContent: {
         success: false,
         output: result.error ?? "Unknown error",
         executionTimeMs: result.stats.executionTimeMs,
         tokensUsed: result.stats.tokensUsed,
+        sandboxMode: sandboxMode,
+        outputChars: errText.length,
+        truncated: false,
       },
     };
   }
@@ -120,19 +124,18 @@ async function executeCodeExecute(
   }
 
   const header = `[OK] ${result.stats.executionTimeMs}ms, ${result.stats.tokensUsed} tokens`;
+  const fullText = `${header}\n\n${output}`;
 
   return {
-    content: [
-      {
-        type: "text",
-        text: `${header}\n\n${output}`,
-      },
-    ],
+    content: [{ type: "text", text: fullText }],
     structuredContent: {
       success: true,
       output,
       executionTimeMs: result.stats.executionTimeMs,
       tokensUsed: result.stats.tokensUsed,
+      sandboxMode: sandboxMode,
+      outputChars: fullText.length,
+      truncated: false,
     },
   };
 }

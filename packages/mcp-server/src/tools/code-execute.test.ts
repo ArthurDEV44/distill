@@ -288,12 +288,15 @@ describe("code_execute", () => {
 
   describe("structuredContent", () => {
     it("should return structuredContent on success", async () => {
-      const { sc } = await exec('return "test"');
+      const { sc, text } = await exec('return "test"');
       expect(sc).toBeDefined();
       expect(sc?.success).toBe(true);
       expect(sc).toHaveProperty("output");
       expect(sc).toHaveProperty("executionTimeMs");
       expect(sc).toHaveProperty("tokensUsed");
+      expect(sc?.sandboxMode).toBe("quickjs");
+      expect(sc?.outputChars).toBe(text.length);
+      expect(sc?.truncated).toBe(false);
     });
 
     it("should return structuredContent on error", async () => {
@@ -302,6 +305,8 @@ describe("code_execute", () => {
       expect(sc).toBeDefined();
       expect(sc?.success).toBe(false);
       expect(typeof sc?.output).toBe("string");
+      expect(sc?.sandboxMode).toBe("quickjs");
+      expect(sc?.truncated).toBe(false);
     });
   });
 

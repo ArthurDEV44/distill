@@ -918,10 +918,12 @@ describe("auto_optimize", () => {
   // ---------------------------------------------------------------------------
 
   describe("Output Budget Cap", () => {
-    it("should include outputChars and truncated in structuredContent", async () => {
+    it("should include outputChars, truncated, and compressionRatio in structuredContent", async () => {
       const { sc, text } = await optimize({ content: SAMPLE_BUILD });
       expect(sc?.outputChars).toBe(text.length);
       expect(sc?.truncated).toBe(false);
+      expect(sc?.compressionRatio).toBeGreaterThanOrEqual(0);
+      expect(sc?.compressionRatio).toBeLessThanOrEqual(1);
     });
 
     it("should include outputChars for short content below threshold", async () => {

@@ -29,6 +29,12 @@ import { MAX_OUTPUT_CHARS } from "../constants.js";
 import { getBlockedPatterns } from "../sandbox/security/path-validator.js";
 import type { FileStructure, SupportedLanguage } from "../ast/types.js";
 
+/** Count AST elements (functions, classes, interfaces, types, variables, enums) in a FileStructure. */
+function countElements(s: FileStructure): number {
+  return s.functions.length + s.classes.length + s.interfaces.length
+    + s.types.length + s.variables.length + s.enums.length;
+}
+
 // Parseable languages (excluding json, yaml, unknown)
 const PARSEABLE_LANGUAGES: SupportedLanguage[] = [
   "typescript",
@@ -510,7 +516,7 @@ export async function executeSmartFileRead(
   }
 
   // Helper to build structuredContent for MCP 2025-06-18
-  const buildStructured = (text: string, mode: string, truncated = false) => ({
+  const buildStructured = (text: string, mode: string, truncated = false, elementCount = 0) => ({
     filePath: input.filePath,
     language: languageId,
     totalLines,
@@ -518,6 +524,7 @@ export async function executeSmartFileRead(
     mode,
     outputChars: text.length,
     truncated,
+    elementCount,
   });
 
   // Cache setup
@@ -553,7 +560,7 @@ export async function executeSmartFileRead(
   }
 
   // Helper to cache and return result with structuredContent + output budget cap
-  const cacheAndReturn = async (result: string, mode: string) => {
+  const cacheAndReturn = async (result: string, mode: string, elementCount = 0) => {
     if (input.cache !== false) {
       await cache.set(cacheKey, result, { filePath: resolvedPath });
     }
@@ -566,7 +573,7 @@ export async function executeSmartFileRead(
     }
     return {
       content: [{ type: "text" as const, text }],
-      structuredContent: buildStructured(text, mode, truncated),
+      structuredContent: buildStructured(text, mode, truncated, elementCount),
     };
   };
 
@@ -598,7 +605,7 @@ export async function executeSmartFileRead(
     const skeleton = formatSkeletonOutput(
       structure, input.filePath, languageId, totalLines, content, input.depth, input.format
     );
-    return cacheAndReturn(skeleton, "skeleton");
+    return cacheAndReturn(skeleton, "skeleton", countElements(structure));
   }
 
   // Check parser support for remaining modes
@@ -655,7 +662,7 @@ export async function executeSmartFileRead(
       input.includeImports,
       input.format
     );
-    return cacheAndReturn(result, "extract");
+    return cacheAndReturn(result, "extract", extracted.elements.length);
   }
 
   // Search mode
@@ -668,14 +675,14 @@ export async function executeSmartFileRead(
     }
     const results = searchElements(content, language, input.query);
     const result = formatSearchResults(results, input.filePath, input.query, input.format);
-    return cacheAndReturn(result, "search");
+    return cacheAndReturn(result, "search", results.length);
   }
 
   // Full mode (default): return file structure summary
   const structure = parseFile(content, language);
   const summary = formatStructureSummary(structure, input.filePath, input.format);
 
-  return cacheAndReturn(summary, "full");
+  return cacheAndReturn(summary, "full", countElements(structure));
 }
 
 export const smartFileReadTool: ToolDefinition = {

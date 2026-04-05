@@ -1314,10 +1314,11 @@ describe("smart_file_read", () => {
   // ---------------------------------------------------------------------------
 
   describe("Output Budget Cap", () => {
-    it("should include outputChars and truncated in structuredContent", async () => {
+    it("should include outputChars, truncated, and elementCount in structuredContent", async () => {
       const { sc, text } = await read({ filePath: "sample.ts", mode: "skeleton", cache: false });
       expect(sc?.outputChars).toBe(text.length);
       expect(sc?.truncated).toBe(false);
+      expect(sc?.elementCount).toBeGreaterThan(0);
     });
 
     it("should not cap lines mode output", async () => {

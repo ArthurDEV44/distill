@@ -462,6 +462,7 @@ async function autoOptimize(
         savingsPercent: 0,
         method: "none",
         optimizedContent: "",
+        compressionRatio: 1,
         outputChars: errorText.length,
         truncated: false,
       },
@@ -491,6 +492,7 @@ async function autoOptimize(
         savingsPercent: 0,
         method: "none",
         optimizedContent: content,
+        compressionRatio: 1,
         outputChars: shortOutput.length,
         truncated: false,
       },
@@ -577,6 +579,9 @@ async function autoOptimize(
       savingsPercent: result.savingsPercent,
       method: result.method,
       optimizedContent: result.optimizedContent,
+      compressionRatio: result.originalTokens > 0
+        ? Math.min(1, Math.round((result.optimizedTokens / result.originalTokens) * 100) / 100)
+        : 1,
       outputChars: output.length,
       truncated,
     },
