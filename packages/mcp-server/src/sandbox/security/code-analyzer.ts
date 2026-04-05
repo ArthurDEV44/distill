@@ -45,14 +45,16 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   // File system escape attempts
   { pattern: /file:\/\//, reason: "file:// URLs are not allowed" },
   { pattern: /\.\.\/\.\.\//, reason: "path traversal is not allowed" },
+
+  // Infinite loops (hang server in legacy mode; consume CPU until timeout in QuickJS mode)
+  { pattern: /while\s*\(\s*true\s*\)/, reason: "infinite loop detected (while(true))" },
+  { pattern: /for\s*\(\s*;\s*;\s*\)/, reason: "infinite loop detected (for(;;))" },
 ];
 
 /**
  * Warning patterns (not blocked, but flagged)
  */
 const WARNING_PATTERNS: Array<{ pattern: RegExp; warning: string }> = [
-  { pattern: /while\s*\(\s*true\s*\)/, warning: "infinite loop detected" },
-  { pattern: /for\s*\(\s*;\s*;\s*\)/, warning: "infinite loop detected" },
   { pattern: /\.repeat\s*\(\s*\d{6,}\s*\)/, warning: "large string repeat" },
 ];
 

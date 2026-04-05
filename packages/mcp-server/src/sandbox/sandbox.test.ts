@@ -62,10 +62,52 @@ describe("Code Analyzer Security", () => {
       expect(result.blockedPatterns).toHaveLength(0);
     });
 
-    it("should warn about infinite loops", () => {
+    it("should block while(true) infinite loops", () => {
       const result = analyzeCode("while(true) {}");
-      expect(result.safe).toBe(true); // Not blocked, just warned
-      expect(result.warnings).toContain("infinite loop detected");
+      expect(result.safe).toBe(false);
+      expect(result.blockedPatterns).toEqual(
+        expect.arrayContaining([expect.stringContaining("infinite loop detected")])
+      );
+      expect(result.warnings).not.toContain("infinite loop detected");
+    });
+
+    it("should block while (true) with spaces", () => {
+      const result = analyzeCode("while ( true ) {}");
+      expect(result.safe).toBe(false);
+      expect(result.blockedPatterns).toEqual(
+        expect.arrayContaining([expect.stringContaining("infinite loop detected")])
+      );
+      expect(result.warnings).not.toContain("infinite loop detected");
+    });
+
+    it("should block for(;;) infinite loops", () => {
+      const result = analyzeCode("for(;;) { break; }");
+      expect(result.safe).toBe(false);
+      expect(result.blockedPatterns).toEqual(
+        expect.arrayContaining([expect.stringContaining("infinite loop detected")])
+      );
+      expect(result.warnings).not.toContain("infinite loop detected");
+    });
+
+    it("should block for ( ; ; ) with spaces", () => {
+      const result = analyzeCode("for ( ; ; ) {}");
+      expect(result.safe).toBe(false);
+      expect(result.blockedPatterns).toEqual(
+        expect.arrayContaining([expect.stringContaining("infinite loop detected")])
+      );
+      expect(result.warnings).not.toContain("infinite loop detected");
+    });
+
+    it("should allow legitimate while loops with conditions", () => {
+      const result = analyzeCode("let i = 0; while(i < 10) { i++; }");
+      expect(result.safe).toBe(true);
+      expect(result.blockedPatterns).toHaveLength(0);
+    });
+
+    it("should allow legitimate for loops with conditions", () => {
+      const result = analyzeCode("for(let i = 0; i < 10; i++) {}");
+      expect(result.safe).toBe(true);
+      expect(result.blockedPatterns).toHaveLength(0);
     });
   });
 
