@@ -256,6 +256,207 @@ describe("SDK Functions", () => {
   });
 });
 
+describe("ctx.pipe in QuickJS mode", () => {
+  const defaultContext = {
+    workingDir: process.cwd(),
+    timeout: 10000,
+    memoryLimit: DEFAULT_LIMITS.memoryLimit,
+    maxOutputTokens: DEFAULT_LIMITS.maxOutputTokens,
+  };
+
+  it("should create a pipeline and build with fromData", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([3, 1, 4, 1, 5]).sort().unique().build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([1, 3, 4, 5]);
+  });
+
+  it("should support filter with callback", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([1, 2, 3, 4, 5, 6])
+        .filter(n => n % 2 === 0)
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([2, 4, 6]);
+  });
+
+  it("should support map with callback", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([1, 2, 3])
+        .map(n => n * 10)
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([10, 20, 30]);
+  });
+
+  it("should support chained filter + map + take", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([1, 2, 3, 4, 5, 6, 7, 8])
+        .filter(n => n > 2)
+        .map(n => n * 2)
+        .take(3)
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([6, 8, 10]);
+  });
+
+  it("should support flatMap", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([[1, 2], [3, 4]])
+        .flatMap(arr => arr)
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([1, 2, 3, 4]);
+  });
+
+  it("should support skip", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([1, 2, 3, 4, 5])
+        .skip(2)
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([3, 4, 5]);
+  });
+
+  it("should support unique with keyFn", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([
+        { id: 1, name: 'a' },
+        { id: 2, name: 'b' },
+        { id: 1, name: 'c' },
+      ]).unique(item => item.id).build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([
+      { id: 1, name: "a" },
+      { id: 2, name: "b" },
+    ]);
+  });
+
+  it("should support tap for side effects", async () => {
+    const code = `
+      let sideEffect = 0;
+      const result = ctx.pipe.fromData([1, 2, 3])
+        .tap(items => { sideEffect = items.length; })
+        .build();
+      return { data: result.data, sideEffect };
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual({ data: [1, 2, 3], sideEffect: 3 });
+  });
+
+  it("should support recover on error", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([1, 2, 3])
+        .map(n => { if (n === 2) throw new Error('bad'); return n; })
+        .recover(err => [99])
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([99]);
+  });
+
+  it("should return clear error for invalid step on empty pipeline", async () => {
+    const code = `
+      const result = ctx.pipe.create().build();
+      return result;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("empty");
+  });
+
+  it("should return build stats", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([1, 2, 3])
+        .filter(n => n > 1)
+        .build();
+      return result.stats;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    const stats = result.output as { stepsExecuted: number; itemsProcessed: number; executionTimeMs: number };
+    expect(stats.stepsExecuted).toBe(1);
+    expect(stats.itemsProcessed).toBe(2);
+    expect(stats.executionTimeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("should support pipe.from(pattern) shorthand with glob + read", async () => {
+    const code = `
+      const result = ctx.pipe.from("**/*.ts")
+        .filter(f => f.includes("runtime"))
+        .build();
+      return Array.isArray(result.data);
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toBe(true);
+  });
+
+  it("should be immutable — chaining creates new instances", async () => {
+    const code = `
+      const base = ctx.pipe.fromData([1, 2, 3, 4, 5]);
+      const evens = base.filter(n => n % 2 === 0);
+      const odds = base.filter(n => n % 2 !== 0);
+      return {
+        evens: evens.build().data,
+        odds: odds.build().data,
+      };
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual({ evens: [2, 4], odds: [1, 3, 5] });
+  });
+
+  it("should support exclude with glob pattern", async () => {
+    const code = `
+      const result = ctx.pipe.fromData(['foo.ts', 'foo.test.ts', 'bar.ts', 'bar.spec.ts'])
+        .exclude('*.test.ts')
+        .exclude('*.spec.ts')
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual(["foo.ts", "bar.ts"]);
+  });
+
+  it("should support sort with compareFn", async () => {
+    const code = `
+      const result = ctx.pipe.fromData([3, 1, 4, 1, 5])
+        .sort((a, b) => b - a)
+        .build();
+      return result.data;
+    `;
+    const result = await executeSandbox(code, defaultContext);
+    expect(result.success).toBe(true);
+    expect(result.output).toEqual([5, 4, 3, 1, 1]);
+  });
+});
+
 describe("QuickJS Sandbox Isolation", () => {
   const workingDir = process.cwd();
 
@@ -318,6 +519,7 @@ describe("QuickJS Sandbox Isolation", () => {
       expect(code).toContain("search:");
       expect(code).toContain("analyze:");
       expect(code).toContain("pipeline:");
+      expect(code).toContain("pipe:");
     });
   });
 

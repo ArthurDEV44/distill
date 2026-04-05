@@ -171,7 +171,11 @@ export async function createDisposableSandbox(
         } else {
           // Type guard: result is ErrorResponse when ok is false
           const errorResult = result as { ok: false; error: unknown };
-          return { ok: false, error: String(errorResult.error), logs };
+          const rawError = errorResult.error;
+          const errorMsg = typeof rawError === 'object' && rawError !== null && 'message' in rawError
+            ? String((rawError as { message: unknown }).message)
+            : String(rawError);
+          return { ok: false, error: errorMsg, logs };
         }
       } catch (error) {
         return {
