@@ -4,10 +4,11 @@
  * Executes user code in a sandboxed environment with Distill SDK.
  *
  * Supports two execution modes:
+ * - QuickJS (default): Uses WebAssembly sandbox (secure isolation)
  * - Legacy: Uses Function constructor (fast but not fully isolated)
- * - QuickJS: Uses WebAssembly sandbox (secure isolation)
  *
- * Set DISTILL_USE_QUICKJS=true to enable QuickJS sandbox.
+ * Set DISTILL_LEGACY_EXECUTOR=true to use legacy mode.
+ * DISTILL_USE_QUICKJS is deprecated — QuickJS is now the default.
  */
 
 import * as fs from "fs";
@@ -53,10 +54,56 @@ import {
 import { createTimeout, createDisposableSandbox } from "./disposables.js";
 
 /**
- * Feature flag for QuickJS sandbox
- * Set DISTILL_USE_QUICKJS=true to enable secure WebAssembly isolation
+ * Resolve executor mode from environment variables.
+ *
+ * Priority: DISTILL_LEGACY_EXECUTOR (new) > DISTILL_USE_QUICKJS (deprecated) > default (QuickJS)
+ *
+ * NOTE: This runs once at module load time. The result is frozen for the process lifetime.
+ * Tests cannot change the mode by mutating process.env after import.
  */
-const USE_QUICKJS = process.env.DISTILL_USE_QUICKJS === "true";
+function resolveExecutorMode(): boolean {
+  const legacyEnv = process.env.DISTILL_LEGACY_EXECUTOR;
+  const oldEnv = process.env.DISTILL_USE_QUICKJS;
+
+  // New env var: DISTILL_LEGACY_EXECUTOR=true → legacy mode
+  if (legacyEnv !== undefined) {
+    if (legacyEnv === "true") {
+      return false; // QuickJS disabled
+    }
+    // Non-"true" value — warn and use default (QuickJS)
+    console.error(
+      `[distill] WARNING: DISTILL_LEGACY_EXECUTOR="${legacyEnv}" not recognized. Only "true" enables legacy mode. Using QuickJS.`
+    );
+    return true;
+  }
+
+  // Deprecated env var: DISTILL_USE_QUICKJS
+  if (oldEnv !== undefined) {
+    if (oldEnv === "true") {
+      // Was opt-in for QuickJS, now the default — harmless but stale
+      console.error(
+        "[distill] DEPRECATED: DISTILL_USE_QUICKJS=true is now the default. You can remove this variable."
+      );
+      return true;
+    }
+    // Any value other than "true" previously meant legacy mode (since the old check was === "true")
+    console.error(
+      "[distill] DEPRECATED: DISTILL_USE_QUICKJS is deprecated. Use DISTILL_LEGACY_EXECUTOR=true instead."
+    );
+    return false;
+  }
+
+  // Default: QuickJS enabled
+  return true;
+}
+
+/** Frozen at module load time — see resolveExecutorMode() JSDoc. */
+const USE_QUICKJS = resolveExecutorMode();
+
+// Log active executor mode at startup
+console.error(
+  `[distill] Sandbox executor: ${USE_QUICKJS ? "QuickJS WASM (secure)" : "Legacy (new Function)"}`
+);
 
 /**
  * Create host callbacks for file operations
@@ -382,8 +429,8 @@ async function executeSandboxLegacy(
 /**
  * Execute code in sandbox
  *
- * Uses QuickJS WebAssembly sandbox if DISTILL_USE_QUICKJS=true,
- * otherwise falls back to legacy Function constructor.
+ * Uses QuickJS WebAssembly sandbox by default.
+ * Set DISTILL_LEGACY_EXECUTOR=true to use legacy Function constructor.
  */
 export async function executeSandbox(
   code: string,

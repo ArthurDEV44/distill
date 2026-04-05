@@ -202,6 +202,19 @@ describe("Sandbox Executor", () => {
       expect(result.success).toBe(true);
       expect(result.output).toEqual({ x: 1, y: 2 });
     });
+
+    it("should terminate infinite loop within timeout in default (QuickJS) mode", async () => {
+      const start = Date.now();
+      const result = await executeSandbox(
+        "while(true) {}",
+        { ...defaultContext, timeout: 500 }
+      );
+      const elapsed = Date.now() - start;
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      // Should terminate reasonably close to the timeout, not hang
+      expect(elapsed).toBeLessThan(5000);
+    }, 10000);
   });
 });
 
@@ -446,9 +459,9 @@ describe("QuickJS Sandbox Isolation", () => {
       const enabled = isQuickJSEnabled();
       expect(typeof enabled).toBe("boolean");
 
-      // By default, QuickJS is disabled (DISTILL_USE_QUICKJS not set)
-      if (!process.env.DISTILL_USE_QUICKJS) {
-        expect(enabled).toBe(false);
+      // By default, QuickJS is enabled (default mode since v0.9.0)
+      if (!process.env.DISTILL_LEGACY_EXECUTOR && !process.env.DISTILL_USE_QUICKJS) {
+        expect(enabled).toBe(true);
       }
     });
   });
