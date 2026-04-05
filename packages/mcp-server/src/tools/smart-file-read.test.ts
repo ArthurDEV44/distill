@@ -287,6 +287,14 @@ beforeAll(async () => {
     await fs.writeFile(path.join(tmpDir, name), content, "utf-8");
   }
 
+  // Create a very large file for output cap testing (US-007)
+  const capLine = "export function capfn_NNNN(x: number): number { return x * 2; }\n";
+  let capContent = "";
+  for (let i = 0; i < 2000; i++) {
+    capContent += capLine.replace("NNNN", String(i).padStart(4, "0"));
+  }
+  await fs.writeFile(path.join(tmpDir, "huge-cap-test.ts"), capContent, "utf-8");
+
   // Warm up Tree-sitter WASM parsers so skeleton tests get real results.
   // First sync call fires init as side-effect; second call gets actual AST.
   // Each language is wrapped in try/catch so one failure doesn't abort the rest.
@@ -1298,6 +1306,44 @@ describe("smart_file_read", () => {
       const { sc, result } = await read({ filePath: absPath, cache: false });
       expect(result.isError).toBeUndefined();
       expect(sc?.language).toBe("typescript");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Output budget cap (US-007)
+  // ---------------------------------------------------------------------------
+
+  describe("Output Budget Cap", () => {
+    it("should include outputChars and truncated in structuredContent", async () => {
+      const { sc, text } = await read({ filePath: "sample.ts", mode: "skeleton", cache: false });
+      expect(sc?.outputChars).toBe(text.length);
+      expect(sc?.truncated).toBe(false);
+    });
+
+    it("should not cap lines mode output", async () => {
+      const { sc } = await read({
+        filePath: "sample.ts",
+        lines: { start: 1, end: 50 },
+        cache: false,
+      });
+      expect(sc?.truncated).toBe(false);
+      expect(sc?.mode).toBe("lines");
+    });
+
+    it("should include outputChars for full mode", async () => {
+      const { sc, text } = await read({ filePath: "sample.ts", mode: "full", cache: false });
+      expect(sc?.outputChars).toBe(text.length);
+      expect(sc?.truncated).toBe(false);
+    });
+
+    it("should cap skeleton output for large files under 45K chars", async () => {
+      const { sc, text } = await read({ filePath: "huge-cap-test.ts", mode: "skeleton", cache: false });
+      expect(text.length).toBeLessThanOrEqual(45_000);
+      expect(sc?.outputChars).toBe(text.length);
+      // If the skeleton is naturally under 45K, truncated is false — both outcomes are valid
+      if (text.length === 45_000 || (sc?.truncated as boolean)) {
+        expect(text).toContain("truncated output");
+      }
     });
   });
 });

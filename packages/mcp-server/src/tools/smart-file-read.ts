@@ -25,6 +25,7 @@ import { detectLanguageFromPath } from "../utils/language-detector.js";
 import { countTokens } from "../utils/token-counter.js";
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache } from "../cache/smart-cache.js";
+import { MAX_OUTPUT_CHARS } from "../constants.js";
 import { getBlockedPatterns } from "../sandbox/security/path-validator.js";
 import type { FileStructure, SupportedLanguage } from "../ast/types.js";
 
@@ -509,12 +510,14 @@ export async function executeSmartFileRead(
   }
 
   // Helper to build structuredContent for MCP 2025-06-18
-  const buildStructured = (text: string, mode: string) => ({
+  const buildStructured = (text: string, mode: string, truncated = false) => ({
     filePath: input.filePath,
     language: languageId,
     totalLines,
     content: text,
     mode,
+    outputChars: text.length,
+    truncated,
   });
 
   // Cache setup
@@ -533,21 +536,37 @@ export async function executeSmartFileRead(
   if (input.cache !== false) {
     const cached = await cache.get<string>(cacheKey);
     if (cached.hit && cached.value) {
+      let cachedText = cached.value + "\n\n_(from cache)_";
+      let cachedTruncated = false;
+      if (cachedText.length > MAX_OUTPUT_CHARS) {
+        cachedTruncated = true;
+        const truncMsg = `\n[... showing truncated output. Use extract mode for specific elements.]`;
+        cachedText = cachedText.slice(0, MAX_OUTPUT_CHARS - truncMsg.length) + truncMsg;
+      }
+      const sc = buildStructured(cached.value, effectiveMode, cachedTruncated);
+      sc.outputChars = cachedText.length; // outputChars must match content[0].text.length
       return {
-        content: [{ type: "text", text: cached.value + "\n\n_(from cache)_" }],
-        structuredContent: buildStructured(cached.value, effectiveMode),
+        content: [{ type: "text", text: cachedText }],
+        structuredContent: sc,
       };
     }
   }
 
-  // Helper to cache and return result with structuredContent
+  // Helper to cache and return result with structuredContent + output budget cap
   const cacheAndReturn = async (result: string, mode: string) => {
     if (input.cache !== false) {
       await cache.set(cacheKey, result, { filePath: resolvedPath });
     }
+    let text = result;
+    let truncated = false;
+    if (text.length > MAX_OUTPUT_CHARS) {
+      truncated = true;
+      const truncMsg = `\n[... showing truncated output. Use extract mode for specific elements.]`;
+      text = text.slice(0, MAX_OUTPUT_CHARS - truncMsg.length) + truncMsg;
+    }
     return {
-      content: [{ type: "text" as const, text: result }],
-      structuredContent: buildStructured(result, mode),
+      content: [{ type: "text" as const, text }],
+      structuredContent: buildStructured(text, mode, truncated),
     };
   };
 
@@ -600,10 +619,7 @@ export async function executeSmartFileRead(
     if (md) parts.push("```");
 
     const text = parts.join("\n");
-    return {
-      content: [{ type: "text", text }],
-      structuredContent: buildStructured(text, "full"),
-    };
+    return cacheAndReturn(text, "full");
   }
 
   // Extract mode
