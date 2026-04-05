@@ -68,6 +68,9 @@ function resolveExecutorMode(): boolean {
   // New env var: DISTILL_LEGACY_EXECUTOR=true → legacy mode
   if (legacyEnv !== undefined) {
     if (legacyEnv === "true") {
+      console.error(
+        "[distill] WARNING: Legacy executor active (new Function). Limited isolation. Set DISTILL_LEGACY_EXECUTOR=false for QuickJS WASM sandbox."
+      );
       return false; // QuickJS disabled
     }
     // Non-"true" value — warn and use default (QuickJS)
