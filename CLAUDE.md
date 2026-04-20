@@ -62,7 +62,7 @@ These are non-obvious behaviors that WILL cause mistakes if not understood.
 - **3 tools registered directly** — no dynamic loading, no catalog, no discovery mechanism.
 - **Server `instructions` field** is set on the MCP Server constructor — a static 4-line string explaining when to use each tool. No dynamic data (breaks prompt caching).
 - **Per-tool `searchHint`** is set in the `_meta` object alongside `alwaysLoad` in the ListTools handler.
-- **`maxResultSizeChars: 100_000`** is set in `_meta` for all 3 tools. Note: Claude Code reads this from the Tool object directly (not `_meta`), so it may not take effect for MCP tools. The MCP SDK strips unknown top-level Tool properties via Zod.
+- **`maxResultSizeChars` is intentionally NOT set.** Claude Code reads this from the top-level Tool object (not `_meta`) and clamps to `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000` regardless. The MCP SDK also strips unknown top-level Tool properties via Zod, so there's no valid place to put it. Output size is enforced in-tool via the 45K budget cap (see `auto_optimize` and `smart_file_read`).
 - **`outputSchema` is intentionally omitted** from the `tools/list` response. Older Claude Code versions silently drop tools with `outputSchema` (Issue #25081). Tool definitions internally retain `outputSchema` for documentation.
 - **`structuredContent`** (MCP 2025-06-18) is returned by all 3 tools alongside `content` — a flat JSON object with tool-specific fields.
 - **Tool change notification** (`notifications/tools/list_changed`) is wrapped in try/catch because it may fire before the stdio transport is connected.
@@ -77,7 +77,7 @@ These are non-obvious behaviors that WILL cause mistakes if not understood.
 
 ### Compression (`src/compressors/`)
 
-- **`detectContentType()` does NOT detect `build` or `diff`.** Use `detectPipelineContentType()` from `pipelines/definitions.ts` for those.
+- **`detectContentType()` does NOT detect `build` or `diff`.** Those are detected in `tools/auto-optimize.ts` via `isBuildOutput()` / `isDiffOutput()` before falling back to the generic compressor dispatch.
 - `semanticCompressor` and `diffCompressor` are exported but **NOT in the default compressor priority array**. They are invoked via direct import in `auto_optimize`, not via `compressContent()`.
 - **TF-IDF scoring** uses a 3-signal weighted model: TF-IDF (0.4) + position U-curve (0.3) + keyword boosts (0.3).
 - Token counting uses `js-tiktoken` with `gpt-4` encoding (cl100k_base). Fallback: `Math.ceil(length / 4)`.
@@ -108,3 +108,34 @@ These are non-obvious behaviors that WILL cause mistakes if not understood.
 - **Node requirement:** `>= 20`
 - **CLI:** Manual `process.argv` parsing in `bin/cli.js`. Commands: `serve`, `setup`, `doctor`, `analyze`.
 - **CI:** 4 parallel jobs — lint, typecheck, test (mcp-server only), build. All on `ubuntu-latest` with Bun.
+
+## Anti-Friction Rules (claude-doctor)
+
+Règles pour éviter les patterns de friction détectés par `claude-doctor` sur ce projet : edit-thrashing, restart-cluster, repeated-instructions, negative-drift, error-loop, excessive-exploration.
+
+### Editing discipline (anti edit-thrashing)
+
+- Read the full file before editing. Plan all changes, then make ONE complete edit.
+- If you've edited the same file 3+ times, STOP. Re-read the user's original requirements and re-plan from scratch.
+- Prefer one large coherent edit over multiple small incremental ones.
+
+### Stay aligned with the user (anti repeated-instructions, rapid-corrections)
+
+- Re-read the user's last message before responding. Follow through on every instruction completely — don't partially address requests.
+- Every few turns on a long task, re-read the original request to verify you haven't drifted from the goal.
+- When the user corrects you: stop, re-read their message, quote back what they actually asked for, and confirm understanding before proceeding.
+
+### Act, don't explore (anti excessive-exploration)
+
+- Don't read more than 3-5 files before making a change. Get a basic understanding, make the change, then iterate.
+- Prefer acting early and correcting via feedback over prolonged reading and planning.
+
+### Break loops (anti error-loop, restart-cluster)
+
+- After 2 consecutive tool failures or the same error twice, STOP. Change your approach entirely — don't retry the same strategy. Explain what failed and try something genuinely different.
+- When truly stuck, summarize what you've tried and ask the user for guidance rather than retrying.
+
+### Verify output (anti negative-drift)
+
+- Before presenting your result, double-check it actually addresses what the user asked for.
+- If the diff doesn't map cleanly to the user's request, don't ship it — re-plan.
