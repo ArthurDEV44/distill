@@ -52,7 +52,12 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
     "Distill optimizes LLM token usage through 3 tools:\n" +
     "- auto_optimize: Compress large tool output (build logs, diffs, errors) before it enters context. Use after any command producing >500 chars.\n" +
     "- smart_file_read: Read code with AST extraction — get functions, classes, signatures without full file. Use instead of Read for supported languages (TS, JS, Python, Go, Rust, PHP, Swift).\n" +
-    "- code_execute: Run TypeScript in sandbox with ctx.* SDK. Batch 5-10 operations (read, compress, git, search) in one call to save ~80% token overhead.";
+    "- code_execute: Run TypeScript in sandbox with ctx.* SDK. Batch 5-10 operations (read, compress, git, search) in one call to save ~80% token overhead.\n" +
+    "\n" +
+    "Usage guidance:\n" +
+    "- Prefer smart_file_read over Read for TS/JS/Python/Go/Rust/PHP/Swift — saves ~60% tokens.\n" +
+    "- Always pipe build/test output through auto_optimize — saves 80-95% tokens.\n" +
+    "- code_execute batches 5-10 tool calls into 1, saving ~500 tokens overhead per avoided call.";
 
   // Create MCP server
   const server = new Server(
@@ -76,18 +81,19 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
     code_execute: "execute typescript sandbox batch SDK script multi-operation",
   };
 
-  // Handle ListTools request — include _meta for always-load, search hints, and result size
-  // NOTE: maxResultSizeChars is set in _meta because the MCP SDK's ToolSchema strips
-  // unknown top-level properties via Zod. Claude Code reads maxResultSizeChars from the
-  // Tool object directly (not _meta), so this may not take effect for MCP tools.
-  // See: Claude Code Issue #25081, MCP SDK ToolSchema uses z.core.$strip.
+  // Handle ListTools request — include _meta for always-load and search hints only.
+  // NOTE: maxResultSizeChars is intentionally NOT set. Claude Code reads this property from the
+  // top-level Tool object (not _meta) and clamps all tools to DEFAULT_MAX_RESULT_SIZE_CHARS=50_000
+  // regardless of what the server declares — so emitting it has no effect. The MCP SDK's ToolSchema
+  // also strips unknown top-level properties via Zod, making _meta the only place it could live,
+  // and Claude Code doesn't look there. Output size enforcement is handled in-tool via the 45K
+  // budget cap (see auto-optimize and smart-file-read MAX_OUTPUT_CHARS).
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.getToolDefinitions().map((tool) => ({
       ...tool,
       _meta: {
         "anthropic/alwaysLoad": true,
         "anthropic/searchHint": searchHints[tool.name] ?? "",
-        maxResultSizeChars: 100_000,
       },
     })),
   }));
