@@ -706,7 +706,9 @@ export const smartFileReadTool: ToolDefinition = {
   annotations: {
     title: "Smart File Read",
     readOnlyHint: true,
+    destructiveHint: false,
     idempotentHint: true,
+    openWorldHint: false,
   },
   execute: executeSmartFileRead,
 };

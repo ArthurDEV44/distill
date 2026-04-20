@@ -171,7 +171,9 @@ export const codeExecuteTool: ToolDefinition = {
   annotations: {
     title: "Code Execute",
     readOnlyHint: false, // Can modify files via ctx.files
+    destructiveHint: true, // Can write/delete files via ctx.files, mutate state
     idempotentHint: false, // Results depend on filesystem state
+    openWorldHint: false, // Sandboxed: no network, no external systems
     longRunningHint: true, // May take up to 30s
   },
   execute: executeCodeExecute,

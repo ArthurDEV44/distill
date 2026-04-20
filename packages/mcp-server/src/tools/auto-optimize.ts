@@ -614,7 +614,9 @@ export function createAutoOptimizeTool(): ToolDefinition {
     annotations: {
       title: "Auto Optimize",
       readOnlyHint: true,
+      destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
     },
     execute: async (args) => autoOptimize(args as AutoOptimizeArgs),
   };

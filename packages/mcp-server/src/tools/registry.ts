@@ -21,6 +21,8 @@ export interface ToolAnnotations {
   idempotentHint?: boolean;
   /** Tool may take a long time to execute */
   longRunningHint?: boolean;
+  /** Tool interacts with external systems outside the local environment (MCP 2025-03-26). Spec default: true. */
+  openWorldHint?: boolean;
   /** Human-readable title for the tool */
   title?: string;
 }
