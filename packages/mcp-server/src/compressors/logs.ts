@@ -5,14 +5,8 @@
  * Groups similar log entries and summarizes repetitive patterns.
  */
 
-import { encodingForModel } from "js-tiktoken";
 import type { Compressor, CompressOptions, CompressedResult, LineGroup } from "./types.js";
-
-const encoding = encodingForModel("gpt-4");
-
-function countTokens(text: string): number {
-  return encoding.encode(text).length;
-}
+import { countTokens } from "../utils/token-counter.js";
 
 // Log level patterns
 const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "WARNING", "ERROR", "FATAL"] as const;

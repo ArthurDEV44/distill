@@ -5,14 +5,8 @@
  * Keeps relevant frames (project code) and summarizes internal frames.
  */
 
-import { encodingForModel } from "js-tiktoken";
 import type { Compressor, CompressOptions, CompressedResult } from "./types.js";
-
-const encoding = encodingForModel("gpt-4");
-
-function countTokens(text: string): number {
-  return encoding.encode(text).length;
-}
+import { countTokens } from "../utils/token-counter.js";
 
 interface StackFrame {
   raw: string;
