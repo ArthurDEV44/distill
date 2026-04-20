@@ -445,6 +445,44 @@ describe("auto_optimize", () => {
     });
   });
 
+  // US-013: semantic compressor must not silently no-op on content without blank lines.
+  describe("semantic line-fallback (US-013)", () => {
+    it("should compress dense content (no blank lines) via line-based fallback", async () => {
+      // 60 non-blank lines of repetitive-but-distinct content — blank-line segmentation
+      // yields a single segment, line-fallback yields 6 segments of 10 lines each.
+      const dense = Array.from({ length: 60 }, (_, i) =>
+        `record_${i}: field_a=${i} field_b=${(i * 3) % 100} field_c="token_${i % 7}"`
+      ).join("\n");
+      const { sc } = await optimize({ content: dense, strategy: "semantic" });
+      expect(sc?.detectedType).toBe("semantic");
+      expect(sc?.savingsPercent as number).toBeGreaterThan(0);
+      expect(sc?.method).toBe("semantic-line-fallback");
+    });
+
+    it("should compress single-line minified content via character-chunk fallback", async () => {
+      // Minified JSON-like payload on a single line — forces character-chunk fallback.
+      const pairs = Array.from({ length: 80 }, (_, i) => `"key_${i}":"value_${i}"`).join(",");
+      const minified = `{${pairs}}`;
+      const { sc } = await optimize({ content: minified, strategy: "semantic" });
+      expect(sc?.detectedType).toBe("semantic");
+      expect(sc?.savingsPercent as number).toBeGreaterThan(0);
+      expect(sc?.method).toBe("semantic-line-fallback");
+    });
+
+    it("should keep standard semantic-compression label for content with blank-line paragraphs", async () => {
+      // Three paragraphs separated by blank lines — primary segmentation works.
+      const normal = [
+        "Introduction paragraph explaining the system architecture in detail.\nThe purpose of this document is to describe the compression pipeline.",
+        "Paragraph two discusses tokenization strategies and their trade-offs.\nDifferent approaches yield different compression ratios on varied inputs.",
+        "Paragraph three covers benchmarks and evaluation methodology.\nWe measure throughput and quality across several representative corpora.",
+        "Conclusion paragraph summarizing findings and future directions.\nFurther work includes ML-based segment scoring and adaptive ratios.",
+      ].join("\n\n");
+      const { sc } = await optimize({ content: normal, strategy: "semantic" });
+      expect(sc?.detectedType).toBe("semantic");
+      expect(sc?.method).toBe("semantic-compression");
+    });
+  });
+
   describe("preservePatterns", () => {
     it("should accept preservePatterns param without error", async () => {
       const { sc } = await optimize({
@@ -969,6 +1007,149 @@ describe("auto_optimize", () => {
         // Compressor managed to bring it under budget — that's also fine
         expect(sc?.truncated).toBe(false);
       }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Compression ratio regression floors (US-018)
+  //
+  // These tests assert MINIMUM savingsPercent values per content type on
+  // realistic inputs. If a future compressor change degrades quality below
+  // these floors, these tests will fail and block the regression. Inputs
+  // deliberately use redundancy (typical for real build logs, app logs,
+  // repeated stack frames, and diffs) — that is the signal the compressors
+  // are meant to exploit.
+  // -------------------------------------------------------------------------
+  describe("compression ratio regression floors", () => {
+    it("build output (1000+ lines) achieves savingsPercent >= 70", async () => {
+      // Build logs are dominated by a handful of repeating error codes across
+      // many files — error-grouping should collapse these heavily.
+      const lines: string[] = [];
+      const files = [
+        "src/server.ts",
+        "src/tools/registry.ts",
+        "src/middleware/chain.ts",
+        "src/compressors/generic.ts",
+        "src/sandbox/executor.ts",
+      ];
+      const errorCodes = [
+        { code: "TS2345", msg: "Argument of type 'string' is not assignable to parameter of type 'number'." },
+        { code: "TS2339", msg: "Property 'foo' does not exist on type 'Server'." },
+        { code: "TS2741", msg: "Property 'name' is missing in type '{}' but required in type 'ToolDefinition'." },
+        { code: "TS7006", msg: "Parameter 'args' implicitly has an 'any' type." },
+      ];
+      for (let i = 0; i < 1100; i++) {
+        const file = files[i % files.length];
+        const err = errorCodes[i % errorCodes.length]!;
+        const line = 10 + (i % 300);
+        const col = 1 + (i % 60);
+        lines.push(`${file}(${line},${col}): error ${err.code}: ${err.msg}`);
+      }
+      lines.push("npm ERR! TypeScript compilation failed with 1100 errors.");
+      const content = lines.join("\n");
+      expect(content.split("\n").length).toBeGreaterThanOrEqual(1000);
+
+      const { sc } = await optimize({ content });
+      expect(sc?.detectedType).toMatch(/^build/);
+      expect(sc?.savingsPercent as number).toBeGreaterThanOrEqual(70);
+    });
+
+    it("log output (500+ lines with patterns) achieves savingsPercent >= 50", async () => {
+      // Syslog-style lines with timestamp + level + repeating event messages.
+      const lines: string[] = [];
+      const events = [
+        "[INFO] Request GET /api/health 200 3ms",
+        "[INFO] Request POST /api/auth/login 200 45ms",
+        "[INFO] Request GET /api/users 200 12ms",
+        "[WARN] Connection timeout to redis after 5000ms",
+        "[INFO] Retrying redis connection",
+        "[INFO] Redis connected successfully",
+        "[WARN] Rate limit approaching for IP 192.168.1.1",
+        "[INFO] Route registered GET /api/health",
+      ];
+      for (let i = 0; i < 600; i++) {
+        const sec = i % 60;
+        const min = Math.floor(i / 60) % 60;
+        const ts = `Jan 15 ${String(10 + Math.floor(i / 3600)).padStart(2, "0")}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+        lines.push(`${ts} app-server ${events[i % events.length]}`);
+      }
+      const content = lines.join("\n");
+      expect(content.split("\n").length).toBeGreaterThanOrEqual(500);
+
+      const { sc } = await optimize({ content });
+      expect(sc?.detectedType).toMatch(/^logs/);
+      expect(sc?.savingsPercent as number).toBeGreaterThanOrEqual(50);
+    });
+
+    it("stacktrace with duplicate frames achieves savingsPercent >= 40", async () => {
+      // Node.js-style stacktrace with many repeated internal frames — the
+      // stacktrace compressor collapses consecutive internal frames
+      // (node_modules, async, etc.) into a single "... N internal frames
+      // omitted" line. Realistic production stacktraces bury the actual
+      // error under dozens of framework/runtime frames.
+      const header =
+        "TypeError: Cannot read property 'foo' of undefined\n" +
+        "    at Object.parse (/app/src/parser.ts:42:15)\n" +
+        "    at runSandbox (/app/src/sandbox/executor.ts:128:9)\n" +
+        "    at executeTool (/app/src/tools/registry.ts:95:7)\n";
+      const internalFrames = [
+        "    at async Promise.all (index 0)",
+        "    at processTicksAndRejections (node:internal/process/task_queues:95:5)",
+        "    at async /app/node_modules/express/lib/router/index.js:281:9",
+        "    at async /app/node_modules/p-queue/dist/index.js:173:21",
+        "    at Module._compile (node:internal/modules/cjs/loader:1254:14)",
+      ];
+      const frames: string[] = [];
+      for (let i = 0; i < 60; i++) {
+        frames.push(internalFrames[i % internalFrames.length]!);
+      }
+      const content = header + frames.join("\n") + "\n";
+
+      const { sc } = await optimize({ content });
+      expect(sc?.detectedType).toMatch(/^stacktrace/);
+      expect(sc?.savingsPercent as number).toBeGreaterThanOrEqual(40);
+    });
+
+    it("git diff (100+ lines) achieves savingsPercent >= 30", async () => {
+      // A realistic multi-file diff with hunks. The hunks-only strategy
+      // strips the verbose per-file header block (diff --git / index /
+      // --- / +++) down to a single `M path` line and drops most context
+      // lines (keeping only contextLines=1 around each change).
+      const parts: string[] = [];
+      for (let f = 0; f < 8; f++) {
+        parts.push(
+          `diff --git a/src/module${f}.ts b/src/module${f}.ts`,
+          `index abc${f}234..def${f}678 100644`,
+          `--- a/src/module${f}.ts`,
+          `+++ b/src/module${f}.ts`
+        );
+        for (let h = 0; h < 3; h++) {
+          const line = 10 + h * 30;
+          parts.push(
+            `@@ -${line},12 +${line},13 @@ export function fn${f}_${h}(input: string, config: ModuleConfig) {`,
+            ` const existingUnchangedContextLine = "keep this"; // unchanged context`,
+            ` const anotherContextLine = computeSomething(existingUnchangedContextLine);`,
+            ` const thirdContextLine = lookup(anotherContextLine, config);`,
+            ` const fourthContextLine = thirdContextLine.trim();`,
+            ` const fifthContextLine = normalize(fourthContextLine);`,
+            `-  const old = legacyCall(existingUnchangedContextLine);`,
+            `+  const next = modernCall(existingUnchangedContextLine);`,
+            `+  log.debug("migrated from legacyCall to modernCall");`,
+            ` const sixthContextLine = someOtherHelper(fifthContextLine);`,
+            ` const seventhContextLine = validate(sixthContextLine);`,
+            ` const eighthContextLine = finalize(seventhContextLine);`,
+            ` return eighthContextLine;`,
+            ` }`,
+            ``
+          );
+        }
+      }
+      const content = parts.join("\n");
+      expect(content.split("\n").length).toBeGreaterThanOrEqual(100);
+
+      const { sc } = await optimize({ content });
+      expect(sc?.detectedType).toMatch(/^diff/);
+      expect(sc?.savingsPercent as number).toBeGreaterThanOrEqual(30);
     });
   });
 });
