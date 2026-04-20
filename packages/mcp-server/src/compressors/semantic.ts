@@ -40,6 +40,71 @@ export interface SemanticCompressedResult extends CompressedResult {
 }
 
 /**
+ * Default chunk size for the line-based fallback segmentation (US-013).
+ * Small enough to produce multiple scorable segments from dense content,
+ * large enough to preserve local context within each segment.
+ */
+const LINE_FALLBACK_CHUNK_SIZE = 10;
+
+/**
+ * Default chunk count for the character-based fallback segmentation.
+ * Used only when content has no line breaks at all (e.g., minified JSON).
+ */
+const CHAR_FALLBACK_CHUNK_COUNT = 10;
+
+/**
+ * Max input size for the character-chunk fallback path. Beyond this, the
+ * synchronous slice+trim loop can stall the stdio event loop on adversarial
+ * single-line input (e.g., a 100 MB minified blob). When exceeded, we skip
+ * the fallback and let the compressor return the content as-is.
+ */
+const MAX_CHAR_FALLBACK_INPUT = 5_000_000;
+
+/**
+ * Fallback: split content into fixed-size line groups.
+ * Used when blank-line segmentation yields ≤ 1 segment (US-013).
+ */
+function segmentByFixedLines(content: string, chunkSize: number): Segment[] {
+  const lines = content.split("\n");
+  const totalLines = lines.length;
+  const segments: Segment[] = [];
+
+  for (let i = 0; i < totalLines; i += chunkSize) {
+    const end = Math.min(i + chunkSize, totalLines);
+    const text = lines.slice(i, end).join("\n").trim();
+    if (text) {
+      segments.push(createSegment(text, i, end - 1, "line", totalLines));
+    }
+  }
+
+  return segments;
+}
+
+/**
+ * Deep fallback: split a single long line into roughly equal character chunks.
+ * Used when content has no line breaks at all (e.g., minified JSON, long one-liners).
+ *
+ * Uses the chunk index as synthetic line coordinates so the position U-curve in
+ * scoreSegment() still distributes scores across chunks. With constant
+ * startLine=0/totalLines=1 the position signal would collapse and only TF-IDF
+ * + keyword boosts would differentiate chunks.
+ */
+function segmentByCharChunks(content: string, chunkCount: number): Segment[] {
+  const chunkSize = Math.max(1, Math.ceil(content.length / chunkCount));
+  const totalChunks = Math.max(1, Math.ceil(content.length / chunkSize));
+  const segments: Segment[] = [];
+  let chunkIndex = 0;
+  for (let i = 0; i < content.length; i += chunkSize) {
+    const text = content.slice(i, i + chunkSize).trim();
+    if (text) {
+      segments.push(createSegment(text, chunkIndex, chunkIndex, "line", totalChunks));
+    }
+    chunkIndex++;
+  }
+  return segments;
+}
+
+/**
  * Segment content into meaningful chunks
  * Respects:
  * - Code blocks (keep as single unit)
@@ -231,10 +296,30 @@ export const semanticCompressor: Compressor = {
 
     const targetTokens = Math.floor(originalTokens * targetRatio);
 
-    // Step 1: Segment content
-    const segments = segmentContent(content);
+    // Step 1: Segment content (blank-line-aware primary strategy)
+    let segments = segmentContent(content);
+    let usedFallback = false;
 
-    // If we only have one segment, can't compress further meaningfully
+    // Fallback 1: blank-line segmentation yielded ≤ 1 segment → try fixed-size line chunks (US-013)
+    if (segments.length <= 1) {
+      const lineFallback = segmentByFixedLines(content, LINE_FALLBACK_CHUNK_SIZE);
+      if (lineFallback.length > 1) {
+        segments = lineFallback;
+        usedFallback = true;
+      }
+    }
+
+    // Fallback 2: content has no line breaks at all (single long line) → split by character chunks.
+    // Skip on very large inputs — the synchronous slice+trim loop can stall the event loop.
+    if (segments.length <= 1 && content.length <= MAX_CHAR_FALLBACK_INPUT) {
+      const charFallback = segmentByCharChunks(content, CHAR_FALLBACK_CHUNK_COUNT);
+      if (charFallback.length > 1) {
+        segments = charFallback;
+        usedFallback = true;
+      }
+    }
+
+    // Still nothing to segment (content extremely short) — return as-is
     if (segments.length <= 1) {
       return {
         compressed: content,
@@ -299,7 +384,7 @@ export const semanticCompressor: Compressor = {
         originalTokens,
         compressedTokens,
         reductionPercent,
-        technique: "semantic-compression",
+        technique: usedFallback ? "semantic-line-fallback" : "semantic-compression",
       },
       omittedInfo: `${segments.length - selected.length} of ${segments.length} segments removed based on importance scoring`,
       preservedSegments,
