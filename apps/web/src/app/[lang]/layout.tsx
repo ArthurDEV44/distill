@@ -1,5 +1,19 @@
+import "../globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { Analytics } from "@vercel/analytics/next";
+import { Toaster } from "sonner";
+import {
+  SoftwareApplicationSchema,
+  OrganizationSchema,
+} from "@/components/JsonLd";
+
+// Locale whitelist — the single source of truth for supported i18n segments.
+// Unknown values passed to the `[lang]` dynamic route 404 via `notFound()` so
+// a malformed `lang` string cannot reach `<html lang={…}>` on dynamic routes.
+const SUPPORTED_LOCALES = ["fr", "en"] as const;
+type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://distill-mcp.com"),
@@ -62,10 +76,34 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function LangLayout({
+// Root layout for the application — per Next.js 16 i18n canonical pattern,
+// the root layout lives under the `[lang]` dynamic segment so `<html lang>`
+// is server-rendered from route params (no hydration flash, no client-side
+// JS required to set the lang attribute). Non-[lang] routes at `app/`
+// (api/*, robots.ts, sitemap.ts, *-image.tsx, favicon.ico) are file-convention
+// handlers that do not render HTML pages and do not need a parent layout.
+export default async function RootLayout({
   children,
+  params,
 }: {
   children: ReactNode;
+  params: Promise<{ lang: string }>;
 }) {
-  return <>{children}</>;
+  const { lang } = await params;
+  if (!SUPPORTED_LOCALES.includes(lang as SupportedLocale)) {
+    notFound();
+  }
+  return (
+    <html lang={lang} className="dark">
+      <head>
+        <SoftwareApplicationSchema />
+        <OrganizationSchema />
+      </head>
+      <body className="min-h-screen antialiased">
+        {children}
+        <Toaster position="bottom-right" />
+        <Analytics />
+      </body>
+    </html>
+  );
 }

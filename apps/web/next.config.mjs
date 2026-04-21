@@ -52,7 +52,6 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@distill/shared"],
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
