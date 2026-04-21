@@ -13,11 +13,9 @@ Distill is an open-source MCP server (`distill-mcp` on npm) that optimizes LLM t
 
 ## Monorepo Structure
 
-- `packages/mcp-server/` — **Main package** (published as `distill-mcp`). Almost all development happens here.
-- `packages/shared/` — Shared types (`SupportedLanguage`, `ContentType`) and Anthropic model pricing constants
-- `packages/ui/` — Vestigial Turborepo starter (3 stub components). **Not used by the web app** — it uses shadcn/ui instead.
-- `packages/eslint-config/` — ESLint v9 flat configs: `base.js`, `next.js`, `react-internal.js`
-- `packages/typescript-config/` — TypeScript presets: `base.json`, `nextjs.json`, `react-library.json`
+- `packages/mcp-server/` — **Main package** (published as `distill-mcp`). Almost all development happens here. `SupportedLanguage` / `ContentType` live in `src/ast/types.ts`.
+- `packages/eslint-config/` — ESLint v9 flat configs: `base.js`, `next.js`
+- `packages/typescript-config/` — TypeScript presets: `base.json`, `nextjs.json`
 - `apps/web/` — Next.js 16 landing page + fumadocs docs site. **French-first i18n** (default locale `fr`).
 
 ## Commands
@@ -40,6 +38,19 @@ bun run test:coverage          # V8 coverage report
 ```
 
 Run a single test: `cd packages/mcp-server && npx vitest run src/path/to/file.test.ts`
+
+### Coverage thresholds (mcp-server)
+
+`vitest.config.ts` enforces minimums on `src/**/*.ts` (excluding tests, `*.d.ts`, and `types.ts`). CI fails when any category drops below floor:
+
+| Category   | Floor (v0.9.2 ratchet)      | Baseline (2026-04-21) | Target |
+|------------|-----------------------------|-----------------------|--------|
+| Lines      | 70%                         | 71.80%                | 75%    |
+| Branches   | 56%                         | 57.58%                | 70%    |
+| Functions  | 70%                         | 71.93%                | 75%    |
+| Statements | 69%                         | 70.99%                | 75%    |
+
+Floors were raised by v0.9.2 US-011 from the initial v0.9.1 floors (baseline − 2pts) to the current baseline − 1pt buffer. Raise toward v1.0 targets as new tests land.
 
 ## Architecture Gotchas
 
@@ -82,6 +93,11 @@ These are non-obvious behaviors that WILL cause mistakes if not understood.
 - **TF-IDF scoring** uses a 3-signal weighted model: TF-IDF (0.4) + position U-curve (0.3) + keyword boosts (0.3).
 - Token counting uses `js-tiktoken` with `gpt-4` encoding (cl100k_base). Fallback: `Math.ceil(length / 4)`.
 
+### Summarizers (`src/summarizers/`)
+
+- **4 implementations**: `serverLogsSummarizer`, `testLogsSummarizer`, `buildLogsSummarizer`, `genericSummarizer`. The first three match content-type-specific shapes; `genericSummarizer` is the fallback and is also reached directly from `auto_optimize` + `sandbox/sdk/compress` when a specialized summarizer does not `canSummarize()` the input.
+- **`genericSummarizer` internally composes three modules** — `scoring.ts` (BM25 + multi-factor importance), `clustering.ts` (semantic grouping), `pattern-extraction.ts` (template mining). These are production code, not optional plug-ins. They are re-exported from the `summarizers/` barrel for test access and sandbox SDK composition; they were mis-labeled as "advanced 2026 enhancements" in v0.9.1 docs and formally accepted as load-bearing in v0.9.2 US-010.
+
 ### Sandbox (`src/sandbox/`)
 
 - **7 security layers:** (1) static regex code analysis, (2) QuickJS WASM isolation (no fetch/fs), (3) path validation + symlink resolution, (4) git command allowlist, (5) error message sanitization (strips host paths), (6) `safe-walk` directory traversal guards, (7) output token cap with auto-compression.
@@ -90,12 +106,13 @@ These are non-obvious behaviors that WILL cause mistakes if not understood.
 - **Dual API pattern:** `createFooAPI()` (returns `Result<T, E>`) and `createFooAPILegacy()` (throws). The QuickJS bridge uses the legacy throwing versions because `Result` objects cannot cross the WASM boundary.
 - **Git SDK uses `execFileSync`** (not `execSync`) to bypass shell interpretation — `%(refname:short)` format specifiers pass through safely. **`LC_ALL=C`** is set to force English error messages regardless of system locale.
 - Default limits: 5s timeout (30s max), 128MB memory, 4000 output tokens (auto-compressed if exceeded).
+- `@sebastianwessel/quickjs` is **pinned** at `3.0.0` exact (not caret range). The WASM sandbox is the primary security boundary; upgrades are reviewed manually before the pin moves.
 
-### Middleware (`src/middleware/`)
+### Tool Registry (`src/tools/registry.ts`)
 
-- `beforeTool` runs in priority order (lower = first). **`afterTool` runs in REVERSE order** (LIFO).
-- Middleware errors are **non-fatal** — recorded in `ctx.middlewareErrors[]`, chain continues.
-- Only built-in middleware: `logging` (priority 0, verbose mode only).
+- Verbose-mode logging is **inlined** in `ToolRegistry.execute` as two `if (verbose)` blocks (before-call and after-call). No middleware abstraction — previously lived in `src/middleware/`, removed in v0.9.1 per PRD US-013.
+- The after-call log fires on both happy and catch paths, so thrown handler errors are still surfaced to stderr when `verbose: true`.
+- Pass verbose through `createToolRegistry(verbose)` or `createServer({ verbose: true })`.
 
 ## Key Patterns
 
@@ -107,7 +124,7 @@ These are non-obvious behaviors that WILL cause mistakes if not understood.
 - **Branch strategy:** PRs target `dev`, releases merge to `main`
 - **Node requirement:** `>= 20`
 - **CLI:** Manual `process.argv` parsing in `bin/cli.js`. Commands: `serve`, `setup`, `doctor`, `analyze`.
-- **CI:** 4 parallel jobs — lint, typecheck, test (mcp-server only), build. All on `ubuntu-latest` with Bun.
+- **CI:** 5 parallel jobs — lint, typecheck, test (mcp-server only, runs with coverage + Tree-sitter WASM retry), build, knip. All on `ubuntu-latest` with Bun.
 
 ## Anti-Friction Rules (claude-doctor)
 

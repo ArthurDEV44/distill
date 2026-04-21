@@ -22,17 +22,27 @@ Distill + Smart Search       = "Both, optimized"
 
 **Status: Complete**
 
-| Feature | Status | Token Savings |
-|---------|--------|---------------|
-| `auto_optimize` | Done | 40-95% |
-| `smart_file_read` (AST) | Done | 50-70% |
-| `code_execute` SDK | Done | 98% |
-| `semantic_compress` (TF-IDF) | Done | 40-60% |
-| `summarize_logs` | Done | 80-90% |
-| `diff_compress` | Done | 50-80% |
-| Lazy MCP (`browse_tools`/`run_tool`) | Done | 95% |
+Distill ships as 3 always-loaded tools. Every compressor, semantic-search, diff,
+log-summarizer, and multifile path is now reached through one of these tools — no
+standalone tool calls, no discovery mechanism, no lazy-loading proxy.
 
-**Supported Languages**: TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
+| Tool | Status | Covers | Token Savings |
+|------|--------|--------|---------------|
+| `auto_optimize` | Done | Content-aware compression (build output, logs, diffs, code, stacktraces, semantic/TF-IDF) | 40-95% |
+| `smart_file_read` (AST) | Done | 5 modes: `auto`, `full`, `skeleton`, `extract`, `search` across 7 languages | 50-70% |
+| `code_execute` (SDK sandbox) | Done | QuickJS WASM sandbox with `ctx.files`, `ctx.code`, `ctx.git`, `ctx.search`, `ctx.analyze`, `ctx.compress`, `ctx.pipe`/`ctx.pipeline`, `ctx.multifile`, `ctx.conversation` | 98% |
+
+**Supported languages:** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift.
+
+**Legacy (pre-v0.9.0).** Earlier releases exposed these as separate MCP tools:
+`summarize_logs`, `diff_compress`, `semantic_compress`, `multifile_compress`,
+`conversation_memory`, `discover_tools`, `context_budget`, `detect_retry_loop`,
+`session_stats`, `set_output_config`, and the lazy-MCP pair
+`browse_tools` / `run_tool`. They have been consolidated into the 3-tool surface
+above. The underlying capabilities remain reachable — either through
+`auto_optimize`'s content-type dispatch or through the `code_execute` SDK
+(`ctx.compress.*`, `ctx.multifile.*`, `ctx.conversation.*`). See
+[`CHANGELOG.md`](./CHANGELOG.md) for the migration history.
 
 ---
 
