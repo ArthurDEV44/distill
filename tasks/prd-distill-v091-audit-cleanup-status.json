@@ -1,0 +1,316 @@
+{
+  "prd": {
+    "file": "tasks/prd-distill-v091-audit-cleanup.md",
+    "title": "Distill v0.9.1 \u2014 Audit Cleanup (Security + Dead Code + CI)",
+    "created_at": "2026-04-20",
+    "status": "DONE"
+  },
+  "epics": [
+    {
+      "id": "EP-001",
+      "title": "Sandbox Hardening v2",
+      "status": "DONE",
+      "priority": "P0",
+      "stories_total": 5,
+      "stories_done": 5
+    },
+    {
+      "id": "EP-002",
+      "title": "Dead Code Purge",
+      "status": "DONE",
+      "priority": "P0",
+      "stories_total": 4,
+      "stories_done": 4
+    },
+    {
+      "id": "EP-003",
+      "title": "CI Restoration",
+      "status": "DONE",
+      "priority": "P0",
+      "stories_total": 3,
+      "stories_done": 3
+    },
+    {
+      "id": "EP-004",
+      "title": "De-Over-Engineering",
+      "status": "DONE",
+      "priority": "P1",
+      "stories_total": 3,
+      "stories_done": 3
+    },
+    {
+      "id": "EP-005",
+      "title": "Docs & Config Truth-Up",
+      "status": "DONE",
+      "priority": "P1",
+      "stories_total": 3,
+      "stories_done": 3
+    },
+    {
+      "id": "EP-006",
+      "title": "Compressor Test Coverage",
+      "status": "DONE",
+      "priority": "P1",
+      "stories_total": 1,
+      "stories_done": 1
+    }
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Remove the DISTILL_LEGACY_EXECUTOR env var and the legacy executor code path",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "M",
+      "blocked_by": [],
+      "started_at": "2026-04-20",
+      "completed_at": "2026-04-20",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-002",
+      "title": "Block .constructor( chain in the static analyzer",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-20",
+      "completed_at": "2026-04-20",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-003",
+      "title": "Add git config and related write commands to the git blocklist",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-20",
+      "completed_at": "2026-04-20",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-004",
+      "title": "Enforce isSymbolicLink checks in all directory walkers",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-20",
+      "completed_at": "2026-04-20",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-005",
+      "title": "Re-validate paths at file-open time, not only at validation time",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-006",
+      "title": "Delete unreachable tool-layer files",
+      "epic": "EP-002",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-007",
+      "title": "Delete unused utility and analytics modules",
+      "epic": "EP-002",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Partial execution: deleted session-tracker.ts, toon-serializer.ts + test, output-estimator.ts + test, output-similarity.ts, project-detector.ts, command-normalizer.ts. Kept error-normalizer.ts \u2014 PRD audit premise was wrong; it is transitively used by utils/signature-grouper.ts (which is consumed by tools/auto-optimize.ts:21,327-329 for log deduplication). Same deviation pattern as US-008 (scoring/clustering/pattern-extraction kept). Follow-up story needed to either refactor signature-grouper off error-normalizer or formally accept both as kept."
+    },
+    {
+      "id": "US-008",
+      "title": "Delete unwired summarizers/ advanced modules and empty config/ directory",
+      "epic": "EP-002",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Partial execution: deleted hierarchical.ts + hierarchical.test.ts + src/config/. Kept scoring.ts, clustering.ts, pattern-extraction.ts \u2014 PRD audit premise was wrong; these are transitively used by genericSummarizer -> auto_optimize + sandbox/sdk/compress. Follow-up story needed to refactor generic.ts then delete."
+    },
+    {
+      "id": "US-009",
+      "title": "Remove packages/ui/, starter artefacts, and orphan turbo.json config",
+      "epic": "EP-002",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "M",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-010",
+      "title": "Add typecheck, test, and build jobs to CI",
+      "epic": "EP-003",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [
+        "US-006",
+        "US-007",
+        "US-008",
+        "US-009"
+      ],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-011",
+      "title": "Enforce Vitest coverage thresholds",
+      "epic": "EP-003",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "S",
+      "blocked_by": [
+        "US-010"
+      ],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Initial floors set to baseline-2pts per PRD unhappy-path: lines 64, branches 51, functions 65, statements 63. Targets 75/70/75/75. Baseline: 66.95/53.81/68.22/66.15."
+    },
+    {
+      "id": "US-012",
+      "title": "Add knip CI check to prevent dead-code regression",
+      "epic": "EP-003",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "S",
+      "blocked_by": [
+        "US-006",
+        "US-007",
+        "US-008",
+        "US-009",
+        "US-010"
+      ],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Gate established with knip v6.5.0 + 5th CI job. Initial allowlist documents intentional API surface (AST queries/utils, dual-API pattern files, back-compat shim, summarizer scoring/clustering used transitively). Follow-up stories will reduce the allowlist as US-007/US-008 deviations and US-013/US-014 land."
+    },
+    {
+      "id": "US-013",
+      "title": "Inline the middleware chain into the tool registry",
+      "epic": "EP-004",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "M",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Deleted middleware/{chain,types,logging,index}.ts (313 LOC). Inlined verbose-mode logging in ToolRegistry.execute as two `if (verbose)` blocks (before + after try/catch, so error path still logs). Dropped `middleware` field from ServerInstance. Moved ToolContext/ToolResult types to registry.ts. Updated index.ts barrel (explicit type re-exports). Updated CLAUDE.md (\u00a7 Tool Registry replaces \u00a7 Middleware). 998 tests pass, check-types clean, knip clean, build green."
+    },
+    {
+      "id": "US-014",
+      "title": "Fix or remove broken branded-types runtime guards",
+      "epic": "EP-004",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Chose AC option (b) deletion: removed 4 identical-`typeof === string` runtime guards (isValidatedPath, isSafePattern, isSanitizedGitArg, isSanitizedCode) from branded-types.ts \u2014 zero call sites existed. Branded types + brand functions + unwrapBrandedString preserved. Added SanitizedCode @ts-expect-error to type-tests.ts for symmetry with the other 3 brands. Updated knip.jsonc comment. 998 tests pass, check-types clean, knip clean, build green."
+    },
+    {
+      "id": "US-015",
+      "title": "Deduplicate parseLogLine \u2014 compressors use the utils implementation",
+      "epic": "EP-004",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Deleted local parseLogLine + its sole callers (extractTimestamp, extractLogLevel, LOG_LEVELS, LogLevel alias, ParsedLogLine). Compressor now imports parseLogLine from utils/log-parser.ts \u2014 same function the 4 summarizers consume. Level checks switched from uppercase (\"ERROR\"|\"FATAL\") to lowercase (\"error\"), which is strictly more permissive: utils folds FATAL/CRITICAL/ERR into error and WARN/WARNING into warning (previous local parser missed CRITICAL and ERR entirely). normalizeLogMessage kept local \u2014 it's a separate function with compressor-specific output format. Added logs.test.ts with 3 regression tests: shape parity, error/warning count parity between compressor and generic summarizer, and the CRITICAL/ERR/FATAL classification guarantee. 1001 tests pass, typecheck clean, knip clean, build green."
+    },
+    {
+      "id": "US-016",
+      "title": "Truth-up CLAUDE.md, ROADMAP.md, and add a CHANGELOG.md",
+      "epic": "EP-005",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "S",
+      "blocked_by": [
+        "US-001"
+      ],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Created root CHANGELOG.md (keep-a-changelog 1.1.0) with entries for v0.6.0-beta, v0.7.0-beta, v0.8.0, v0.8.1, v0.9.0, and draft v0.9.1 documenting DISTILL_LEGACY_EXECUTOR removal as BREAKING + sandbox hardening + dead-code purge + CI restoration. CLAUDE.md: corrected CI claim (4\u21925 parallel jobs with knip), reconciled packages/shared description to match current export {} state with forward reference to US-017, Anti-Friction Rules preserved untouched. ROADMAP.md: Phase 1 table rewritten around the 3-tool architecture; deprecated tool names (browse_tools, run_tool, summarize_logs, diff_compress, plus the 6 others consolidated in v0.9.0) moved to a Legacy note. Moved RELEASE_NOTES_v0.6.0-beta.md + RELEASE_NOTES_v0.8.0.md under docs/releases/ (git mv to preserve history); CHANGELOG now links to them. Also fixed a pre-existing JSON defect in this status file (missing `},` delimiter between US-015 and US-016). Lint / check-types / knip all green."
+    },
+    {
+      "id": "US-017",
+      "title": "Reconcile packages/shared with its actual usage (repurpose or delete)",
+      "epic": "EP-005",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "M",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Chose Path B (delete). Evidence: grep confirmed zero actual `from \"@distill/shared\"` imports anywhere in the monorepo \u2014 the apps/web dep + tsconfig path aliases + next.config.mjs transpilePackages entry were dead wiring; pricing constants in constants.ts and cost helpers in utils.ts had zero consumers. Path A would have moved SupportedLanguage/ContentType (used by 19 mcp-server files) out of the package that owns them into a shared package consumed by nobody. Deleted packages/shared/ entirely. Removed @distill/shared from apps/web/package.json, tsconfig.json paths (both @distill/shared and @distill/shared/*), next.config.mjs transpilePackages, and knip.jsonc (both ignoreWorkspaces and apps/web ignoreDependencies). CLAUDE.md monorepo structure updated \u2014 removed packages/shared and packages/ui lines (ui was already deleted per US-009), SupportedLanguage/ContentType location noted inline on mcp-server entry. CHANGELOG.md v0.9.1 draft documents the Path B decision. Automatically satisfies US-018's pricing-constants sub-task (PRD says delete if Path B taken). bun install refreshed lockfile (1 package removed). lint / check-types / build / knip all green. 3 workspace packages now (down from 4)."
+    },
+    {
+      "id": "US-018",
+      "title": "Fix root layout lang attribute and update stale pricing",
+      "epic": "EP-005",
+      "status": "DONE",
+      "priority": "P2",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Hybrid approach per PRD unhappy-path: root app/layout.tsx hardcodes lang=\"fr\" (the default locale per fumadocs-core i18n config), and a new SetHtmlLang client component in [lang]/layout.tsx updates document.documentElement.lang via useLayoutEffect when params.lang !== the static default. useLayoutEffect (not useEffect) ensures the update happens before paint, so /en/* routes don't flash lang=\"fr\". The existing suppressHydrationWarning on <html> absorbs the expected server/client mismatch. [lang]/layout.tsx now accepts params: Promise<{ lang: string }> matching the Next 16 convention already in use by docs/layout.tsx. Pricing-constants sub-task (AC bullet 2) was already satisfied by US-017 Path B: packages/shared was entirely deleted. Files: apps/web/src/app/layout.tsx (1-char edit), apps/web/src/components/SetHtmlLang.tsx (new, 15 LOC), apps/web/src/app/[lang]/layout.tsx (params + SetHtmlLang render). lint / check-types / build / knip all green; build generates static pages for /fr/docs/* as expected."
+    },
+    {
+      "id": "US-019",
+      "title": "Add regression tests for all compressors",
+      "epic": "EP-006",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "L",
+      "blocked_by": [
+        "US-011"
+      ],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21",
+      "notes": "Added 7 new test files (generic, config, stacktrace, semantic, diff, conversation, multifile) + extended existing logs.test.ts with a US-019 regression block. Each file has 3+ tests covering positive/expected-shape, per-compressor compression-ratio floor, and unhappy-path (empty/whitespace/malformed/bounded-large input never throws). Curated snapshot-style fixtures live under src/compressors/__fixtures__/{logs,stacktrace,diff,config}/. Snapshot assertions target small deliberate shape fragments (omittedInfo markers, summary block structure, shared-imports block) not full compressed bodies \u2014 shape drift forces review, cosmetic fixes don't cascade. Per-compressor ratio floors chosen by content type: logs \u226460%, stacktrace \u226465%, config \u226485%, generic \u226480%, semantic \u226475%, diff hunks-only \u226490% / summary \u226470%, conversation key-extraction \u226455%, multifile skeleton \u226485%. Side-effect: removed stray `export default semanticCompressor;` from semantic.ts (duplicate of the named const export; zero consumers). Coverage on src/compressors/** lifted from baseline to 83.15% lines / 65.71% branches / 83.20% functions / 82.35% statements \u2014 comfortably above PRD's 75% lines floor. Global coverage also improved: 71.80% lines (was 66.55% per US-011 baseline), all global thresholds cleared. 44 new tests, 1045 total tests pass; typecheck/lint/build/knip all green."
+    }
+  ]
+}

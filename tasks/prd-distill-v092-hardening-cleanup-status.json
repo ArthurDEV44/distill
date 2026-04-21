@@ -1,0 +1,187 @@
+{
+  "prd": {
+    "file": "tasks/prd-distill-v092-hardening-cleanup.md",
+    "title": "Distill v0.9.2 — Hardening v2.1 + Deviation Cleanup",
+    "created_at": "2026-04-21",
+    "status": "DONE"
+  },
+  "epics": [
+    {
+      "id": "EP-001",
+      "title": "Sandbox Hardening v2.1",
+      "status": "DONE",
+      "priority": "P0",
+      "stories_total": 6,
+      "stories_done": 6
+    },
+    {
+      "id": "EP-002",
+      "title": "Type-Safety Payoff",
+      "status": "DONE",
+      "priority": "P1",
+      "stories_total": 1,
+      "stories_done": 1
+    },
+    {
+      "id": "EP-003",
+      "title": "Web SSR Lang Fix",
+      "status": "DONE",
+      "priority": "P2",
+      "stories_total": 1,
+      "stories_done": 1
+    },
+    {
+      "id": "EP-004",
+      "title": "Dead-Code Deviation Resolution",
+      "status": "DONE",
+      "priority": "P1",
+      "stories_total": 3,
+      "stories_done": 3
+    }
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "validatePath pre-realpaths workingDir to fix macOS false-positive symlink-escape rejections",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-002",
+      "title": "fileExists honors mustRecheckOnOpen to close the one-bit host-filesystem oracle",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "S",
+      "blocked_by": ["US-001"],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-003",
+      "title": "Add replace and bundle to the git command blocklist",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P0",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-004",
+      "title": "Add String.fromCharCode, Reflect.ownKeys, Reflect.get to the static analyzer blocklist",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-005",
+      "title": "Pin @sebastianwessel/quickjs to exact 3.0.0",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-006",
+      "title": "git.blame() uses validation.resolvedPath for consistency",
+      "epic": "EP-001",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-007",
+      "title": "Apply SanitizedCode brand after analyzeCode and thread the branded type into the sandbox execute path",
+      "epic": "EP-002",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-008",
+      "title": "Move <html lang={lang}> into [lang]/layout.tsx and delete SetHtmlLang",
+      "epic": "EP-003",
+      "status": "DONE",
+      "priority": "P2",
+      "size": "S",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-009",
+      "title": "Inline error-normalizer.ts into signature-grouper.ts (Path A) and delete the file",
+      "epic": "EP-004",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "M",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-010",
+      "title": "Formally accept summarizers/{scoring,clustering,pattern-extraction}.ts as product code (Path B)",
+      "epic": "EP-004",
+      "status": "DONE",
+      "priority": "P1",
+      "size": "XS",
+      "blocked_by": [],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    },
+    {
+      "id": "US-011",
+      "title": "Raise vitest coverage floors to current baseline",
+      "epic": "EP-004",
+      "status": "DONE",
+      "priority": "P2",
+      "size": "XS",
+      "blocked_by": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006",
+        "US-007",
+        "US-008",
+        "US-009",
+        "US-010"
+      ],
+      "started_at": "2026-04-21",
+      "completed_at": "2026-04-21",
+      "reviewed_at": "2026-04-21"
+    }
+  ]
+}
