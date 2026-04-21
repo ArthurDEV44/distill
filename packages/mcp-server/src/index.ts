@@ -14,12 +14,16 @@ export { createServer, runServer, type ServerConfig, type ServerInstance } from 
 // Cache
 export * from "./cache/index.js";
 
-// Middleware
-export * from "./middleware/index.js";
-
 // Tools
-export { createToolRegistry, type ToolRegistry, type ToolDefinition } from "./tools/registry.js";
-export { getAllTools } from "./tools/dynamic-loader.js";
+export {
+  createToolRegistry,
+  type ToolRegistry,
+  type ToolDefinition,
+  type ToolContext,
+  type ToolResult,
+  type ToolAnnotations,
+  type ToolExecuteResult,
+} from "./tools/registry.js";
 
 // Parsers
 export * from "./parsers/index.js";

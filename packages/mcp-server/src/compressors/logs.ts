@@ -7,50 +7,7 @@
 
 import type { Compressor, CompressOptions, CompressedResult, LineGroup } from "./types.js";
 import { countTokens } from "../utils/token-counter.js";
-
-// Log level patterns
-const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "WARNING", "ERROR", "FATAL"] as const;
-type LogLevel = (typeof LOG_LEVELS)[number];
-
-interface ParsedLogLine {
-  raw: string;
-  timestamp?: string;
-  level?: LogLevel;
-  message: string;
-  normalizedMessage: string;
-}
-
-/**
- * Extract timestamp from log line
- */
-function extractTimestamp(line: string): string | undefined {
-  // ISO format: 2024-01-15T10:00:01
-  const isoMatch = line.match(/\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?/);
-  if (isoMatch) return isoMatch[0];
-
-  // Bracket format: [10:00:01]
-  const bracketMatch = line.match(/\[(\d{2}:\d{2}:\d{2})\]/);
-  if (bracketMatch) return bracketMatch[1];
-
-  // Syslog format: Jan 15 10:00:01
-  const syslogMatch = line.match(/[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}/);
-  if (syslogMatch) return syslogMatch[0];
-
-  return undefined;
-}
-
-/**
- * Extract log level from line
- */
-function extractLogLevel(line: string): LogLevel | undefined {
-  const upperLine = line.toUpperCase();
-  for (const level of LOG_LEVELS) {
-    if (upperLine.includes(`[${level}]`) || upperLine.includes(` ${level} `)) {
-      return level;
-    }
-  }
-  return undefined;
-}
+import { parseLogLine } from "../utils/log-parser.js";
 
 /**
  * Normalize log message for grouping
@@ -67,28 +24,6 @@ function normalizeLogMessage(message: string): string {
     .replace(/'[^']*'/g, "'STR'")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-/**
- * Parse a log line into structured data
- */
-function parseLogLine(line: string): ParsedLogLine {
-  const timestamp = extractTimestamp(line);
-  const level = extractLogLevel(line);
-
-  // Remove timestamp and level to get message
-  let message = line;
-  if (timestamp) {
-    message = message.replace(timestamp, "").trim();
-  }
-
-  return {
-    raw: line,
-    timestamp,
-    level,
-    message,
-    normalizedMessage: normalizeLogMessage(message),
-  };
 }
 
 /**
@@ -117,18 +52,19 @@ function groupLogLines(lines: string[], preservePatterns?: RegExp[]): Map<string
     }
 
     const parsed = parseLogLine(line);
-    const key = parsed.normalizedMessage;
+    const normalizedMessage = normalizeLogMessage(parsed.message);
+    const key = normalizedMessage;
 
     const existing = groups.get(key);
     if (existing) {
       existing.lines.push(line);
       existing.count++;
     } else {
-      const isError = parsed.level === "ERROR" || parsed.level === "FATAL";
-      const isWarning = parsed.level === "WARN" || parsed.level === "WARNING";
+      const isError = parsed.level === "error";
+      const isWarning = parsed.level === "warning";
 
       groups.set(key, {
-        pattern: parsed.normalizedMessage,
+        pattern: normalizedMessage,
         sample: line,
         lines: [line],
         count: 1,

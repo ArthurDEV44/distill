@@ -623,7 +623,6 @@ export function createAutoOptimizeTool(): ToolDefinition {
 }
 
 /**
- * Default export for backward compatibility with existing imports.
- * The dynamic-loader imports `autoOptimizeTool` from this module.
+ * Default export imported by `server.ts` and registered at startup.
  */
 export const autoOptimizeTool: ToolDefinition = createAutoOptimizeTool();

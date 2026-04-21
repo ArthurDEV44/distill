@@ -9,10 +9,6 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
-// Middleware
-import { createMiddlewareChain, type MiddlewareChain } from "./middleware/chain.js";
-import { createLoggingMiddleware } from "./middleware/logging.js";
-
 // Tools
 import { createToolRegistry, type ToolRegistry } from "./tools/registry.js";
 import { autoOptimizeTool } from "./tools/auto-optimize.js";
@@ -25,7 +21,6 @@ export interface ServerConfig {
 
 export interface ServerInstance {
   server: Server;
-  middleware: MiddlewareChain;
   tools: ToolRegistry;
 }
 
@@ -33,13 +28,8 @@ export interface ServerInstance {
  * Create and configure the MCP server
  */
 export async function createServer(config: ServerConfig = {}): Promise<ServerInstance> {
-  // Create middleware chain
-  const middleware = createMiddlewareChain();
-  middleware.use(createLoggingMiddleware({ verbose: config.verbose ?? false }));
-
-  // Create tool registry
-  const tools = createToolRegistry();
-  tools.setMiddlewareChain(middleware);
+  // Create tool registry (verbose-mode logging inlined there)
+  const tools = createToolRegistry(config.verbose ?? false);
 
   // Register the 3 core tools
   tools.register(autoOptimizeTool);
@@ -138,7 +128,6 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
 
   return {
     server,
-    middleware,
     tools,
   };
 }

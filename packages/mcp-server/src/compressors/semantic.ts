@@ -391,5 +391,3 @@ export const semanticCompressor: Compressor = {
     };
   },
 };
-
-export default semanticCompressor;

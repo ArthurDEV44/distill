@@ -57,9 +57,8 @@ afterAll(async () => {
 });
 
 describe("createServer", () => {
-  it("returns a ServerInstance with server, middleware, tools", () => {
+  it("returns a ServerInstance with server and tools", () => {
     expect(instance.server).toBeDefined();
-    expect(instance.middleware).toBeDefined();
     expect(instance.tools).toBeDefined();
   });
 

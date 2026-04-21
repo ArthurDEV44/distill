@@ -1,8 +1,12 @@
 /**
  * Generic Logs Summarizer
  *
- * Fallback summarizer for application logs that don't match specific patterns.
- * Enhanced in 2026 with advanced scoring, clustering, and pattern extraction.
+ * Fallback summarizer for application logs that don't match a specialized
+ * shape (server/test/build). Composes three internal modules — `scoring`
+ * (BM25 + multi-factor importance), `clustering` (semantic grouping), and
+ * `pattern-extraction` (template mining) — into the entry-selection +
+ * representative-sample pipeline. These modules are load-bearing for the
+ * generic path, not optional enhancements.
  */
 
 import type {
@@ -52,7 +56,7 @@ export const genericSummarizer: Summarizer = {
     // Filter by timeframe if specified
     const filteredEntries = filterByTimeframe(allEntries, options.timeframe);
 
-    // Use advanced scoring for ranking (2026 enhancement)
+    // Score entries (BM25 + multi-factor importance) for ranking.
     const scorer = createLogScorer(filteredEntries);
     const scoredEntries = scorer.scoreAll();
 
@@ -83,7 +87,8 @@ export const genericSummarizer: Summarizer = {
       }))
     );
 
-    // Use clustering for key events (2026 enhancement)
+    // Cluster semantically-similar entries and pick one representative per
+    // cluster as the key-events stream.
     const clusters = clusterLogs(filteredEntries, {
       similarityThreshold: 0.7,
       maxClusters: MAX_ENTRIES[options.detail].events * 2,
@@ -105,7 +110,7 @@ export const genericSummarizer: Summarizer = {
     // Calculate timespan
     const timespan = calculateTimespan(filteredEntries);
 
-    // Extract patterns for enhanced statistics (2026)
+    // Mine recurring templates and feed their stats into the statistics block.
     const patterns = extractPatterns(filteredEntries, { maxPatterns: 10 });
     const patternStats = getPatternStats(patterns);
 

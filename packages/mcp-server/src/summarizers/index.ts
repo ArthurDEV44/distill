@@ -1,8 +1,19 @@
 /**
  * Log Summarizers
  *
- * Exports all summarizers and utility functions.
- * Enhanced in 2026 with advanced scoring, clustering, and pattern extraction.
+ * The summarizer subsystem has four implementations:
+ *   - `serverLogsSummarizer`  — HTTP/server log shape
+ *   - `testLogsSummarizer`    — test-runner output shape
+ *   - `buildLogsSummarizer`   — build/compile log shape
+ *   - `genericSummarizer`     — fallback, consumed by `auto_optimize` and
+ *                               `sandbox/sdk/compress` when the content type
+ *                               doesn't match a specialized summarizer
+ *
+ * `genericSummarizer` depends on three internal scoring/clustering modules
+ * (`scoring.ts`, `clustering.ts`, `pattern-extraction.ts`) — first-class
+ * production code, NOT optional plug-ins. They were mis-labeled as "advanced
+ * 2026 extras" in v0.9.1 docs; v0.9.2 US-010 formally accepted them as
+ * load-bearing (Path B from the v0.9.1 US-008 deviation note).
  */
 
 export * from "./types.js";
@@ -11,11 +22,11 @@ export { testLogsSummarizer } from "./test-logs.js";
 export { buildLogsSummarizer } from "./build-logs.js";
 export { genericSummarizer } from "./generic.js";
 
-// Advanced modules (2026)
+// Internal modules consumed by genericSummarizer (re-exported for test access
+// and downstream composition by sandbox/sdk/compress). Not optional.
 export * from "./scoring.js";
 export * from "./pattern-extraction.js";
 export * from "./clustering.js";
-export * from "./hierarchical.js";
 
 import type { Summarizer, LogType } from "./types.js";
 import { serverLogsSummarizer } from "./server-logs.js";
