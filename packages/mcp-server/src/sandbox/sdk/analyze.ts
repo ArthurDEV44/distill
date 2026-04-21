@@ -19,7 +19,7 @@ import type {
 import type { ElementType, FileStructure } from "../../ast/types.js";
 import { parseFile } from "../../ast/index.js";
 import { detectLanguageFromPath } from "../../utils/language-detector.js";
-import { validatePath } from "../security/path-validator.js";
+import { validatePath, safeReadFileSyncLegacy } from "../security/path-validator.js";
 
 const MAX_DEPTH = 5;
 const MAX_STRUCTURE_FILES = 200;
@@ -200,7 +200,7 @@ export function createAnalyzeAPI(workingDir: string, callbacks: HostCallbacks) {
       }
 
       const fullPath = path.join(workingDir, file);
-      const content = fs.readFileSync(fullPath, "utf-8");
+      const content = safeReadFileSyncLegacy(fullPath, workingDir);
       const language = detectLanguageFromPath(file);
 
       if (language === "unknown") {
@@ -302,7 +302,7 @@ export function createAnalyzeAPI(workingDir: string, callbacks: HostCallbacks) {
       }
 
       const fullPath = path.join(workingDir, file);
-      const content = fs.readFileSync(fullPath, "utf-8");
+      const content = safeReadFileSyncLegacy(fullPath, workingDir);
       const language = detectLanguageFromPath(file);
 
       if (language === "unknown") {
@@ -433,7 +433,7 @@ export function createAnalyzeAPI(workingDir: string, callbacks: HostCallbacks) {
             const language = detectLanguageFromPath(currentPath);
             if (language !== "unknown") {
               try {
-                const content = fs.readFileSync(currentPath, "utf-8");
+                const content = safeReadFileSyncLegacy(currentPath, workingDir);
                 const structure = parseFile(content, language);
 
                 entry.language = language;

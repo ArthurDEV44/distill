@@ -4,7 +4,7 @@
  * Provides safe code execution with Distill SDK.
  */
 
-export { executeSandbox, isQuickJSEnabled } from "./executor.js";
+export { executeSandbox } from "./executor.js";
 export { analyzeCode, sanitizeError } from "./security/index.js";
 export { validatePath, validateGlobPattern } from "./security/path-validator.js";
 export type {

@@ -18,7 +18,7 @@ import type {
 } from "../types.js";
 import { compressAuto, compressSemantic, compressLogs } from "./compress.js";
 import { detectLanguageFromPath } from "../../utils/language-detector.js";
-import { validateGlobPattern } from "../security/path-validator.js";
+import { validateGlobPattern, safeReadFileSyncLegacy } from "../security/path-validator.js";
 
 const MAX_ITEMS = 1000;
 const CACHE_TTL_GLOB = 2 * 60 * 1000; // 2 minutes for glob results
@@ -187,7 +187,7 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
             if (stats.size > MAX_FILE_SIZE) {
               return { file, content: null, error: "File too large" };
             }
-            const content = fs.readFileSync(fullPath, "utf-8");
+            const content = safeReadFileSyncLegacy(fullPath, workingDir);
             return { file, content };
           } catch (err) {
             return { file, content: null, error: String(err) };
@@ -296,7 +296,7 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
     for (const file of files) {
       try {
         const filePath = path.join(fullPath, file);
-        const content = fs.readFileSync(filePath, "utf-8");
+        const content = safeReadFileSyncLegacy(filePath, workingDir);
         const lines = countLines(content);
         const lang = detectLanguageFromPath(file);
 
@@ -371,7 +371,7 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
     for (const file of files) {
       try {
         const filePath = path.join(workingDir, file);
-        const content = fs.readFileSync(filePath, "utf-8");
+        const content = safeReadFileSyncLegacy(filePath, workingDir);
         const lines = content.split("\n");
 
         for (let i = 0; i < lines.length; i++) {
@@ -449,7 +449,7 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
 
       try {
         const fullPath = path.join(workingDir, filePath);
-        const content = fs.readFileSync(fullPath, "utf-8");
+        const content = safeReadFileSyncLegacy(fullPath, workingDir);
 
         // Parse imports
         const importRegex = /import\s+(?:.*?\s+from\s+)?['"]([^'"]+)['"]/g;

@@ -107,48 +107,15 @@ export function brandAsSanitizedCode(code: string): SanitizedCode {
 }
 
 // ============================================================================
-// Type Guards (Runtime checks)
-// ============================================================================
-
-/**
- * Runtime type guard for ValidatedPath.
- * Note: This only checks if the value is a string - the actual validation
- * must be done through validatePathResult().
- */
-export function isValidatedPath(value: unknown): value is ValidatedPath {
-  return typeof value === "string";
-}
-
-/**
- * Runtime type guard for SafePattern.
- * Note: This only checks if the value is a string - the actual validation
- * must be done through validatePatternResult().
- */
-export function isSafePattern(value: unknown): value is SafePattern {
-  return typeof value === "string";
-}
-
-/**
- * Runtime type guard for SanitizedGitArg.
- * Note: This only checks if the value is a string - the actual sanitization
- * must be done through sanitizeGitArg().
- */
-export function isSanitizedGitArg(value: unknown): value is SanitizedGitArg {
-  return typeof value === "string";
-}
-
-/**
- * Runtime type guard for SanitizedCode.
- * Note: This only checks if the value is a string - the actual validation
- * must be done through code validation.
- */
-export function isSanitizedCode(value: unknown): value is SanitizedCode {
-  return typeof value === "string";
-}
-
-// ============================================================================
 // Unwrap Utilities
 // ============================================================================
+
+// NOTE: Runtime `is*` type guards were removed in v0.9.1 (PRD US-014).
+// They were all identical `typeof value === "string"` checks, which gave
+// a false sense of safety. Brand-specific validation belongs in the
+// producers (validatePathResult, validatePatternResult, sanitizeGitArg)
+// — not in consumer-side runtime guards. Compile-time enforcement is
+// covered by sandbox/type-tests.ts.
 
 /**
  * Extract the underlying string from a branded type.

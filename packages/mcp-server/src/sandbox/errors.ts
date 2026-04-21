@@ -14,6 +14,7 @@ export type FileError =
   | { code: "FILE_NOT_FOUND"; path: string; message: string }
   | { code: "FILE_READ_ERROR"; path: string; message: string }
   | { code: "PATH_VALIDATION_FAILED"; path: string; reason: string; message: string }
+  | { code: "PATH_VALIDATION_FAILED_AT_OPEN"; path: string; reason: string; message: string }
   | { code: "PATTERN_INVALID"; pattern: string; message: string };
 
 /** Interface for FileError factory */
@@ -21,6 +22,7 @@ interface FileErrorFactory {
   readonly notFound: (path: string) => FileError;
   readonly readError: (path: string, error: string) => FileError;
   readonly pathValidation: (path: string, reason: string) => FileError;
+  readonly pathValidationAtOpen: (path: string, reason: string) => FileError;
   readonly patternInvalid: (pattern: string, reason: string) => FileError;
 }
 
@@ -43,6 +45,15 @@ export const fileError = {
     path,
     reason,
     message: `Path validation failed for ${path}: ${reason}`,
+  }),
+
+  // Distinct from pathValidation — raised when re-validation at file-open time
+  // rejects a path that passed initial validation (TOCTOU window closed).
+  pathValidationAtOpen: (path: string, reason: string): FileError => ({
+    code: "PATH_VALIDATION_FAILED_AT_OPEN",
+    path,
+    reason,
+    message: `Path validation failed at open time for ${path}: ${reason}`,
   }),
 
   patternInvalid: (pattern: string, reason: string): FileError => ({
@@ -263,6 +274,7 @@ export function isFileError(error: SdkError): error is FileError {
     error.code === "FILE_NOT_FOUND" ||
     error.code === "FILE_READ_ERROR" ||
     error.code === "PATH_VALIDATION_FAILED" ||
+    error.code === "PATH_VALIDATION_FAILED_AT_OPEN" ||
     error.code === "PATTERN_INVALID"
   );
 }

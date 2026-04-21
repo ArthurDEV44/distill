@@ -18,11 +18,13 @@ import {
   brandAsValidatedPath,
   brandAsSafePattern,
   brandAsSanitizedGitArg,
+  brandAsSanitizedCode,
 } from "./branded-types.js";
 import {
   validatePathResult,
   validatePatternResult,
 } from "./security/path-validator.js";
+import { buildWrappedCode, executeSanitized } from "./executor.js";
 import type { FileError } from "./errors.js";
 import { DEFAULT_LIMITS, type ExecutionLimits } from "./types.js";
 import { fileError, gitError, parseError } from "./errors.js";
@@ -40,6 +42,9 @@ expectTypeOf<string>().toMatchTypeOf<SafePattern>();
 
 // @ts-expect-error - string should not be assignable to SanitizedGitArg
 expectTypeOf<string>().toMatchTypeOf<SanitizedGitArg>();
+
+// @ts-expect-error - string should not be assignable to SanitizedCode
+expectTypeOf<string>().toMatchTypeOf<SanitizedCode>();
 
 // Test: Branded types ARE assignable to string (covariance)
 expectTypeOf<ValidatedPath>().toMatchTypeOf<string>();
@@ -79,6 +84,33 @@ expectTypeOf(brandAsSafePattern).returns.toMatchTypeOf<SafePattern>();
 
 // Test: brandAsSanitizedGitArg returns SanitizedGitArg
 expectTypeOf(brandAsSanitizedGitArg).returns.toMatchTypeOf<SanitizedGitArg>();
+
+// Test: brandAsSanitizedCode returns SanitizedCode (v0.9.2 US-007)
+expectTypeOf(brandAsSanitizedCode).returns.toMatchTypeOf<SanitizedCode>();
+
+// ============================================================================
+// buildWrappedCode — structural gate via SanitizedCode (v0.9.2 US-007)
+// ============================================================================
+
+// Test: buildWrappedCode's second parameter is SanitizedCode, not plain string.
+// Regression for executor.ts: if a future refactor removes `brandAsSanitizedCode`
+// at the callsite and passes `code: string` directly, `bun run check-types`
+// will fail because string is not assignable to SanitizedCode in a covariant
+// (argument) position.
+expectTypeOf<Parameters<typeof buildWrappedCode>[1]>().toEqualTypeOf<SanitizedCode>();
+
+// @ts-expect-error - plain string must not be assignable to buildWrappedCode's SanitizedCode parameter
+expectTypeOf<string>().toMatchTypeOf<Parameters<typeof buildWrappedCode>[1]>();
+
+// Test: executeSanitized's `code` parameter is SanitizedCode, not plain string.
+// This is the boundary wrapper the PRD US-007 AC-3 asks for — any caller that
+// tries to pass unsanitized `string` fails `bun run check-types`. Together
+// with the buildWrappedCode assertion above, this pins the brand gate at the
+// only two functions that can compose the wrapped payload.
+expectTypeOf<Parameters<typeof executeSanitized>[1]>().toEqualTypeOf<SanitizedCode>();
+
+// @ts-expect-error - plain string must not be assignable to executeSanitized's SanitizedCode parameter
+expectTypeOf<string>().toMatchTypeOf<Parameters<typeof executeSanitized>[1]>();
 
 // ============================================================================
 // satisfies Tests

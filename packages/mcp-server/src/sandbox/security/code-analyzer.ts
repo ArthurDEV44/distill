@@ -28,12 +28,31 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\b__filename\b/, reason: "__filename is not allowed" },
   { pattern: /\bBuffer\b/, reason: "Buffer is not allowed" },
 
-  // Prototype pollution
+  // Prototype pollution & sandbox-escape chains.
+  // Rejects `.constructor(`, `.constructor[`, `.constructor.`, bare reads like
+  // `Array.prototype.constructor`, and bracket-string access such as
+  // `obj["constructor"]` — mitigates the canonical
+  // `this.constructor.constructor("return process")()` escape chain (see
+  // SandboxJS GHSA-jjpw-65fv-8g48). Conservative: a few legitimate reads of
+  // `.constructor` are refused. QuickJS containment is the final defence for
+  // fully-obfuscated variants that avoid the literal substring.
   { pattern: /__proto__/, reason: "__proto__ is not allowed" },
-  { pattern: /\.constructor\s*\[/, reason: "constructor access is not allowed" },
+  { pattern: /\.constructor\b/, reason: "blocked: constructor-chain access is not allowed" },
+  { pattern: /\[\s*(['"`])constructor\1\s*\]/, reason: "blocked: constructor-chain access is not allowed" },
   { pattern: /\.prototype\s*\[/, reason: "prototype access is not allowed" },
 
-  // Reflection APIs
+  // Keyword-reconstruction & reflection APIs.
+  // `String.fromCharCode(...)` is the canonical obfuscation vector from
+  // CVE-2025-68613 (n8n sandbox escape): rebuilding `process`/`constructor`
+  // byte-by-byte to evade the literal-substring patterns above. The specific
+  // `Reflect.ownKeys` / `Reflect.get` entries below also match the broader
+  // `\bReflect\b` pattern — redundant by design (two reasons surface, making
+  // the blocked-pattern log easier to triage). Conservative: legitimate use
+  // of `String.fromCharCode(65)` as a utility is refused. QuickJS WASM is
+  // the final containment for fully-obfuscated variants.
+  { pattern: /\bString\.fromCharCode\s*\(/, reason: "String.fromCharCode is not allowed (keyword reconstruction vector)" },
+  { pattern: /\bReflect\.ownKeys\s*\(/, reason: "Reflect.ownKeys is not allowed" },
+  { pattern: /\bReflect\.get\s*\(/, reason: "Reflect.get is not allowed" },
   { pattern: /\bReflect\b/, reason: "Reflect is not allowed" },
   { pattern: /\bProxy\b/, reason: "Proxy is not allowed" },
 
@@ -87,13 +106,24 @@ export function analyzeCode(code: string): CodeAnalysis {
 }
 
 /**
+ * Escape regex metacharacters so arbitrary strings can be safely embedded in
+ * a `new RegExp(...)`. Without this, a `workingDir` like `/tmp/my+project`
+ * would either fail to compile or match unintended substrings — both leak
+ * host-path info back through the error message `sanitizeError` is supposed
+ * to strip.
+ */
+function escapeForRegExp(source: string): string {
+  return source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Sanitize error messages to remove host paths
  */
 export function sanitizeError(error: Error, workingDir: string): string {
   let message = error.message || "Unknown error";
 
   // Remove absolute paths
-  message = message.replace(new RegExp(workingDir, "g"), "<workdir>");
+  message = message.replace(new RegExp(escapeForRegExp(workingDir), "g"), "<workdir>");
   message = message.replace(/\/home\/[^/]+/g, "<home>");
   message = message.replace(/C:\\Users\\[^\\]+/gi, "<home>");
 

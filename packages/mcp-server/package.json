@@ -33,7 +33,7 @@
     "@huggingface/transformers": "^3.8.1",
     "@jitl/quickjs-ng-wasmfile-release-sync": "^0.31.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@sebastianwessel/quickjs": "^3.0.0",
+    "@sebastianwessel/quickjs": "3.0.0",
     "js-tiktoken": "^1.0.15",
     "neverthrow": "^8.2.0",
     "safe-regex2": "^5.1.0",

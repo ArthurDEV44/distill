@@ -56,6 +56,32 @@ const BLOCKED_GIT_COMMANDS = [
   "restore",
   "worktree",
   "notes",
+  // Persistent-compromise vectors. `config` in particular can write to
+  // ~/.gitconfig and set `core.sshCommand`, `core.editor`, hooks paths, etc.,
+  // letting sandbox code execute arbitrary binaries on the next git invocation
+  // even after the sandbox exits. `update-ref` and `reflog` rewrite refs and
+  // ref-history; `gc`, `filter-branch`, `filter-repo` rewrite the object DB
+  // and history. `replace` registers replacement objects that silently
+  // redirect lookups for any SHA — a ref-poisoning primitive that survives
+  // until the refs/replace/* entry is removed. `bundle` can write arbitrary
+  // files via `--output` (e.g. `git bundle create /path/attacker-chose HEAD`)
+  // and `unbundle` writes to the object DB, both violating the sandbox's
+  // read-only-plus-workingDir contract.
+  // `bisect run <cmd>` spawns an arbitrary shell command as the verifier on
+  // every bisect step — a direct RCE primitive. `maintenance` registers
+  // scheduled tasks and triggers hooks. `mv` mutates tracked paths (index +
+  // worktree) so it is a write operation the sandbox must refuse.
+  "config",
+  "update-ref",
+  "reflog",
+  "gc",
+  "filter-branch",
+  "filter-repo",
+  "replace",
+  "bundle",
+  "bisect",
+  "maintenance",
+  "mv",
 ] as const satisfies readonly string[];
 
 type BlockedGitCommand = (typeof BLOCKED_GIT_COMMANDS)[number];
@@ -95,6 +121,16 @@ function sanitizeGitArg(arg: string): Result<SanitizedGitArg, GitError> {
  * For 'stash', also checks the subcommand (args[1]).
  */
 export function validateGitCommand(command: string, subcommand?: string): Result<void, GitError> {
+  // Reject git top-level options passed as args[0] (e.g. `-c`, `-C`,
+  // `--exec-path`, `--git-dir`, `--bare`). Git processes these BEFORE the
+  // subcommand, so `git -c alias.r=replace r HEAD v1.0` would resolve the
+  // alias and bypass the subcommand blocklist. No legitimate sandbox caller
+  // starts args[0] with a dash — ctx.git.* helpers always pass the
+  // subcommand first.
+  if (command.startsWith("-")) {
+    return err(gitError.blockedCommand(command));
+  }
+
   const cmd = command.toLowerCase();
   if (BLOCKED_GIT_COMMANDS.includes(cmd as BlockedGitCommand)) {
     return err(gitError.blockedCommand(command));
@@ -405,7 +441,7 @@ export function createGitAPI(workingDir: string) {
     blame(file: string, line?: number): Result<GitBlame, GitError> {
       // Validate file path
       const validation = validatePath(file, workingDir);
-      if (!validation.safe) {
+      if (!validation.safe || !validation.resolvedPath) {
         return err(gitError.invalidArg(validation.error || "Invalid file path"));
       }
 
@@ -415,7 +451,10 @@ export function createGitAPI(workingDir: string) {
         args.push(`-L${line},${line}`);
       }
 
-      args.push("--", file);
+      // Pass the canonically-resolved path (not the raw user string) so every
+      // git callsite operates on the same validated representation. execFileSync
+      // + `--` already block injection; this is defence-in-depth consistency.
+      args.push("--", validation.resolvedPath);
 
       const result = execGit(args, workingDir);
       if (result.isErr()) return err(result.error);

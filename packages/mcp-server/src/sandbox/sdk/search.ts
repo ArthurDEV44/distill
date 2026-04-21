@@ -23,7 +23,12 @@ import type { ElementType } from "../../ast/types.js";
 import { SearchError, searchError } from "../errors.js";
 import { parseFile, searchElements } from "../../ast/index.js";
 import { detectLanguageFromPath } from "../../utils/language-detector.js";
-import { validatePath, validateGlobPattern } from "../security/path-validator.js";
+import {
+  validatePath,
+  validateGlobPattern,
+  resolveWithinWorkingDir,
+  safeReadFileSyncLegacy,
+} from "../security/path-validator.js";
 
 const MAX_RESULTS = 100;
 const MAX_FILES_TO_SEARCH = 500;
@@ -55,34 +60,61 @@ function walkDirectory(
   maxFiles: number = MAX_FILES_TO_SEARCH
 ): string[] {
   const results: string[] = [];
+  // Visited set keyed on realpath — breaks symlink loops.
+  const visitedDirs = new Set<string>();
 
   function walk(currentDir: string, relativePath: string = ""): void {
     if (results.length >= maxFiles) return;
 
+    let entries: fs.Dirent[];
     try {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
 
-      for (const entry of entries) {
-        if (results.length >= maxFiles) break;
+    for (const entry of entries) {
+      if (results.length >= maxFiles) break;
 
-        const fullPath = path.join(currentDir, entry.name);
-        const relPath = path.join(relativePath, entry.name);
+      const fullPath = path.join(currentDir, entry.name);
+      const relPath = path.join(relativePath, entry.name);
 
-        // Skip hidden directories and node_modules
-        if (entry.name.startsWith(".") || entry.name === "node_modules") {
+      // Skip hidden directories and node_modules
+      if (entry.name.startsWith(".") || entry.name === "node_modules") {
+        continue;
+      }
+
+      if (entry.isSymbolicLink()) {
+        // Refuse symlinks whose realpath escapes workingDir.
+        const resolved = resolveWithinWorkingDir(fullPath, workingDir);
+        if (resolved === null) continue;
+        if (visitedDirs.has(resolved)) continue;
+
+        let targetIsDir = false;
+        let targetIsFile = false;
+        try {
+          const st = fs.statSync(resolved);
+          targetIsDir = st.isDirectory();
+          targetIsFile = st.isFile();
+        } catch {
           continue;
         }
 
-        if (entry.isDirectory()) {
+        if (targetIsDir) {
+          visitedDirs.add(resolved);
           walk(fullPath, relPath);
-        } else if (entry.isFile()) {
+        } else if (targetIsFile) {
           if (matchGlob(relPath, pattern)) {
             results.push(relPath);
           }
         }
+      } else if (entry.isDirectory()) {
+        walk(fullPath, relPath);
+      } else if (entry.isFile()) {
+        if (matchGlob(relPath, pattern)) {
+          results.push(relPath);
+        }
       }
-    } catch {
-      // Skip directories we can't read
     }
   }
 
@@ -169,7 +201,7 @@ export function createSearchAPI(workingDir: string, callbacks: HostCallbacks) {
           // Skip large files
           if (stats.size > MAX_FILE_SIZE) continue;
 
-          const content = fs.readFileSync(fullPath, "utf-8");
+          const content = safeReadFileSyncLegacy(fullPath, workingDir);
           const matches = searchInFile(file, content, regex);
 
           for (const match of matches) {
@@ -219,7 +251,7 @@ export function createSearchAPI(workingDir: string, callbacks: HostCallbacks) {
           // Skip large files
           if (stats.size > MAX_FILE_SIZE) continue;
 
-          const content = fs.readFileSync(fullPath, "utf-8");
+          const content = safeReadFileSyncLegacy(fullPath, workingDir);
           const language = detectLanguageFromPath(file);
 
           if (language === "unknown") continue;
@@ -346,7 +378,7 @@ export function createSearchAPI(workingDir: string, callbacks: HostCallbacks) {
           // Skip large files
           if (stats.size > MAX_FILE_SIZE) continue;
 
-          const content = fs.readFileSync(fullPath, "utf-8");
+          const content = safeReadFileSyncLegacy(fullPath, workingDir);
           const lines = content.split("\n");
 
           for (let i = 0; i < lines.length; i++) {

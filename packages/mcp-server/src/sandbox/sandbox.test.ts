@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { analyzeCode, sanitizeError } from "./security/index.js";
 import { validatePath, validateGlobPattern } from "./security/path-validator.js";
-import { executeSandbox, isQuickJSEnabled } from "./executor.js";
+import { executeSandbox } from "./executor.js";
 import { DEFAULT_LIMITS } from "./types.js";
 import { createQuickJSRuntime, generateGuestSDKCode } from "./quickjs/index.js";
 
@@ -698,15 +698,4 @@ describe("QuickJS Sandbox Isolation", () => {
     });
   });
 
-  describe("Feature Flag", () => {
-    it("should report QuickJS status correctly", () => {
-      const enabled = isQuickJSEnabled();
-      expect(typeof enabled).toBe("boolean");
-
-      // By default, QuickJS is enabled (default mode since v0.9.0)
-      if (!process.env.DISTILL_LEGACY_EXECUTOR && !process.env.DISTILL_USE_QUICKJS) {
-        expect(enabled).toBe(true);
-      }
-    });
-  });
 });

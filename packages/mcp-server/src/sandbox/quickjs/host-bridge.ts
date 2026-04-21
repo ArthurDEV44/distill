@@ -35,7 +35,12 @@ import {
 } from "../sdk/index.js";
 
 // Path validation
-import { validatePath, validateGlobPattern } from "../security/path-validator.js";
+import {
+  validatePath,
+  validateGlobPattern,
+  resolveWithinWorkingDir,
+  safeReadFileSyncLegacy,
+} from "../security/path-validator.js";
 
 // Types
 import type { HostCallbacks, ExtractionTarget } from "../types.js";
@@ -51,19 +56,39 @@ import * as path from "node:path";
 function createHostCallbacks(workingDir: string): HostCallbacks {
   return {
     readFile(filePath: string): string {
-      const validation = validatePath(filePath, workingDir);
-      if (!validation.safe) {
-        throw new Error(validation.error || "Invalid path");
-      }
-      return fs.readFileSync(validation.resolvedPath!, "utf-8");
+      // TOCTOU-safe: validates + re-resolves via realpath + checks in-tree
+      // right before the readFileSync call.
+      return safeReadFileSyncLegacy(filePath, workingDir);
     },
 
     fileExists(filePath: string): boolean {
       const validation = validatePath(filePath, workingDir);
-      if (!validation.safe) {
+      if (!validation.safe || !validation.resolvedPath) {
         return false;
       }
-      return fs.existsSync(validation.resolvedPath!);
+      // TOCTOU: if the path did not exist at validate time, an attacker may
+      // have planted a symlink between validate and this call. Re-resolve
+      // through realpath and refuse anything now pointing outside workingDir
+      // — closes the one-bit host-filesystem oracle (CWE-362).
+      // Invariant: `mustRecheckOnOpen` is true iff validatePath's realpath
+      // threw (path absent), meaning containment could not be proven then.
+      if (validation.mustRecheckOnOpen) {
+        // `!` is the explicit form of the invariant: the guard at line 66
+        // already proved `validation.resolvedPath` is defined, so this branch
+        // always sees a string. Matches the PRD US-002 AC-1 wording.
+        const resolved = resolveWithinWorkingDir(
+          validation.resolvedPath!,
+          workingDir
+        );
+        if (resolved === null) {
+          return false;
+        }
+        return fs.existsSync(resolved);
+      }
+      // Fast path: the file existed at validate time and validatePath's
+      // realpath check already confirmed it was in-tree. A residual
+      // symlink-swap race here is accepted per the v0.9.1 AC.
+      return fs.existsSync(validation.resolvedPath);
     },
 
     glob(pattern: string): string[] {
@@ -85,25 +110,57 @@ function createHostCallbacks(workingDir: string): HostCallbacks {
         return filename === pat;
       }
 
-      function walkDir(dir: string, relativePath: string = ""): void {
-        try {
-          const entries = fs.readdirSync(dir, { withFileTypes: true });
-          for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            const relPath = path.join(relativePath, entry.name);
+      // Visited set keyed on realpath — prevents infinite recursion through
+      // symlink loops (e.g. workingDir/a → workingDir/b, workingDir/b → a).
+      const visitedDirs = new Set<string>();
 
-            if (entry.isDirectory()) {
+      function walkDir(dir: string, relativePath: string = ""): void {
+        let entries: fs.Dirent[];
+        try {
+          entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return; // Skip directories we can't read
+        }
+
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          const relPath = path.join(relativePath, entry.name);
+
+          if (entry.isSymbolicLink()) {
+            // Refuse symlinks whose realpath escapes workingDir.
+            const resolved = resolveWithinWorkingDir(fullPath, workingDir);
+            if (resolved === null) continue;
+            if (visitedDirs.has(resolved)) continue;
+
+            let targetIsDir = false;
+            let targetIsFile = false;
+            try {
+              const st = fs.statSync(resolved);
+              targetIsDir = st.isDirectory();
+              targetIsFile = st.isFile();
+            } catch {
+              continue;
+            }
+
+            if (targetIsDir) {
               if (pattern.includes("**")) {
+                visitedDirs.add(resolved);
                 walkDir(fullPath, relPath);
               }
-            } else if (entry.isFile()) {
+            } else if (targetIsFile) {
               if (matchesPattern(entry.name, basePattern)) {
                 results.push(relPath);
               }
             }
+          } else if (entry.isDirectory()) {
+            if (pattern.includes("**")) {
+              walkDir(fullPath, relPath);
+            }
+          } else if (entry.isFile()) {
+            if (matchesPattern(entry.name, basePattern)) {
+              results.push(relPath);
+            }
           }
-        } catch {
-          // Skip directories we can't read
         }
       }
 

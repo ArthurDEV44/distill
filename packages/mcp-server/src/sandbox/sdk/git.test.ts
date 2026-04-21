@@ -173,6 +173,19 @@ describe.skipIf(!gitAvailable || !repoRoot)("Git SDK", () => {
     it("should throw for non-existent file", () => {
       expect(() => git.blame("non-existent-file-xyz.ts")).toThrow();
     });
+
+    it("should produce identical output whether the input is 'package.json' or './package.json' (US-006: resolved-path forwarding)", () => {
+      // Before US-006, blame() forwarded the raw user string to git. Now it
+      // forwards validation.resolvedPath, which canonicalises both inputs to
+      // the same absolute path — output must be byte-identical.
+      const bare = git.blame("package.json");
+      const dotRel = git.blame("./package.json");
+
+      expect(dotRel.lines.length).toBe(bare.lines.length);
+      for (let i = 0; i < bare.lines.length; i++) {
+        expect(dotRel.lines[i]).toEqual(bare.lines[i]);
+      }
+    });
   });
 
   describe("error handling", () => {
@@ -189,6 +202,8 @@ describe("Git Command Validation", () => {
       "commit", "add", "reset", "checkout", "rm",
       "merge", "rebase", "cherry-pick", "revert", "clean",
       "switch", "restore", "worktree", "notes",
+      // v0.9.2 follow-up: `mv` mutates the index + worktree — it is a write.
+      "mv",
     ];
 
     for (const cmd of blockedWriteCommands) {
@@ -198,6 +213,62 @@ describe("Git Command Validation", () => {
         if (result.isErr()) {
           expect(result.error.message).toContain("blocked");
           expect(result.error.message).toContain(cmd);
+        }
+      });
+    }
+  });
+
+  describe("blocked persistence & history-rewrite commands", () => {
+    // `config` is the critical one: writes to ~/.gitconfig and can set
+    // core.sshCommand/core.editor/hooks paths, turning git into a
+    // post-sandbox RCE. The others rewrite refs/history.
+    const blockedPersistenceCommands = [
+      "config",
+      "update-ref",
+      "reflog",
+      "gc",
+      "filter-branch",
+      "filter-repo",
+      // Ref poisoning via refs/replace/* + arbitrary file write via bundle --output.
+      "replace",
+      "bundle",
+      // v0.9.2 follow-up: `bisect run <cmd>` is an RCE primitive (shell verifier);
+      // `maintenance` schedules tasks and triggers hooks.
+      "bisect",
+      "maintenance",
+    ];
+
+    for (const cmd of blockedPersistenceCommands) {
+      it(`should block '${cmd}' command with GIT_BLOCKED_COMMAND error`, () => {
+        const result = validateGitCommand(cmd);
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.code).toBe("GIT_BLOCKED_COMMAND");
+          expect(result.error.message).toContain("blocked");
+          expect(result.error.message).toContain(cmd);
+        }
+      });
+    }
+
+    it("should reject the ssh-command compromise vector (git config --global core.sshCommand)", () => {
+      const result = validateGitCommand("config");
+      expect(result.isErr()).toBe(true);
+    });
+  });
+
+  describe("blocked top-level git options as args[0] (alias/cwd bypass prevention)", () => {
+    // Git processes `-c`, `-C`, `--exec-path`, `--git-dir`, `--bare`, etc.
+    // BEFORE the subcommand. Without this guard, `git -c alias.r=replace r …`
+    // would bypass the subcommand blocklist below. No legitimate ctx.git.*
+    // helper starts args[0] with a dash.
+    const blockedOptions = ["-c", "-C", "--exec-path", "--git-dir", "--bare"];
+
+    for (const opt of blockedOptions) {
+      it(`should block '${opt}' as args[0] with GIT_BLOCKED_COMMAND error`, () => {
+        const result = validateGitCommand(opt);
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.code).toBe("GIT_BLOCKED_COMMAND");
         }
       });
     }

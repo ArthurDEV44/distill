@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition } from "./registry.js";
-import { executeSandbox, DEFAULT_LIMITS, isQuickJSEnabled } from "../sandbox/index.js";
+import { executeSandbox, DEFAULT_LIMITS } from "../sandbox/index.js";
 
 /**
  * Input schema with semantic descriptions
@@ -57,7 +57,7 @@ interface CodeExecuteArgs {
 async function executeCodeExecute(
   args: unknown
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean; structuredContent?: Record<string, unknown> }> {
-  const sandboxMode = isQuickJSEnabled() ? "quickjs" : "legacy";
+  const sandboxMode = "quickjs" as const;
   const parsed = z.object({
     code: z.string(),
     timeout: z.number().optional(),
