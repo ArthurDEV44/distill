@@ -1,0 +1,59 @@
+---
+title: Journal des versions
+description: Historique des releases de Distill — versions publiées, corrections et nouveaux points d'intégration avec Claude Code.
+---
+
+# Journal des versions
+
+Cette page résume les releases publiées de `distill-mcp` côté npm. L'historique complet, orienté commits, vit dans [`CHANGELOG.md`](https://github.com/ArthurDEV44/distill/blob/main/CHANGELOG.md) à la racine du dépôt ; la PRD de chaque version décrit la motivation détaillée story par story.
+
+## v0.10.0 — 22 avril 2026
+
+**Release correction + intégration native.** Aucun changement dans le contrat des trois outils (`auto_optimize`, `smart_file_read`, `code_execute`). Aucun changement dans le sandbox, les parsers AST ou les algorithmes de compression. Première release publiée sur npm depuis `v0.8.1` — elle consolide les travaux `v0.9.1` et `v0.9.2` qui étaient restés en état « draft ».
+
+### Corrections de documentation
+
+Chaque affirmation de `CLAUDE.md` est maintenant liée à une citation `claude-code/<chemin>:<ligne>` pour que la re-vérification contre un upstream en mouvement tienne en un seul grep.
+
+- Le seuil de persistance des résultats d'outils MCP est **25 000 tokens** (constante `DEFAULT_MAX_MCP_OUTPUT_TOKENS`), pas « 50 000 caractères ». La porte heuristique `length/4` à `mcpValidation.ts:151-163` court-circuite sur ~12 500 tokens estimés (≈ 50K chars).
+- La formule d'autocompact réserve `min(maxOutputTokens, 20_000)` tokens — pour Haiku (`max_output = 4 096`) cela donne un déclenchement environ 16K tokens plus haut qu'une lecture hardcodée à 20K ne le suggère.
+- Un appendice « Claude Code Mechanics — Verified Citations » regroupe onze mécanismes (alwaysLoad / searchHint / outputSchema / persistance MCP / autocompact / drop de `structuredContent` / hook PreCompact / prompts MCP / agents custom / `readOnlyHint` / skills MCP) avec un script de re-vérification en une ligne.
+
+### Chemin de code aligné sur Claude Code
+
+- `structuredContent` n'est plus émis sur le fil MCP. Claude Code le range dans `mcpMeta`, et `mcpMeta` est explicitement exclu des blocs envoyés à l'API Anthropic — le LLM ne voyait jamais le champ.
+- La table `searchHints` dans `server.ts` est supprimée. Le hint n'est rendu que pour les outils différés via ToolSearch, et Distill déclare `alwaysLoad: true` sur ses trois outils — le hint était inatteignable par construction.
+- `annotations.readOnlyHint: true` est maintenant déclaré sur `smart_file_read` et `auto_optimize`. Claude Code mappe ce hint vers `isConcurrencySafe()`, ce qui permet le dispatch en parallèle avec d'autres outils read-only sur les tours multi-outils.
+
+### Hook PreCompact (opt-in)
+
+- **Contrat de marqueur `[DISTILL:COMPRESSED ratio=X.XX method=<name>]`.** Enveloppe opt-in activée via `DISTILL_COMPRESSED_MARKERS=1`. Seuils : `auto_optimize` ≥ 30 % d'économies ; `smart_file_read` < 50 % de la taille source en modes `skeleton`/`extract`/`search` ; `code_execute` via ses helpers `ctx.compress.*` sous la même règle. Collision gérée via les tokens d'échappement `[DISTILL-USER-TEXT:COMPRESSED …]`.
+- **`packages/mcp-server/scripts/precompact-hook.sh`** — hook POSIX shippé qui émet sur stdout l'instruction « preserve verbatim » intégrée par Claude Code dans `newCustomInstructions`. Il sort en code 0 sur toutes les formes d'entrée (JSON malformé, événement inattendu) pour ne jamais bloquer la compaction.
+- **`distill-mcp setup --install-precompact-hook`** — installation idempotente et atomique (tempfile + rename), avec `--dry-run`, `--uninstall-precompact-hook` et `--user-dir=<chemin>` pour les tests. Avorte proprement sur un `~/.claude/settings.json` malformé avec un pointeur ligne/colonne.
+
+### Commandes slash MCP
+
+Trois prompts déclarés via `prompts/list`, disponibles en tant que commandes slash sans argument :
+
+- `/mcp__distill-mcp__compress-session` — survole les résultats d'outils récents et déclenche `auto_optimize` sur les plus gros.
+- `/mcp__distill-mcp__analyze-tokens` — estime la consommation de tokens et identifie les trois contributions les plus lourdes.
+- `/mcp__distill-mcp__forget-large-results` — repère les résultats persistés sur disque (> 25K tokens) et propose ceux qui peuvent être recompressés.
+
+Documentation complète sur la page [Commandes slash](/fr/docs/slash-commands).
+
+### Sous-agent custom `distill-compressor`
+
+- Template agent Markdown shippé dans `packages/mcp-server/assets/agents/distill-compressor.md` — toolset read-only (Read, Grep, Glob, Bash + `auto_optimize` + `smart_file_read`), `code_execute` explicitement dans `disallowedTools`, `requiredMcpServers: [distill-mcp]`.
+- **`distill-mcp setup --install-agent`** — copie atomique vers `~/.claude/agents/` (mode 0644, parent 0755). Idempotent ; avec `--dry-run`, `--uninstall-agent` et diff préalable si le fichier existe et diffère (il faut `--force` pour écraser).
+
+### Skills MCP — décision NO-GO
+
+Le spike `docs/spikes/mcp-skills-exposure.md` a tranché : aujourd'hui, un serveur MCP externe ne peut pas produire de commandes avec `loadedFrom === 'mcp'` sur le binaire Claude Code publié. Le chargeur est gardé par un flag de bundle time (`feature('MCP_SKILLS')`) compilé à `false` dans le build public, et le module `skills/mcpSkills.ts` est absent de l'arbre source open source. Le rapport documente les quatre préconditions upstream qui feraient basculer la décision à GO et trois commandes `strings` pour re-vérifier à chaque montée de version de Claude Code. **v0.11 n'inclura pas les skills MCP.**
+
+### Notes de migration
+
+Pas de migration requise. Les signatures et formes de sortie des trois outils sont inchangées. Le contrat de marqueur, le hook PreCompact, les commandes slash et l'agent custom sont tous opt-in — les intégrations `v0.8.x` / `v0.9.x` existantes continuent de fonctionner à l'identique.
+
+## Avant v0.10.0
+
+Les releases précédentes ont leurs notes longues sous [`docs/releases/`](https://github.com/ArthurDEV44/distill/tree/main/docs/releases) ; à partir de `v0.9.0` la source canonique est [`CHANGELOG.md`](https://github.com/ArthurDEV44/distill/blob/main/CHANGELOG.md).

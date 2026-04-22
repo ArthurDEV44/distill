@@ -1,0 +1,143 @@
+---
+title: Hooks PostToolUse
+description: Câbler des hooks Claude Code sur les trois outils MCP de Distill — audit, télémétrie et post-traitement des résultats compressés.
+---
+
+# Hooks `PostToolUse` pour Distill
+
+Claude Code supporte un système de hooks qui s'exécutent après chaque appel d'outil, y compris les outils MCP. Cette page montre comment les câbler sur les trois outils de Distill (`auto_optimize`, `smart_file_read`, `code_execute`) pour construire votre propre observabilité ou réécrire les sorties que le modèle voit.
+
+Les hooks `PostToolUse` vivent dans `~/.claude/settings.json` (utilisateur) ou `.claude/settings.json` (projet) sous une clé `hooks.PostToolUse`. Chaque entrée associe un `matcher` (filtrage par nom d'outil) à une liste de hooks à exécuter.
+
+## Snippet de base
+
+Voici l'exemple minimum à copier dans `~/.claude/settings.json`. Il déclenche un script shell après chaque appel d'outil Distill :
+
+```jsonc
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__distill-mcp__*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/<vous>/bin/distill-audit.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Vérification manuelle.** Collez le snippet dans votre `settings.json`, redémarrez Claude Code, et déclenchez `auto_optimize` depuis une session. Votre script reçoit le payload du hook sur stdin. Si `distill-mcp` n'est pas connecté, le matcher reste inerte — aucun appel n'a lieu.
+
+### Sémantique exacte du matcher
+
+Claude Code interprète `matcher` par ce pipeline (`claude-code/utils/hooks.ts:1346-1383`) :
+
+1. `*` tout seul → "match partout".
+2. Chaîne simple ou liste séparée par `|` (lettres, chiffres, `_`) → match exact (`Write` ou `Write|Edit`).
+3. Sinon, traité comme une regex appliquée avec `regex.test(toolName)` — donc un match de sous-chaîne, pas d'ancrage implicite.
+
+La forme `mcp__distill-mcp__*` donnée ci-dessus fonctionne par effet de bord : `*` en regex signifie "zéro ou plus du caractère précédent" (ici `_`), et `test()` trouve la sous-chaîne à n'importe quelle position, donc un nom comme `mcp__distill-mcp__auto_optimize` passe. Pour un filtrage plus explicite et moins fragile, ancrez la regex :
+
+```jsonc
+{ "matcher": "^mcp__distill-mcp__" }
+```
+
+Ou listez explicitement les trois outils :
+
+```jsonc
+{
+  "matcher": "mcp__distill-mcp__auto_optimize|mcp__distill-mcp__smart_file_read|mcp__distill-mcp__code_execute"
+}
+```
+
+## Contrat de sortie du hook
+
+Votre script reçoit sur stdin le payload `PostToolUse` JSON (champs standard : `session_id`, `tool_name`, `tool_input`, `tool_response`, `cwd`, etc.). Il peut soit ne rien écrire sur stdout — le résultat de l'outil traverse inchangé vers le modèle — soit émettre un objet JSON qui suit le schéma d'output Claude Code documenté à `claude-code/utils/hooks.ts:425-440` :
+
+```jsonc
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "chaîne optionnelle injectée au prochain tour",
+    "updatedMCPToolOutput": "tout ce que vous voulez"
+  }
+}
+```
+
+**Le canal `updatedMCPToolOutput`** (`claude-code/utils/hooks.ts:350, :370, :645-649`) est spécifique aux outils MCP : s'il est présent, Claude Code remplace la sortie de l'outil par cette valeur avant de la transmettre au modèle. C'est le point d'accroche pour, par exemple, re-compresser une sortie, y ajouter un marqueur `[DISTILL:COMPRESSED]`, ou la filtrer avant qu'elle n'entre dans le contexte.
+
+## Trois cas d'usage concrets
+
+### 1. Audit / journalisation
+
+Le script écrit dans un fichier local chaque appel d'outil Distill, utile pour constater combien de fois `auto_optimize` est déclenché pendant une journée de travail.
+
+```sh
+#!/bin/sh
+# ~/bin/distill-audit.sh
+# Entrée stdin : JSON du hook PostToolUse. On log et on laisse passer.
+payload=$(cat)
+tool=$(printf '%s' "$payload" | jq -r .tool_name)
+ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '%s\t%s\n' "$ts" "$tool" >> "$HOME/.claude/distill-audit.log"
+# Pas de stdout JSON → la sortie de l'outil n'est pas modifiée.
+```
+
+### 2. Re-compression d'une sortie volumineuse
+
+Si une sortie `code_execute` dépasse votre seuil, re-compressez-la avec un outil externe (ou un deuxième appel à Distill) et renvoyez-la via `updatedMCPToolOutput` pour que le modèle ne voie que la version courte.
+
+```sh
+#!/bin/sh
+# ~/bin/distill-recompress.sh
+payload=$(cat)
+raw_output=$(printf '%s' "$payload" | jq -r '.tool_response.content[0].text // empty')
+size=${#raw_output}
+if [ "$size" -lt 2000 ]; then
+  # Trop court pour une re-compression utile — laisser passer.
+  exit 0
+fi
+
+compressed=$(printf '%s' "$raw_output" | your-compressor-cli --max-lines 40)
+# Renvoyer un JSON valide selon le contrat hookSpecificOutput.
+printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","updatedMCPToolOutput":%s}}' \
+  "$(printf '%s' "$compressed" | jq -Rs .)"
+```
+
+### 3. Télémétrie locale
+
+Exporter des métriques Prometheus / JSONL sur chaque appel d'outil compressé, typiquement pour mesurer l'économie de tokens sur un historique :
+
+```sh
+#!/bin/sh
+# ~/bin/distill-metrics.sh
+payload=$(cat)
+tool=$(printf '%s' "$payload" | jq -r .tool_name)
+input_size=$(printf '%s' "$payload" | jq -r '.tool_input | tostring | length')
+output_size=$(printf '%s' "$payload" | jq -r '.tool_response.content[0].text // "" | length')
+ratio=$(awk "BEGIN { if ($input_size > 0) print $output_size / $input_size; else print 0 }")
+printf '{"ts":"%s","tool":"%s","in":%s,"out":%s,"ratio":%s}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tool" "$input_size" "$output_size" "$ratio" \
+  >> "$HOME/.claude/distill-metrics.jsonl"
+```
+
+## Dégradation douce sur JSON invalide
+
+Si votre script écrit sur stdout quelque chose qui n'est pas un JSON valide — ou un JSON qui échoue à la validation du schéma de sortie — Claude Code ne bloque pas l'appel d'outil. Le parseur :
+
+- Tombe sur une exception `JSON.parse` → `claude-code/utils/hooks.ts:447-450` retourne `{ plainText: stdout }`, le hook est traité comme "pas d'output structuré" et la sortie originale de l'outil traverse inchangée vers le modèle.
+- Obtient un JSON parseable mais hors schéma → `claude-code/utils/hooks.ts:391-396` retourne une `validationError` qui est affichée en mode debug, pointant chaque champ fautif. La sortie originale traverse aussi inchangée.
+
+**En clair :** un hook cassé dégrade la télémétrie mais ne casse pas la session. C'est voulu — vous pouvez itérer sur votre script sans risquer de bloquer votre shell Claude Code.
+
+## Remarques opérationnelles
+
+- **Le matcher ne voit que les outils connectés.** Si Distill n'est pas encore enregistré dans votre `settings.json` (via `distill-mcp setup --claude`), le matcher `mcp__distill-mcp__*` ne match rien et le hook dort — aucun processus n'est lancé pour rien.
+- **Latence.** Chaque hook ajoute un fork + exec sur le chemin chaud des appels d'outils. Gardez vos scripts minces (cf. les exemples `sh` ci-dessus plutôt qu'un interpréteur lourd au démarrage).
+- **Sécurité.** Le payload stdin contient les arguments de l'outil, y compris éventuellement des chemins de fichiers et des extraits de contenu. Ne l'envoyez pas à un service externe sans filtrage explicite — les scripts sont locaux pour une raison.
+- **Lien avec le hook `PreCompact` de Distill.** Si vous avez déjà câblé `distill-mcp setup --install-precompact-hook`, celui-ci vit sous la clé `hooks.PreCompact` — pas sous `hooks.PostToolUse`. Les deux coexistent sans interférence.

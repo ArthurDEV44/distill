@@ -5,6 +5,7 @@
     "---Getting Started---",
     "installation",
     "mcp-tools",
+    "slash-commands",
     "---Guides---",
     "guides/claude-code",
     "guides/cursor",
@@ -12,7 +13,9 @@
     "---Configuration---",
     "guides/settings-local",
     "guides/claude-md-setup",
+    "hooks",
     "---Reference---",
-    "troubleshooting"
+    "troubleshooting",
+    "changelog"
   ]
 }
