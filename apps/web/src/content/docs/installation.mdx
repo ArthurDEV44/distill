@@ -1,64 +1,49 @@
 ---
 title: Installation
-description: Installer et configurer le serveur MCP Distill
+description: Install and configure Distill for Claude Code
 ---
 
 # Installation
 
-Démarrez avec Distill en moins d'une minute.
+Get started with Distill in under a minute.
 
-## Démarrage rapide (Recommandé)
-
-```bash
-# Installer globalement
-npm install -g distill-mcp
-
-# Auto-configurer votre IDE
-distill-mcp setup
-```
-
-L'assistant de configuration interactif vous guidera dans la configuration de vos IDEs (Claude Code, Cursor, Windsurf, Antigravity).
-
-## Prérequis
-
-- **Node.js 20+** requis
-- Un IDE compatible MCP (Claude Code, Cursor, Windsurf ou Antigravity)
-
-## Options d'installation
-
-### Option 1 : Installation globale + Auto Setup
+## Quick start
 
 ```bash
 npm install -g distill-mcp
 distill-mcp setup
 ```
 
-### Option 2 : Configurer un IDE spécifique
+The `setup` command detects Claude Code and registers it as the MCP client. That's it.
 
-```bash
-distill-mcp setup --claude       # Claude Code uniquement
-distill-mcp setup --cursor       # Cursor uniquement
-distill-mcp setup --windsurf     # Windsurf uniquement
-distill-mcp setup --antigravity  # Antigravity uniquement
-```
+## Prerequisites
 
-### Option 3 : Exécuter avec npx (Sans installation)
+- **Node.js 20+**
+- **Claude Code** installed (`npm install -g @anthropic-ai/claude-code` or [download](https://claude.com/download))
+
+## Without a global install
+
+If you prefer to skip the global install, use `npx`:
 
 ```bash
 npx distill-mcp serve
 ```
 
-Puis ajoutez manuellement à la config de votre IDE (voir ci-dessous).
+Then add the MCP entry to your Claude Code configuration (see next section).
 
-## Configuration manuelle de l'IDE
+## Manual Claude Code configuration
 
-Si vous préférez une configuration manuelle ou si `distill-mcp setup` n'a pas fonctionné :
+If `distill-mcp setup` didn't work, or if you prefer to edit the file by hand.
 
-### Claude Code
+### Via the Claude Code CLI
 
-Via CLI : `claude mcp add distill -- npx distill-mcp serve`
+```bash
+claude mcp add distill -- npx distill-mcp serve
+```
 
-Ou éditez `~/.claude.json` :
+### Via the configuration file
+
+Edit `~/.claude.json` (global) or `.mcp.json` (per-project):
 
 ```json
 {
@@ -71,7 +56,7 @@ Ou éditez `~/.claude.json` :
 }
 ```
 
-Ou avec npx (sans installation globale) :
+Or with npx (no global install):
 
 ```json
 {
@@ -84,131 +69,68 @@ Ou avec npx (sans installation globale) :
 }
 ```
 
-### Cursor
-
-Éditez `~/.cursor/mcp.json` (global) ou `.cursor/mcp.json` (par projet) :
-
-```json
-{
-  "mcpServers": {
-    "distill": {
-      "command": "npx",
-      "args": ["-y", "distill-mcp", "serve"]
-    }
-  }
-}
-```
-
-Le flag `-y` permet à npx d'installer automatiquement le package si nécessaire.
-
-### Windsurf
-
-Éditez `~/.codeium/windsurf/mcp_config.json` :
-
-```json
-{
-  "mcpServers": {
-    "distill": {
-      "command": "npx",
-      "args": ["-y", "distill-mcp", "serve"]
-    }
-  }
-}
-```
-
-Le flag `-y` permet à npx d'installer automatiquement le package si nécessaire.
-
-### Antigravity
-
-Ouvrez Antigravity, cliquez sur **Agent session** > menu **"..."** > **MCP Servers** > **Manage MCP Servers** > **View raw config**, puis éditez `mcp_config.json` :
-
-```json
-{
-  "mcpServers": {
-    "distill": {
-      "command": "npx",
-      "args": ["-y", "distill-mcp", "serve"]
-    }
-  }
-}
-```
-
-Le flag `-y` permet à npx d'installer automatiquement le package si nécessaire.
-
-## Vérifier l'installation
+## Verify installation
 
 ```bash
-# Vérifier que tout est correctement configuré
 distill-mcp doctor
 ```
 
-Puis redemarrez votre IDE et demandez : "Utilise auto_optimize pour compresser ce build output"
+Then restart Claude Code and ask: *"Use auto_optimize to compress this build output"*.
 
-## Référence CLI
+## CLI Reference
 
-Binaire : `distill-mcp`. Quatre commandes principales.
+Binary: `distill-mcp`. Four commands.
 
 ```bash
-distill-mcp serve      # Démarre le serveur MCP sur le transport stdio
-distill-mcp setup      # Configure les IDE et installe hooks/agents
-distill-mcp doctor     # Diagnostique l'installation
-distill-mcp analyze    # Analyse l'utilisation des tokens dans un codebase
-distill-mcp --help     # Affiche toutes les options
-distill-mcp --version  # Affiche la version installée
+distill-mcp serve      # Start the MCP server on stdio transport
+distill-mcp setup      # Configure Claude Code and install hooks/agents
+distill-mcp doctor     # Diagnose installation
+distill-mcp analyze    # Analyze token usage in a codebase
+distill-mcp --help     # Show all options
+distill-mcp --version  # Print installed version
 ```
 
 ### `distill-mcp serve`
 
-| Flag | Effet |
-|------|-------|
-| `--verbose` | Active les logs détaillés sur stderr (stdout reste le canal MCP) |
+| Flag | Effect |
+|------|--------|
+| `--verbose` | Enable verbose logging on stderr (stdout stays the MCP channel) |
 
 ### `distill-mcp setup`
 
-Cibler un IDE précis :
+With no flag, `setup` configures Claude Code by default and installs what is needed. The flags below enable opt-in extensions introduced in `v0.10.0`:
 
-| Flag | Effet |
-|------|-------|
-| `--claude` | Configure uniquement Claude Code |
-| `--cursor` | Configure uniquement Cursor |
-| `--windsurf` | Configure uniquement Windsurf |
-| `--antigravity` | Configure uniquement Antigravity |
+| Flag | Effect |
+|------|--------|
+| `--hooks` | Install the pre-commit hook in the current project |
+| `--install-precompact-hook` | Add the PreCompact hook into `~/.claude/settings.json` (idempotent, atomic via tempfile + rename) |
+| `--uninstall-precompact-hook` | Cleanly remove the PreCompact entry |
+| `--install-agent` | Copy the `distill-compressor.md` template into `~/.claude/agents/` |
+| `--uninstall-agent` | Remove the installed agent |
 
-Installer les extensions opt-in (introduites en `v0.10.0`) :
+Cross-cutting options:
 
-| Flag | Effet |
-|------|-------|
-| `--hooks` | Installe le hook de pré-commit dans le projet courant |
-| `--install-precompact-hook` | Ajoute le hook PreCompact dans `~/.claude/settings.json` (idempotent, atomique via tempfile + rename) |
-| `--uninstall-precompact-hook` | Retire proprement l'entrée PreCompact |
-| `--install-agent` | Copie le template `distill-compressor.md` dans `~/.claude/agents/` |
-| `--uninstall-agent` | Supprime l'agent installé |
-
-Options transverses :
-
-| Flag | Effet |
-|------|-------|
-| `--dry-run` | Affiche les changements sans modifier le filesystem |
-| `--user-dir=<chemin>` | Surcharge `HOME` pour localiser `settings.json` (utile en tests) |
-| `--force`, `-f` | Écrase une configuration existante même si elle diffère du template |
-
-Voir la [page du marqueur et du hook PreCompact](/fr/docs/compressed-marker) pour les détails d'intégration.
+| Flag | Effect |
+|------|--------|
+| `--dry-run` | Print the changes without mutating the filesystem |
+| `--user-dir=<path>` | Override `HOME` for locating `settings.json` (useful in tests) |
+| `--force`, `-f` | Overwrite an existing configuration even if it differs from the template |
 
 ### `distill-mcp doctor`
 
-Aucun flag. Vérifie la version Node, la présence de `distill-mcp`, la configuration des IDE détectés et l'état des hooks installés.
+No flags. Checks Node version, `distill-mcp` availability, detected Claude Code configuration, and the state of installed hooks.
 
 ### `distill-mcp analyze`
 
-| Flag | Effet |
-|------|-------|
-| `--patterns`, `-p` | Patterns glob à scanner (défaut `**/*.{ts,tsx,js,jsx,py,go,rs}`) |
-| `--threshold`, `-t` | Seuil d'alerte en tokens (défaut `2000`) |
-| `--json`, `-j` | Sortie JSON au lieu du rapport texte |
-| `--output`, `-o` | Écrit le rapport dans un fichier au lieu de stdout |
+| Flag | Effect |
+|------|--------|
+| `--patterns`, `-p` | Glob patterns to scan (default `**/*.{ts,tsx,js,jsx,py,go,rs}`) |
+| `--threshold`, `-t` | Token warning threshold (default `2000`) |
+| `--json`, `-j` | Emit JSON instead of the text report |
+| `--output`, `-o` | Write the report to a file instead of stdout |
 
-## Étapes suivantes
+## Next steps
 
-- [Reference des outils MCP](/docs/mcp-tools) - Les 3 outils : auto_optimize, smart_file_read, code_execute
-- [Guide Claude Code](/docs/guides/claude-code) - Configuration avancée de Claude Code
-- [Dépannage](/docs/troubleshooting) - Problèmes courants et solutions
+- [MCP Tools Reference](/docs/mcp-tools) — The 3 tools: auto_optimize, smart_file_read, code_execute
+- [Claude Code Guide](/docs/guides/claude-code) — Full integration guide
+- [Troubleshooting](/docs/troubleshooting) — Common issues and solutions

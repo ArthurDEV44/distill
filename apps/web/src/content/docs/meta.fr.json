@@ -2,21 +2,15 @@
   "title": "Documentation",
   "pages": [
     "index",
-    "---Getting Started---",
+    "---Démarrage---",
     "installation",
     "mcp-tools",
     "slash-commands",
     "---Guides---",
     "guides/claude-code",
-    "guides/antigravity",
-    "guides/cursor",
-    "guides/windsurf",
     "---Configuration---",
-    "guides/settings-local",
     "guides/claude-md-setup",
-    "hooks",
-    "compressed-marker",
-    "---Reference---",
+    "---Référence---",
     "troubleshooting",
     "changelog"
   ]

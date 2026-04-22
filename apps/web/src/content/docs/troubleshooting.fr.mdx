@@ -1,0 +1,172 @@
+---
+title: Dépannage
+description: Problèmes courants et solutions pour Distill
+---
+
+# Dépannage
+
+Solutions aux problèmes courants lors de l'utilisation de Distill.
+
+## Problèmes d'installation
+
+### Erreur de version Node.js
+
+**Erreur :** `Node.js 20+ required`
+
+**Solution :** Mettez à jour Node.js vers la version 20 ou supérieure (LTS recommandé) :
+
+```bash
+# Avec nvm
+nvm install 22
+nvm use 22
+
+# Ou téléchargez depuis nodejs.org
+```
+
+> **Note :** Node.js 18.x a atteint sa fin de vie en avril 2025. Utilisez Node.js 20+ ou 22+ (LTS).
+
+### Permission refusée
+
+**Erreur :** `EACCES: permission denied`
+
+**Solution :** Utilisez npm avec un préfixe différent ou corrigez les permissions :
+
+```bash
+# Option 1 : Utilisez npx au lieu d'une installation globale
+npx distill-mcp serve
+
+# Option 2 : Corrigez les permissions npm (macOS/Linux)
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH=~/.npm-global/bin:$PATH
+```
+
+### Commande introuvable
+
+**Erreur :** `distill-mcp: command not found`
+
+**Solution :** Le répertoire bin global de npm n'est pas dans votre PATH :
+
+```bash
+# Trouvez où npm installe les packages globaux
+npm config get prefix
+
+# Ajoutez au PATH (ajoutez à ~/.bashrc ou ~/.zshrc)
+export PATH="$(npm config get prefix)/bin:$PATH"
+```
+
+## Problèmes de configuration Claude Code
+
+### Le serveur MCP ne démarre pas
+
+**Symptômes :** Claude Code n'affiche pas les outils Distill
+
+**Solutions :**
+
+1. **Vérifiez que le fichier de config existe :** `~/.claude.json`
+
+2. **Validez la syntaxe JSON :**
+   ```bash
+   cat ~/.claude.json | python -m json.tool
+   ```
+
+3. **Testez le serveur manuellement :**
+   ```bash
+   distill-mcp serve --verbose
+   ```
+
+4. **Exécutez doctor :**
+   ```bash
+   distill-mcp doctor
+   ```
+
+5. **Relancez le setup :**
+   ```bash
+   distill-mcp setup --force
+   ```
+
+### Les outils n'apparaissent pas
+
+**Symptômes :** Le serveur démarre mais les outils ne s'affichent pas
+
+**Solutions :**
+
+1. Redémarrez complètement Claude Code (pas juste recharger)
+2. Vérifiez les logs de Claude Code pour les erreurs MCP
+3. Vérifiez que le nom du serveur correspond dans `~/.claude.json`
+
+## Problèmes d'exécution
+
+### Mémoire insuffisante
+
+**Erreur :** `JavaScript heap out of memory`
+
+**Solution :** Pour les très gros fichiers, augmentez la mémoire Node.js :
+
+```json
+{
+  "mcpServers": {
+    "distill": {
+      "command": "node",
+      "args": ["--max-old-space-size=4096", "/path/to/distill-mcp", "serve"]
+    }
+  }
+}
+```
+
+Trouvez le chemin de distill-mcp avec : `which distill-mcp`
+
+### Parsing de fichiers lent
+
+**Symptômes :** smart_file_read prend trop de temps
+
+**Solutions :**
+
+1. Utilisez `skeleton=true` pour les gros fichiers
+2. Ciblez des fonctions spécifiques avec le paramètre `target`
+3. Utilisez le paramètre `lines` pour des plages spécifiques
+
+### Erreurs de parsing
+
+**Erreur :** `Failed to parse file`
+
+**Solutions :**
+
+1. Vérifiez que le fichier a une syntaxe valide pour son langage
+2. Utilisez l'outil natif `Read` comme solution de repli
+3. Signalez le problème avec un échantillon de fichier sur GitHub
+
+## Problèmes spécifiques aux outils
+
+### auto_optimize ne compresse pas
+
+**Symptômes :** La sortie a la même taille que l'entrée
+
+**Solutions :**
+
+1. Le contenu est peut-être déjà optimisé
+2. Essayez une strategie specifique : `strategy="build"` ou `strategy="logs"`
+3. Utilisez le parametre `aggressive: true` pour une compression maximale
+
+### smart_file_read retourne vide
+
+**Symptômes :** Aucune structure trouvée dans le fichier
+
+**Solutions :**
+
+1. Le fichier n'a peut-être pas d'éléments extractibles
+2. Vérifiez que le langage est supporté (TS, JS, Python, Go, Rust, PHP, Swift)
+3. Utilisez l'outil natif `Read` pour les fichiers de config
+
+## Obtenir de l'aide
+
+Si vous ne pouvez pas résoudre un problème :
+
+1. Exécutez `distill-mcp doctor` et incluez la sortie
+2. Consultez les [Issues GitHub](https://github.com/ArthurDEV44/distill/issues)
+3. Ouvrez une nouvelle issue avec :
+   - Version de Distill (`distill-mcp --version`)
+   - Version de Node.js (`node --version`)
+   - Version de Claude Code
+   - Messages d'erreur
+   - Étapes pour reproduire

@@ -22,15 +22,14 @@ export const metadata: Metadata = {
     template: "%s | Distill",
   },
   description:
-    "Open source MCP server for LLM token optimization. Reduce Claude, Cursor & Windsurf costs by up to 98% with smart file reading and AST extraction. Install in 30 seconds.",
+    "Open source MCP server for Claude Code. Cut LLM token usage by up to 98% with smart file reading, AST extraction, and context compression. Install in 30 seconds.",
   keywords: [
     "LLM token optimization",
     "context compression",
     "MCP server",
     "Model Context Protocol",
     "Claude Code",
-    "Cursor AI",
-    "Windsurf",
+    "Anthropic Claude",
     "AST extraction",
     "token savings",
     "AI development tools",

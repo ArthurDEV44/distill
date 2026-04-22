@@ -1,88 +1,88 @@
 ---
-title: Reference des outils MCP
-description: Reference des 3 outils Distill — auto_optimize, smart_file_read, code_execute
+title: MCP Tools Reference
+description: Reference for the 3 Distill tools — auto_optimize, smart_file_read, code_execute
 ---
 
-# Reference des outils MCP
+# MCP Tools Reference
 
-Distill fournit 3 outils toujours actifs pour optimiser l'utilisation des tokens LLM.
+Distill provides 3 always-loaded tools for optimizing LLM token usage.
 
-## `auto_optimize` — Compression universelle
+## `auto_optimize` — Universal Compression
 
-Detecte automatiquement le type de contenu et applique la strategie optimale.
+Auto-detects content type and applies the optimal compression strategy.
 
-| Strategie | Type de contenu | Economies |
-|-----------|----------------|-----------|
-| `build` | Erreurs compilateur (tsc, rustc, webpack) | 95% |
-| `logs` | Logs serveur/tests/build | 80-90% |
-| `errors` | Lignes d'erreur repetees | 70-90% |
+| Strategy | Content Type | Savings |
+|----------|-------------|---------|
+| `build` | Compiler errors (tsc, rustc, webpack) | 95% |
+| `logs` | Server/test/build logs | 80-90% |
+| `errors` | Repeated error lines | 70-90% |
 | `diff` | Git diffs | 60-80% |
 | `stacktrace` | Stack traces | 50-80% |
-| `code` / `semantic` | Code source (TF-IDF) | 40-60% |
-| `config` | Configs JSON/YAML | 30-60% |
-| `auto` | Detection automatique | variable |
+| `code` / `semantic` | Source code (TF-IDF) | 40-60% |
+| `config` | JSON/YAML configs | 30-60% |
+| `auto` | Auto-detect best strategy | varies |
 
-**Parametres :**
-- `content` (requis) — Le contenu a compresser
-- `strategy` — Strategie explicite ou `auto` (defaut)
-- `aggressive` — Mode compression maximale
-- `preservePatterns` — Regex des patterns a conserver
-- `format` — `plain` ou `markdown`
+**Parameters:**
+- `content` (required) — The content to compress
+- `strategy` — Explicit strategy or `auto` (default)
+- `aggressive` — Maximum compression mode
+- `preservePatterns` — Regex patterns to preserve
+- `format` — `plain` or `markdown`
 
-## `smart_file_read` — Lecture AST
+## `smart_file_read` — AST-Powered Reading
 
-Lit du code avec extraction AST — obtenez fonctions, classes, signatures sans charger le fichier entier.
+Read code with AST extraction — get functions, classes, signatures without loading the full file.
 
-**5 modes :**
-- `skeleton` — Signatures uniquement (profondeur 1-3)
-- `extract` — Element specifique par type et nom
-- `search` — Recherche par requete
-- `full` — Vue d'ensemble de la structure
-- `auto` — Detection depuis les parametres
+**5 modes:**
+- `skeleton` — Signatures only (depth 1-3)
+- `extract` — Specific element by type and name
+- `search` — Find elements by query
+- `full` — File structure overview
+- `auto` — Detect from params
 
-**7 langages :** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
+**7 languages:** TypeScript, JavaScript, Python, Go, Rust, PHP, Swift
 
-**Parametres :**
-- `filePath` (requis) — Chemin du fichier
-- `mode` — Mode de lecture (`auto` par defaut)
-- `target` — Pour le mode extract : `{type, name}`
-- `query` — Pour le mode search
-- `depth` — Profondeur skeleton (1-3)
+**Parameters:**
+- `filePath` (required) — Path to the file
+- `mode` — Read mode (`auto` default)
+- `target` — For extract mode: `{type, name}`
+- `query` — For search mode
+- `depth` — Skeleton depth (1-3)
 
-## `code_execute` — SDK TypeScript sandboxe
+## `code_execute` — Sandboxed TypeScript SDK
 
-Execute du TypeScript dans un sandbox securise. Remplace 5-10 appels d'outils en un seul.
+Execute TypeScript in a secure sandbox. Replaces 5-10 tool calls with one.
 
-**SDK `ctx.*` :**
+**`ctx.*` SDK:**
 
 ```typescript
-ctx.files.read(path)         // Lire un fichier
-ctx.files.glob(pattern)      // Chercher des fichiers
-ctx.files.exists(path)       // Verifier existence
+ctx.files.read(path)         // Read a file
+ctx.files.glob(pattern)      // Find files by pattern
+ctx.files.exists(path)       // Check if file exists
 
-ctx.code.parse(content, lang)                  // Parser en structure
-ctx.code.extract(content, lang, {type, name})  // Extraire un element
-ctx.code.skeleton(content, lang)               // Signatures uniquement
+ctx.code.parse(content, lang)                  // Parse to structure
+ctx.code.extract(content, lang, {type, name})  // Extract element
+ctx.code.skeleton(content, lang)               // Signatures only
 
-ctx.compress.auto(content, hint?)    // Compression auto
-ctx.compress.logs(logs)              // Resume de logs
-ctx.compress.diff(diff)              // Compression diff
-ctx.compress.semantic(content, ratio?) // Compression TF-IDF
+ctx.compress.auto(content, hint?)    // Auto-detect and compress
+ctx.compress.logs(logs)              // Log summarization
+ctx.compress.diff(diff)              // Diff compression
+ctx.compress.semantic(content, ratio?) // TF-IDF compression
 
-ctx.git.diff(ref?)        // Obtenir le diff
-ctx.git.log(limit?)       // Historique des commits
-ctx.git.blame(file, line?) // Blame
+ctx.git.diff(ref?)        // Get diff
+ctx.git.log(limit?)       // Commit history
+ctx.git.blame(file, line?) // Blame info
 
-ctx.search.grep(pattern, glob?)  // Recherche dans les fichiers
-ctx.search.symbols(query)        // Recherche de symboles
+ctx.search.grep(pattern, glob?)  // Search file contents
+ctx.search.symbols(query)        // Find code symbols
 
-ctx.utils.countTokens(text)      // Compter les tokens
-ctx.utils.detectType(content)    // Detecter le type
-ctx.utils.detectLanguage(path)   // Detecter le langage
+ctx.utils.countTokens(text)      // Count tokens
+ctx.utils.detectType(content)    // Detect content type
+ctx.utils.detectLanguage(path)   // Detect language from path
 ```
 
-**Parametres :**
-- `code` (requis) — Code TypeScript a executer
-- `timeout` — Timeout en ms (1000-30000, defaut 5000)
+**Parameters:**
+- `code` (required) — TypeScript code to execute
+- `timeout` — Timeout in ms (1000-30000, default 5000)
 
-**Securite :** Sandbox avec 7 couches de protection, limite memoire 128MB, blocage de `eval`, `require`, `import()`, `process`.
+**Security:** 7-layer sandbox, 128MB memory limit, blocks `eval`, `require`, `import()`, `process`.

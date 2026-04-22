@@ -1,110 +1,107 @@
 ---
-title: Dépannage
-description: Problèmes courants et solutions pour Distill
+title: Troubleshooting
+description: Common issues and solutions for Distill
 ---
 
-# Dépannage
+# Troubleshooting
 
-Solutions aux problèmes courants lors de l'utilisation de Distill.
+Solutions to common issues when using Distill.
 
-## Problèmes d'installation
+## Installation Issues
 
-### Erreur de version Node.js
+### Node.js Version Error
 
-**Erreur :** `Node.js 20+ required`
+**Error:** `Node.js 20+ required`
 
-**Solution :** Mettez à jour Node.js vers la version 20 ou supérieure (LTS recommandé) :
+**Solution:** Update Node.js to version 20 or higher (LTS recommended):
 
 ```bash
-# Avec nvm
+# Using nvm
 nvm install 22
 nvm use 22
 
-# Ou téléchargez depuis nodejs.org
+# Or download from nodejs.org
 ```
 
-> **Note :** Node.js 18.x a atteint sa fin de vie en avril 2025. Utilisez Node.js 20+ ou 22+ (LTS).
+> **Note:** Node.js 18.x reached end-of-life in April 2025. Use Node.js 20+ or 22+ (LTS).
 
-### Permission refusée
+### Permission Denied
 
-**Erreur :** `EACCES: permission denied`
+**Error:** `EACCES: permission denied`
 
-**Solution :** Utilisez npm avec un préfixe différent ou corrigez les permissions :
+**Solution:** Use npm with a different prefix or fix permissions:
 
 ```bash
-# Option 1 : Utilisez npx au lieu d'une installation globale
+# Option 1: Use npx instead of global install
 npx distill-mcp serve
 
-# Option 2 : Corrigez les permissions npm (macOS/Linux)
+# Option 2: Fix npm permissions (macOS/Linux)
 mkdir ~/.npm-global
 npm config set prefix '~/.npm-global'
 export PATH=~/.npm-global/bin:$PATH
 ```
 
-### Commande introuvable
+### Command Not Found
 
-**Erreur :** `distill-mcp: command not found`
+**Error:** `distill-mcp: command not found`
 
-**Solution :** Le répertoire bin global de npm n'est pas dans votre PATH :
+**Solution:** The global npm bin is not in your PATH:
 
 ```bash
-# Trouvez où npm installe les packages globaux
+# Find where npm installs global packages
 npm config get prefix
 
-# Ajoutez au PATH (ajoutez à ~/.bashrc ou ~/.zshrc)
+# Add to PATH (add to ~/.bashrc or ~/.zshrc)
 export PATH="$(npm config get prefix)/bin:$PATH"
 ```
 
-## Problèmes de configuration IDE
+## Claude Code Configuration Issues
 
-### Le serveur MCP ne démarre pas
+### MCP Server Not Starting
 
-**Symptômes :** L'IDE n'affiche pas les outils Distill
+**Symptoms:** Claude Code doesn't show Distill tools
 
-**Solutions :**
+**Solutions:**
 
-1. **Vérifiez que le fichier de config existe :**
-   - Claude Code : `~/.claude.json`
-   - Cursor : `~/.cursor/mcp.json`
-   - Windsurf : `~/.codeium/windsurf/mcp_config.json`
+1. **Check config file exists:** `~/.claude.json`
 
-2. **Validez la syntaxe JSON :**
+2. **Validate JSON syntax:**
    ```bash
    cat ~/.claude.json | python -m json.tool
    ```
 
-3. **Testez le serveur manuellement :**
+3. **Test server manually:**
    ```bash
    distill-mcp serve --verbose
    ```
 
-4. **Exécutez doctor :**
+4. **Run doctor:**
    ```bash
    distill-mcp doctor
    ```
 
-5. **Relancez le setup :**
+5. **Re-run setup:**
    ```bash
    distill-mcp setup --force
    ```
 
-### Les outils n'apparaissent pas
+### Tools Not Appearing
 
-**Symptômes :** Le serveur démarre mais les outils ne s'affichent pas
+**Symptoms:** Server starts but tools don't show up
 
-**Solutions :**
+**Solutions:**
 
-1. Redémarrez complètement votre IDE (pas juste recharger)
-2. Vérifiez les logs de l'IDE pour les erreurs MCP
-3. Vérifiez que le nom du serveur correspond dans la config
+1. Restart Claude Code completely (not just reload)
+2. Check Claude Code logs for MCP errors
+3. Verify the server name matches in `~/.claude.json`
 
-## Problèmes d'exécution
+## Runtime Issues
 
-### Mémoire insuffisante
+### Out of Memory
 
-**Erreur :** `JavaScript heap out of memory`
+**Error:** `JavaScript heap out of memory`
 
-**Solution :** Pour les très gros fichiers, augmentez la mémoire Node.js :
+**Solution:** For very large files, increase Node.js memory:
 
 ```json
 {
@@ -117,59 +114,59 @@ export PATH="$(npm config get prefix)/bin:$PATH"
 }
 ```
 
-Trouvez le chemin de distill-mcp avec : `which distill-mcp`
+Find your distill-mcp path with: `which distill-mcp`
 
-### Parsing de fichiers lent
+### Slow File Parsing
 
-**Symptômes :** smart_file_read prend trop de temps
+**Symptoms:** smart_file_read takes too long
 
-**Solutions :**
+**Solutions:**
 
-1. Utilisez `skeleton=true` pour les gros fichiers
-2. Ciblez des fonctions spécifiques avec le paramètre `target`
-3. Utilisez le paramètre `lines` pour des plages spécifiques
+1. Use `skeleton=true` for large files
+2. Target specific functions with `target` parameter
+3. Use `lines` parameter for specific ranges
 
-### Erreurs de parsing
+### Parser Errors
 
-**Erreur :** `Failed to parse file`
+**Error:** `Failed to parse file`
 
-**Solutions :**
+**Solutions:**
 
-1. Vérifiez que le fichier a une syntaxe valide pour son langage
-2. Utilisez l'outil natif `Read` comme solution de repli
-3. Signalez le problème avec un échantillon de fichier sur GitHub
+1. Check file is valid syntax for its language
+2. Use native `Read` tool as fallback
+3. Report issue with file sample on GitHub
 
-## Problèmes spécifiques aux outils
+## Tool-Specific Issues
 
-### auto_optimize ne compresse pas
+### auto_optimize Not Compressing
 
-**Symptômes :** La sortie a la même taille que l'entrée
+**Symptoms:** Output is same size as input
 
-**Solutions :**
+**Solutions:**
 
-1. Le contenu est peut-être déjà optimisé
-2. Essayez une strategie specifique : `strategy="build"` ou `strategy="logs"`
-3. Utilisez le parametre `aggressive: true` pour une compression maximale
+1. Content may already be optimized
+2. Try a specific strategy: `strategy="build"` or `strategy="logs"`
+3. Use `aggressive: true` for maximum compression
 
-### smart_file_read retourne vide
+### smart_file_read Returns Empty
 
-**Symptômes :** Aucune structure trouvée dans le fichier
+**Symptoms:** No structure found in file
 
-**Solutions :**
+**Solutions:**
 
-1. Le fichier n'a peut-être pas d'éléments extractibles
-2. Vérifiez que le langage est supporté (TS, JS, Python, Go, Rust, PHP, Swift)
-3. Utilisez l'outil natif `Read` pour les fichiers de config
+1. File may not have extractable elements
+2. Check language is supported (TS, JS, Python, Go, Rust, PHP, Swift)
+3. Use native `Read` for config files
 
-## Obtenir de l'aide
+## Getting Help
 
-Si vous ne pouvez pas résoudre un problème :
+If you can't resolve an issue:
 
-1. Exécutez `distill-mcp doctor` et incluez la sortie
-2. Consultez les [Issues GitHub](https://github.com/ArthurDEV44/distill/issues)
-3. Ouvrez une nouvelle issue avec :
-   - Version de Distill (`distill-mcp --version`)
-   - Version de Node.js (`node --version`)
-   - IDE et version
-   - Messages d'erreur
-   - Étapes pour reproduire
+1. Run `distill-mcp doctor` and include output
+2. Check [GitHub Issues](https://github.com/ArthurDEV44/distill/issues)
+3. Open a new issue with:
+   - Distill version (`distill-mcp --version`)
+   - Node.js version (`node --version`)
+   - Claude Code version
+   - Error messages
+   - Steps to reproduce

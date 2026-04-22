@@ -1,0 +1,54 @@
+---
+title: Introduction
+description: Serveur MCP open source pour Claude Code — compression intelligente du contexte LLM
+---
+
+# Documentation Distill
+
+Distill est un serveur MCP open-source pour **Claude Code**. Il compresse intelligemment le contexte LLM en amont — build logs, diffs, code, stacktraces — avant que Claude Code ne les consomme. Résultat : jusqu'à 98 % de tokens en moins, sans perte de signal.
+
+**Pas d'authentification, pas de clés API, pas de services cloud** — installez et utilisez directement.
+
+> **Qu'est-ce que MCP ?**
+> MCP (Model Context Protocol) est un standard ouvert qui permet à Claude Code de communiquer avec des serveurs externes. Distill est un serveur MCP qui aide Claude Code à consommer moins de tokens en compressant intelligemment le contexte.
+
+## Démarrage rapide
+
+Deux étapes, une minute.
+
+### 1. Installer et configurer
+
+```bash
+npm install -g distill-mcp
+distill-mcp setup
+```
+
+La commande `setup` détecte et configure Claude Code automatiquement.
+
+### 2. Commencer à économiser des tokens
+
+Le serveur expose 3 outils toujours actifs : `auto_optimize`, `smart_file_read` et `code_execute`.
+
+## Fonctionnalités
+
+- **3 outils de précision** — Compression auto, lecture AST, SDK TypeScript sandboxé
+- **Parsing AST** — Extraction de fonctions, classes et types depuis le code (TypeScript, Python, Go, Rust, PHP, Swift)
+- **Intégration native Claude Code** — Marqueur `[DISTILL:COMPRESSED]`, hook PreCompact, sous-agent `distill-compressor`, slash commands
+- **50-95 % d'économie de tokens** — Selon le type de contenu
+
+## Communauté
+
+Distill est en beta — vos retours orientent la roadmap.
+
+- **[GitHub Discussions](https://github.com/ArthurDEV44/distill/discussions)** — Questions, idées, feedback
+- **[Issues](https://github.com/ArthurDEV44/distill/issues)** — Signalement de bugs
+
+## Étapes suivantes
+
+<Cards>
+  <Card title="Installation" href="/fr/docs/installation" description="Installation, prérequis et référence CLI complète" />
+  <Card title="Outils MCP" href="/fr/docs/mcp-tools" description="Les 3 outils : auto_optimize, smart_file_read, code_execute" />
+  <Card title="Guide Claude Code" href="/fr/docs/guides/claude-code" description="Intégration complète : setup, CLAUDE.md, hooks, marker" />
+</Cards>
+
+> Distill fonctionne avec d'autres clients MCP (Cursor, Windsurf, Antigravity, etc.) — les 3 outils sont standards. La documentation se concentre sur Claude Code, la plateforme officiellement supportée.

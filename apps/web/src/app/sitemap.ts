@@ -7,13 +7,11 @@ const docPages = [
   "", // index page
   "installation",
   "mcp-tools",
+  "slash-commands",
   "troubleshooting",
+  "changelog",
   "guides/claude-code",
-  "guides/cursor",
-  "guides/windsurf",
-  "guides/antigravity",
   "guides/claude-md-setup",
-  "guides/settings-local",
 ];
 
 // Define static pages

@@ -97,7 +97,7 @@ const translations: Record<string, Translations> = {
     whatIntro: 'Distill est un ',
     whatIntroStrong: 'serveur MCP (Model Context Protocol) open-source',
     whatIntroEnd:
-      ", qui expose trois outils toujours chargés dans Claude Code et tout client compatible.",
+      ", qui expose trois outils toujours chargés dans Claude Code.",
     tools: [
       {
         name: 'auto_optimize',
@@ -145,9 +145,9 @@ const translations: Record<string, Translations> = {
       },
       {
         icon: Sparkles,
-        title: 'Intégration native',
+        title: 'Intégration native Claude Code',
         description:
-          'Compatible Claude Code, Cursor, Windsurf, et tout client MCP. Zéro configuration côté API.',
+          'Marqueur [DISTILL:COMPRESSED], hook PreCompact, sous-agent distill-compressor, slash commands. Zéro config côté API.',
         metric: 'MCP stdio',
       },
     ],
@@ -185,7 +185,7 @@ const translations: Record<string, Translations> = {
     whatIntro: 'Distill is an ',
     whatIntroStrong: 'open-source MCP (Model Context Protocol) server',
     whatIntroEnd:
-      ' that exposes three always-loaded tools inside Claude Code and any MCP-compatible client.',
+      ' that exposes three always-loaded tools inside Claude Code.',
     tools: [
       {
         name: 'auto_optimize',
@@ -233,9 +233,9 @@ const translations: Record<string, Translations> = {
       },
       {
         icon: Sparkles,
-        title: 'Native integration',
+        title: 'Native Claude Code integration',
         description:
-          'Works with Claude Code, Cursor, Windsurf, and any MCP client. Zero config on the API side.',
+          '[DISTILL:COMPRESSED] marker, PreCompact hook, distill-compressor subagent, slash commands. Zero config on the API side.',
         metric: 'MCP stdio',
       },
     ],

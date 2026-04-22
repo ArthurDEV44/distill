@@ -1,78 +1,78 @@
 ---
-title: Commandes slash
-description: Les trois commandes slash MCP de Distill — compress-session, analyze-tokens, forget-large-results
+title: Slash Commands
+description: Distill's three MCP slash commands — compress-session, analyze-tokens, forget-large-results
 ---
 
-# Commandes slash
+# Slash Commands
 
-Distill expose trois commandes slash utilisables directement dans une session Claude Code. Elles sont déclarées côté serveur via le protocole MCP (`prompts/list`) et Claude Code les surface automatiquement sous la forme `/mcp__distill-mcp__<nom>`.
+Distill exposes three slash commands that you can invoke directly inside a Claude Code session. They are declared server-side through the MCP protocol (`prompts/list`) and Claude Code surfaces them automatically as `/mcp__distill-mcp__<name>`.
 
-Aucune de ces commandes ne prend d'argument — l'instruction complète est intégrée au prompt renvoyé par le serveur. Le modèle la reçoit, puis appelle les outils `auto_optimize` / `smart_file_read` de lui-même pour exécuter le travail.
+None of these commands takes arguments — the full instruction is baked into the prompt returned by the server. The model reads it and then calls `auto_optimize` / `smart_file_read` on its own to do the actual work.
 
-**Quand préférer une commande slash à un appel d'outil direct :**
+**When to prefer a slash command over a direct tool call:**
 
-- Vous voulez un raccourci clavier pour un workflow Distill courant.
-- Vous déléguez la décision "quoi compresser" à Claude — la commande déclenche l'analyse, Claude choisit les cibles.
-- Vous n'avez pas besoin de passer d'arguments fins (les commandes sont sans argument par design).
+- You want a keyboard shortcut for a common Distill workflow.
+- You want to delegate the "what to compress" decision to Claude — the command triggers the analysis, Claude picks the targets.
+- You don't need fine-grained arguments (all three commands are argument-free by design).
 
 ## `/mcp__distill-mcp__compress-session`
 
-**Quand l'utiliser.** Votre session vient d'accumuler plusieurs résultats d'outils volumineux (logs de build, diffs, sorties de tests) et vous voulez les compresser avant que l'autocompact de Claude Code ne s'en occupe à sa façon.
+**When to use.** Your session has just accumulated several large tool results (build logs, diffs, test output) and you want to compress them before Claude Code's autocompact handles them on its own terms.
 
-**Exemple d'invocation dans Claude Code :**
+**Example invocation in Claude Code:**
 
 ```text
 /mcp__distill-mcp__compress-session
 ```
 
-**Comportement attendu.** Claude reçoit un message utilisateur lui demandant de passer en revue les résultats d'outils récents, d'identifier ceux qui dépassent 500 caractères de sortie brute, et d'appeler `auto_optimize` sur chacun. Aucun paramètre à fournir : l'instruction est déjà dans le prompt.
+**Expected behavior.** Claude receives a user-role message asking it to review recent tool results, identify the ones exceeding 500 characters of raw output, and call `auto_optimize` on each. No arguments required — the instruction is already in the prompt.
 
 ## `/mcp__distill-mcp__analyze-tokens`
 
-**Quand l'utiliser.** Vous vous approchez du seuil d'autocompact (par défaut `(contextWindow − reserved) − 13K`, soit ~167K tokens sur un modèle 200K standard) et vous voulez savoir quels messages consomment le plus.
+**When to use.** You're approaching the autocompact threshold (default `(contextWindow − reserved) − 13K`, i.e. ~167K tokens on a standard 200K model) and you want to know which messages are consuming the most.
 
-**Exemple d'invocation dans Claude Code :**
+**Example invocation in Claude Code:**
 
 ```text
 /mcp__distill-mcp__analyze-tokens
 ```
 
-**Comportement attendu.** Claude estime la consommation de tokens de la session via l'heuristique `roughTokenCountEstimation = length / 4`, identifie les trois contributions les plus lourdes, puis propose celles qui peuvent être compressées via `auto_optimize` ou un refactoring en `smart_file_read`.
+**Expected behavior.** Claude estimates session token usage via the `roughTokenCountEstimation = length / 4` heuristic, identifies the top three heaviest contributions, then suggests which ones could be compressed via `auto_optimize` or refactored through `smart_file_read`.
 
 ## `/mcp__distill-mcp__forget-large-results`
 
-**Quand l'utiliser.** Claude Code a persisté des résultats d'outils sur disque (au-delà du seuil MCP de 25K tokens défini dans `claude-code/utils/mcpValidation.ts:16`) et vous voulez identifier lesquels peuvent être re-compressés pour soulager le contexte.
+**When to use.** Claude Code has persisted tool results to disk (past the 25K-token MCP threshold defined in `claude-code/utils/mcpValidation.ts:16`) and you want to identify which ones could be re-compressed to lighten the context.
 
-**Exemple d'invocation dans Claude Code :**
+**Example invocation in Claude Code:**
 
 ```text
 /mcp__distill-mcp__forget-large-results
 ```
 
-**Comportement attendu.** Claude liste les chemins des résultats persistés, puis propose ceux qui peuvent être re-compressés sans perte d'information critique, typiquement via des appels à `auto_optimize` sur les payloads d'origine.
+**Expected behavior.** Claude lists the paths of persisted results, then proposes the ones that can be re-compressed without losing critical information — typically via `auto_optimize` calls against the original payloads.
 
-## Dépannage
+## Troubleshooting
 
-### La commande n'apparaît pas dans l'auto-complétion
+### The command is not showing up in autocomplete
 
-Si `/mcp__distill-mcp__compress-session` (ou l'une des deux autres) n'apparaît pas dans la palette de commandes de Claude Code, c'est que le serveur `distill-mcp` n'est pas encore raccordé à votre session.
+If `/mcp__distill-mcp__compress-session` (or either of the other two) doesn't appear in Claude Code's command palette, the `distill-mcp` server hasn't been wired into your session yet.
 
-**Correctif.** Lancez la configuration automatique pour Claude Code :
+**Fix.** Run the automatic Claude Code setup:
 
 ```bash
 distill-mcp setup --claude
 ```
 
-Puis redémarrez Claude Code. Les trois commandes `/mcp__distill-mcp__*` apparaîtront dès l'ouverture de la session suivante.
+Then restart Claude Code. The three `/mcp__distill-mcp__*` commands will appear as soon as the next session starts.
 
-### Vérifier l'installation
+### Verify the installation
 
 ```bash
 distill-mcp doctor
 ```
 
-Cette commande confirme que Distill est correctement déclaré dans `~/.claude/settings.json` et que le binaire `distill-mcp` est accessible depuis le PATH.
+This confirms Distill is correctly registered in `~/.claude/settings.json` and that the `distill-mcp` binary is reachable on the PATH.
 
-### La commande est listée mais échoue à l'invocation
+### The command is listed but fails when invoked
 
-Cela signifie presque toujours que Claude Code a bien vu les commandes au démarrage mais que le serveur MCP s'est arrêté depuis. Relancez Claude Code et revalidez avec `distill-mcp doctor`.
+This almost always means Claude Code saw the commands at startup but the MCP server has since exited. Restart Claude Code and re-check with `distill-mcp doctor`.

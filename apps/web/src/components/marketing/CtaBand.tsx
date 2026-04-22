@@ -23,7 +23,7 @@ const translations: { fr: CtaBandTranslations; en: CtaBandTranslations } = {
     titleLine1: 'Prêt à distiller',
     titleMuted: 'votre contexte ?',
     paragraph:
-      'Une commande, zéro config. Compatible Claude Code, Cursor, Windsurf et tout client MCP.',
+      'Une commande, zéro config. Intégration native Claude Code en 30 secondes.',
     docsCta: 'Lire la doc',
     githubCta: 'Star on GitHub',
     githubAriaLabel: 'Voir Distill sur GitHub (ouvre un nouvel onglet)',
@@ -33,7 +33,7 @@ const translations: { fr: CtaBandTranslations; en: CtaBandTranslations } = {
     titleLine1: 'Ready to distill',
     titleMuted: 'your context?',
     paragraph:
-      'One command, zero config. Works with Claude Code, Cursor, Windsurf, and any MCP client.',
+      'One command, zero config. Native Claude Code integration in 30 seconds.',
     docsCta: 'Read the docs',
     githubCta: 'Star on GitHub',
     githubAriaLabel: 'View Distill on GitHub (opens in new tab)',

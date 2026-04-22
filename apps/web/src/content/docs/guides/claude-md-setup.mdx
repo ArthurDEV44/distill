@@ -1,203 +1,186 @@
 ---
-title: Configuration CLAUDE.md
-description: Template CLAUDE.md complet pour une intégration optimale de Distill
+title: CLAUDE.md Configuration
+description: Complete CLAUDE.md template for optimal Distill integration
 ---
 
-# Configuration CLAUDE.md
+# CLAUDE.md Configuration
 
-Ajoutez ces instructions au fichier `CLAUDE.md` de votre projet pour activer l'optimisation automatique des tokens avec Distill.
+Add these instructions to your project's `CLAUDE.md` file to enable automatic token optimization with Distill.
 
-## Configuration rapide
+## Quick Setup
 
-Créez un fichier `CLAUDE.md` à la racine de votre projet et collez le template ci-dessous.
+Create a `CLAUDE.md` file at your project root and paste the template below.
 
-## Template complet
+## Complete Template
 
 ```markdown
-## Directives d'utilisation des outils MCP
+## MCP Tool Usage Guidelines
 
-Utilisez les outils Distill MCP pour des opérations économes en tokens :
+Use Distill MCP tools for token-efficient operations:
 
-### Règle 1 : Lecture intelligente de fichiers
+### Rule 1: Smart File Reading
 
-Lors de la lecture de fichiers source pour **exploration ou compréhension** :
+When reading source code files for **exploration or understanding**:
 
 \`\`\`
 mcp__distill__smart_file_read filePath="path/to/file.ts"
 \`\`\`
 
-**Quand utiliser Read natif à la place :**
-- Avant d'éditer un fichier (Edit nécessite Read d'abord)
-- Fichiers de configuration : `.json`, `.yaml`, `.toml`, `.md`, `.env`
+**When to use native Read instead:**
+- Before editing a file (Edit requires Read first)
+- Configuration files: `.json`, `.yaml`, `.toml`, `.md`, `.env`
 
-### Règle 2 : Compresser les sorties volumineuses
+### Rule 2: Compress Large Outputs
 
-Après les commandes Bash qui produisent une sortie volumineuse (>500 caractères) :
-
-\`\`\`
-mcp__distill__auto_optimize content="<collez la sortie volumineuse>"
-\`\`\`
-
-### Règle 3 : SDK d'exécution de code pour les opérations complexes
-
-Pour les opérations multi-étapes, utilisez `code_execute` au lieu de plusieurs appels d'outils (**98% d'économie de tokens**) :
+After Bash commands that produce large output (>500 chars):
 
 \`\`\`
-mcp__distill__code_execute code="<code typescript>"
+mcp__distill__auto_optimize content="<paste the large output>"
 \`\`\`
 
-**API du SDK (`ctx`) :**
+### Rule 3: Code Execution SDK for Complex Operations
 
-*Compression :*
-- `ctx.compress.auto(content, hint?)` - Détection auto et compression
-- `ctx.compress.logs(logs)` - Résumer les logs
-- `ctx.compress.diff(diff)` - Compresser les git diff
-- `ctx.compress.semantic(content, ratio?)` - Compression TF-IDF
+For multi-step operations, use `code_execute` instead of multiple tool calls (**98% token savings**):
 
-*Code :*
-- `ctx.code.parse(content, lang)` - Parser en structure AST
-- `ctx.code.extract(content, lang, {type, name})` - Extraire un élément
-- `ctx.code.skeleton(content, lang)` - Obtenir les signatures uniquement
+\`\`\`
+mcp__distill__code_execute code="<typescript code>"
+\`\`\`
 
-*Fichiers :*
-- `ctx.files.read(path)` - Lire le contenu d'un fichier
-- `ctx.files.exists(path)` - Vérifier si un fichier existe
-- `ctx.files.glob(pattern)` - Trouver des fichiers par pattern
+**SDK API (`ctx`):**
 
-*Git :*
-- `ctx.git.diff(ref?)` - Obtenir le diff git
-- `ctx.git.log(limit?)` - Historique des commits
-- `ctx.git.status()` - Statut du repo
-- `ctx.git.branch()` - Info sur les branches
-- `ctx.git.blame(file, line?)` - Git blame d'un fichier
+*Compression:*
+- `ctx.compress.auto(content, hint?)` - Auto-detect and compress
+- `ctx.compress.logs(logs)` - Summarize log output
+- `ctx.compress.diff(diff)` - Compress git diff
+- `ctx.compress.semantic(content, ratio?)` - TF-IDF compression
 
-*Recherche :*
-- `ctx.search.grep(pattern, glob?)` - Rechercher un pattern dans les fichiers
-- `ctx.search.symbols(query, glob?)` - Rechercher des symboles (fonctions, classes)
-- `ctx.search.files(pattern)` - Rechercher des fichiers par pattern
-- `ctx.search.references(symbol, glob?)` - Trouver les références d'un symbole
+*Code:*
+- `ctx.code.parse(content, lang)` - Parse to AST structure
+- `ctx.code.extract(content, lang, {type, name})` - Extract element
+- `ctx.code.skeleton(content, lang)` - Get signatures only
 
-*Analyse :*
-- `ctx.analyze.dependencies(file)` - Analyser les imports/exports
-- `ctx.analyze.callGraph(fn, file, depth?)` - Construire le graphe d'appels
-- `ctx.analyze.exports(file)` - Obtenir les exports d'un fichier
-- `ctx.analyze.structure(dir?, depth?)` - Structure du répertoire avec analyse
+*Files:*
+- `ctx.files.read(path)` - Read file content
+- `ctx.files.exists(path)` - Check if file exists
+- `ctx.files.glob(pattern)` - Find files by pattern
 
-*Utilitaires :*
-- `ctx.utils.countTokens(text)` - Compter les tokens
-- `ctx.utils.detectType(content)` - Détecter le type de contenu
-- `ctx.utils.detectLanguage(path)` - Détecter le langage depuis le chemin
+*Git:*
+- `ctx.git.diff(ref?)` - Get git diff
+- `ctx.git.log(limit?)` - Get commit history
+- `ctx.git.status()` - Get repo status
+- `ctx.git.branch()` - Get branch info
+- `ctx.git.blame(file, line?)` - Git blame for a file
 
-**Exemples :**
+*Search:*
+- `ctx.search.grep(pattern, glob?)` - Search for pattern in files
+- `ctx.search.symbols(query, glob?)` - Search for symbols (functions, classes)
+- `ctx.search.files(pattern)` - Search files by pattern
+- `ctx.search.references(symbol, glob?)` - Find references to a symbol
+
+*Analyze:*
+- `ctx.analyze.dependencies(file)` - Analyze imports/exports
+- `ctx.analyze.callGraph(fn, file, depth?)` - Build call graph
+- `ctx.analyze.exports(file)` - Get file exports
+- `ctx.analyze.structure(dir?, depth?)` - Directory structure with analysis
+
+*Utilities:*
+- `ctx.utils.countTokens(text)` - Count tokens
+- `ctx.utils.detectType(content)` - Detect content type
+- `ctx.utils.detectLanguage(path)` - Detect language from path
+
+**Examples:**
 
 \`\`\`typescript
-// Obtenir les squelettes de tous les fichiers TypeScript
+// Get skeletons of all TypeScript files
 const files = ctx.files.glob("src/**/*.ts").slice(0, 5);
 return files.map(f => ({
   file: f,
   skeleton: ctx.code.skeleton(ctx.files.read(f), "typescript")
 }));
 
-// Compresser et analyser les logs
+// Compress and analyze logs
 const logs = ctx.files.read("server.log");
 return ctx.compress.logs(logs);
 
-// Extraire une fonction spécifique
+// Extract a specific function
 const content = ctx.files.read("src/api.ts");
 return ctx.code.extract(content, "typescript", { type: "function", name: "handleRequest" });
 \`\`\`
 
-### Référence rapide
+### Quick Reference
 
-| Action | Utiliser |
-|--------|----------|
-| Lire du code pour exploration | `mcp__distill__smart_file_read filePath="file.ts"` |
-| Obtenir une fonction/classe | `mcp__distill__smart_file_read filePath="file.ts" target={"type":"function","name":"myFunc"}` |
-| Compresser les erreurs de build | `mcp__distill__auto_optimize content="..."` |
-| Résumer les logs | `mcp__distill__auto_optimize content="..."` |
-| Opérations multi-étapes | `mcp__distill__code_execute code="return ctx.files.glob('src/**/*.ts')"` |
-| Avant d'éditer | Utiliser l'outil natif `Read` |
+| Action | Use |
+|--------|-----|
+| Read code for exploration | `mcp__distill__smart_file_read filePath="file.ts"` |
+| Get function/class | `mcp__distill__smart_file_read filePath="file.ts" target={"type":"function","name":"myFunc"}` |
+| Compress build errors | `mcp__distill__auto_optimize content="..."` |
+| Summarize logs | `mcp__distill__auto_optimize content="..."` |
+| Multi-step operations | `mcp__distill__code_execute code="return ctx.files.glob('src/**/*.ts')"` |
+| Before editing | Use native `Read` tool |
 ```
 
-## Template minimal
+## Minimal Template
 
-Si vous préférez une version plus courte :
+If you prefer a shorter version:
 
 ```markdown
-## Outils MCP
+## MCP Tools
 
-Utilisez Distill pour l'optimisation des tokens :
-- Exploration de code : `mcp__distill__smart_file_read filePath="file.ts"`
-- Sorties volumineuses : `mcp__distill__auto_optimize content="..."`
-- Opérations multi-étapes : `mcp__distill__code_execute code="return ctx.files.glob('**/*.ts')"`
-- Avant d'éditer : Utiliser l'outil natif `Read`
+Use Distill for token optimization:
+- Code exploration: `mcp__distill__smart_file_read filePath="file.ts"`
+- Large outputs: `mcp__distill__auto_optimize content="..."`
+- Multi-step ops: `mcp__distill__code_execute code="return ctx.files.glob('**/*.ts')"`
+- Before editing: Use native `Read` tool
 ```
 
-## Référence des économies de tokens
+## Token Savings Reference
 
-| Outil | Économie | Idéal pour |
-|-------|----------|------------|
-| `smart_file_read` | 50-70% | Lecture de code source |
-| `auto_optimize` | 40-95% | Erreurs de build, logs |
-| `code_execute` | **98%** | Opérations multi-étapes |
+| Tool | Savings | Best For |
+|------|---------|----------|
+| `smart_file_read` | 50-70% | Reading source code |
+| `auto_optimize` | 40-95% | Build errors, logs |
+| `code_execute` | **98%** | Multi-step operations |
 
-## Auto-installation avec la CLI
+## Auto-Install with CLI
 
-Au lieu d'ajouter manuellement le template, utilisez la CLI :
+Instead of manually adding the template, use the CLI:
 
-### Prérequis : Créer CLAUDE.md
+### Prerequisite: Create CLAUDE.md
 
-Si vous n'avez pas encore de fichier `CLAUDE.md`, créez-le d'abord avec Claude Code :
+If you don't have a `CLAUDE.md` file yet, create it first with Claude Code:
 
 ```
 /init
 ```
 
-### Ajouter les directives Distill
-
-```bash
-distill-mcp setup --claude
-```
-
-Ou via le mode interactif :
+### Add Distill Directives
 
 ```bash
 distill-mcp setup
-# Sélectionnez Claude Code
 ```
 
-Le setup va automatiquement ajouter les directives Distill à votre `CLAUDE.md` existant.
+The setup detects Claude Code and automatically appends the Distill directives to your existing `CLAUDE.md`.
 
-### Avec les hooks (optionnel)
+### With Hooks (optional)
 
-Pour une intégration maximale, ajoutez aussi les hooks :
+For maximum integration, also add hooks:
 
 ```bash
-distill-mcp setup --claude --hooks
+distill-mcp setup --hooks
 ```
 
-Les hooks ajoutent des rappels automatiques pour utiliser les outils MCP.
+Hooks add automatic reminders to use MCP tools.
 
-## Notes spécifiques aux IDE
+## Where to place CLAUDE.md
 
-### Claude Code
+The `CLAUDE.md` file is automatically read by Claude Code when you open a project. Place it at your repository root.
 
-Le fichier `CLAUDE.md` est automatiquement lu par Claude Code quand vous ouvrez un projet. Placez-le à la racine de votre dépôt.
+## Verifying Setup
 
-### Cursor
+After adding the `CLAUDE.md`, verify Distill is working:
 
-Cursor supporte aussi les fichiers `CLAUDE.md`. Le même template fonctionne pour les deux IDE.
+1. Start a new conversation
+2. Ask Claude to read a source file
+3. Check if it uses `smart_file_read` instead of `Read`
 
-### Windsurf
-
-Windsurf utilise un mécanisme similaire. Ajoutez le template à la racine de votre projet.
-
-## Vérification de la configuration
-
-Après avoir ajouté le `CLAUDE.md`, vérifiez que Distill fonctionne :
-
-1. Démarrez une nouvelle conversation
-2. Demandez à Claude de lire un fichier source
-3. Vérifiez s'il utilise `smart_file_read` au lieu de `Read`
-
-Vous pouvez aussi vérifier en demandant de compresser une sortie volumineuse avec `auto_optimize`.
+You can also verify by asking to compress a large output with `auto_optimize`.

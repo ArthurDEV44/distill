@@ -1,39 +1,39 @@
 ---
-title: Intégration Claude Code
-description: Guide pas à pas pour intégrer Distill avec Claude Code
+title: Claude Code Integration
+description: Step-by-step guide to integrate Distill with Claude Code
 ---
 
-# Intégration Claude Code
+# Claude Code Integration
 
-Ce guide vous accompagne dans la configuration de Distill avec Claude Code.
+This guide walks you through setting up Distill with Claude Code.
 
-## Prérequis
+## Prerequisites
 
-- Claude Code installé (`npm install -g @anthropic-ai/claude-code` ou [télécharger](https://claude.com/download))
-- Node.js 20+ installé
+- Claude Code installed (`npm install -g @anthropic-ai/claude-code` or [download](https://claude.com/download))
+- Node.js 20+ installed
 
-## Configuration rapide (30 secondes)
+## Quick Setup (30 seconds)
 
 ```bash
 npm install -g distill-mcp
-distill-mcp setup --claude
+distill-mcp setup
 ```
 
-Terminé ! Redémarrez Claude Code et vous êtes prêt.
+Done! Restart Claude Code and you're ready.
 
-## Configuration manuelle
+## Manual Setup
 
-Si la configuration automatique n'a pas fonctionné :
+If the automatic setup didn't work:
 
-### Option 1 : Via CLI (recommandé)
+### Option 1: Via CLI (recommended)
 
 ```bash
 claude mcp add distill -- npx distill-mcp serve
 ```
 
-### Option 2 : Via fichier de configuration
+### Option 2: Via configuration file
 
-Éditez `~/.claude.json` (global) ou `.mcp.json` (par projet) :
+Edit `~/.claude.json` (global) or `.mcp.json` (per-project):
 
 ```json
 {
@@ -46,7 +46,7 @@ claude mcp add distill -- npx distill-mcp serve
 }
 ```
 
-Ou avec npx (sans installation globale) :
+Or with npx (no global install):
 
 ```json
 {
@@ -59,81 +59,81 @@ Ou avec npx (sans installation globale) :
 }
 ```
 
-## Vérifier l'installation
+## Verify Installation
 
-Vérifiez que le serveur est bien configuré :
+Check that the server is properly configured:
 
 ```bash
 claude mcp list
 ```
 
-Ou dans Claude Code, utilisez la commande `/mcp` pour voir les serveurs connectés.
+Or in Claude Code, use the `/mcp` command to see connected servers.
 
-Puis demandez à Claude de lire un fichier source avec `smart_file_read` pour vérifier que les outils Distill sont disponibles.
+Then ask Claude to read a source file with `smart_file_read` to verify that Distill tools are available.
 
-## Utilisation des outils Distill
+## Using Distill Tools
 
-### Lecture intelligente de fichiers
+### Smart File Reading
 
-Au lieu de lire des fichiers entiers, utilisez smart_file_read :
-
-```
-Utilise smart_file_read pour obtenir la structure de src/server.ts
-```
-
-### Compression des sorties de build
-
-Quand vous avez des erreurs de build :
+Instead of reading entire files, use smart_file_read:
 
 ```
-Utilise auto_optimize pour compresser cette sortie de build : [collez la sortie]
+Use smart_file_read to get the structure of src/server.ts
 ```
 
-## Configuration CLAUDE.md recommandée
+### Compressing Build Output
 
-Ajoutez ceci au `CLAUDE.md` de votre projet pour imposer l'utilisation de Distill :
+When you get build errors:
+
+```
+Use auto_optimize to compress this build output: [paste output]
+```
+
+## Recommended CLAUDE.md Setup
+
+Add this to your project's `CLAUDE.md` to enforce Distill usage:
 
 ```markdown
-## Utilisation des outils MCP
+## MCP Tool Usage
 
-Lors de la lecture de fichiers source pour exploration, utilisez :
-- `smart_file_read` au lieu de `Read` pour les fichiers .ts/.js/.py
+When reading source code files for exploration, use:
+- `smart_file_read` instead of `Read` for .ts/.js/.py files
 
-Quand vous voyez une sortie de commande volumineuse (>500 caractères) :
-- Utilisez `auto_optimize` pour la compresser
+When you see large command output (>500 chars):
+- Use `auto_optimize` to compress it
 ```
 
-## Installation des hooks de projet
+## Installing Project Hooks
 
-Distill peut installer des hooks qui vous rappellent d'utiliser les outils d'optimisation :
+Distill can install hooks that remind you to use optimization tools:
 
 ```bash
 distill-mcp setup --hooks
 ```
 
-Cela ajoute des hooks à votre projet qui :
-- Suggèrent `smart_file_read` lors de la lecture de fichiers de code
-- Suggèrent `auto_optimize` pour les sorties bash volumineuses
-- Rappellent les outils MCP à chaque prompt
+This adds hooks to your project that:
+- Suggest `smart_file_read` when reading code files
+- Suggest `auto_optimize` for large bash outputs
+- Remind about MCP tools on each prompt
 
-## Dépannage
+## Troubleshooting
 
-### Le serveur MCP ne démarre pas
+### MCP Server Not Starting
 
-1. Vérifiez la version Node.js : `node --version` (nécessite 20+)
-2. Exécutez doctor : `distill-mcp doctor`
-3. Vérifiez les logs dans le panneau de sortie de Claude Code
+1. Check Node.js version: `node --version` (needs 20+)
+2. Run doctor: `distill-mcp doctor`
+3. Check logs in Claude Code's output panel
 
-### Les outils n'apparaissent pas
+### Tools Not Appearing
 
-1. Vérifiez la configuration : `claude mcp list`
-2. Vérifiez que la syntaxe JSON est valide dans `~/.claude.json`
-3. Essayez d'exécuter `npx distill-mcp serve` manuellement pour vérifier les erreurs
-4. Utilisez `/mcp` dans Claude Code pour voir le statut des serveurs
+1. Check configuration: `claude mcp list`
+2. Verify JSON syntax is valid in `~/.claude.json`
+3. Try running `npx distill-mcp serve` manually to check for errors
+4. Use `/mcp` in Claude Code to see server status
 
-### Problèmes de permissions
+### Permission Issues
 
-Sur macOS/Linux, vous devrez peut-être rendre la commande exécutable :
+On macOS/Linux, you may need to make the command executable:
 
 ```bash
 chmod +x $(which distill-mcp)

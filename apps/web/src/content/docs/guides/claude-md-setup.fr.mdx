@@ -1,0 +1,186 @@
+---
+title: Configuration CLAUDE.md
+description: Template CLAUDE.md complet pour une intégration optimale de Distill
+---
+
+# Configuration CLAUDE.md
+
+Ajoutez ces instructions au fichier `CLAUDE.md` de votre projet pour activer l'optimisation automatique des tokens avec Distill.
+
+## Configuration rapide
+
+Créez un fichier `CLAUDE.md` à la racine de votre projet et collez le template ci-dessous.
+
+## Template complet
+
+```markdown
+## Directives d'utilisation des outils MCP
+
+Utilisez les outils Distill MCP pour des opérations économes en tokens :
+
+### Règle 1 : Lecture intelligente de fichiers
+
+Lors de la lecture de fichiers source pour **exploration ou compréhension** :
+
+\`\`\`
+mcp__distill__smart_file_read filePath="path/to/file.ts"
+\`\`\`
+
+**Quand utiliser Read natif à la place :**
+- Avant d'éditer un fichier (Edit nécessite Read d'abord)
+- Fichiers de configuration : `.json`, `.yaml`, `.toml`, `.md`, `.env`
+
+### Règle 2 : Compresser les sorties volumineuses
+
+Après les commandes Bash qui produisent une sortie volumineuse (>500 caractères) :
+
+\`\`\`
+mcp__distill__auto_optimize content="<collez la sortie volumineuse>"
+\`\`\`
+
+### Règle 3 : SDK d'exécution de code pour les opérations complexes
+
+Pour les opérations multi-étapes, utilisez `code_execute` au lieu de plusieurs appels d'outils (**98% d'économie de tokens**) :
+
+\`\`\`
+mcp__distill__code_execute code="<code typescript>"
+\`\`\`
+
+**API du SDK (`ctx`) :**
+
+*Compression :*
+- `ctx.compress.auto(content, hint?)` - Détection auto et compression
+- `ctx.compress.logs(logs)` - Résumer les logs
+- `ctx.compress.diff(diff)` - Compresser les git diff
+- `ctx.compress.semantic(content, ratio?)` - Compression TF-IDF
+
+*Code :*
+- `ctx.code.parse(content, lang)` - Parser en structure AST
+- `ctx.code.extract(content, lang, {type, name})` - Extraire un élément
+- `ctx.code.skeleton(content, lang)` - Obtenir les signatures uniquement
+
+*Fichiers :*
+- `ctx.files.read(path)` - Lire le contenu d'un fichier
+- `ctx.files.exists(path)` - Vérifier si un fichier existe
+- `ctx.files.glob(pattern)` - Trouver des fichiers par pattern
+
+*Git :*
+- `ctx.git.diff(ref?)` - Obtenir le diff git
+- `ctx.git.log(limit?)` - Historique des commits
+- `ctx.git.status()` - Statut du repo
+- `ctx.git.branch()` - Info sur les branches
+- `ctx.git.blame(file, line?)` - Git blame d'un fichier
+
+*Recherche :*
+- `ctx.search.grep(pattern, glob?)` - Rechercher un pattern dans les fichiers
+- `ctx.search.symbols(query, glob?)` - Rechercher des symboles (fonctions, classes)
+- `ctx.search.files(pattern)` - Rechercher des fichiers par pattern
+- `ctx.search.references(symbol, glob?)` - Trouver les références d'un symbole
+
+*Analyse :*
+- `ctx.analyze.dependencies(file)` - Analyser les imports/exports
+- `ctx.analyze.callGraph(fn, file, depth?)` - Construire le graphe d'appels
+- `ctx.analyze.exports(file)` - Obtenir les exports d'un fichier
+- `ctx.analyze.structure(dir?, depth?)` - Structure du répertoire avec analyse
+
+*Utilitaires :*
+- `ctx.utils.countTokens(text)` - Compter les tokens
+- `ctx.utils.detectType(content)` - Détecter le type de contenu
+- `ctx.utils.detectLanguage(path)` - Détecter le langage depuis le chemin
+
+**Exemples :**
+
+\`\`\`typescript
+// Obtenir les squelettes de tous les fichiers TypeScript
+const files = ctx.files.glob("src/**/*.ts").slice(0, 5);
+return files.map(f => ({
+  file: f,
+  skeleton: ctx.code.skeleton(ctx.files.read(f), "typescript")
+}));
+
+// Compresser et analyser les logs
+const logs = ctx.files.read("server.log");
+return ctx.compress.logs(logs);
+
+// Extraire une fonction spécifique
+const content = ctx.files.read("src/api.ts");
+return ctx.code.extract(content, "typescript", { type: "function", name: "handleRequest" });
+\`\`\`
+
+### Référence rapide
+
+| Action | Utiliser |
+|--------|----------|
+| Lire du code pour exploration | `mcp__distill__smart_file_read filePath="file.ts"` |
+| Obtenir une fonction/classe | `mcp__distill__smart_file_read filePath="file.ts" target={"type":"function","name":"myFunc"}` |
+| Compresser les erreurs de build | `mcp__distill__auto_optimize content="..."` |
+| Résumer les logs | `mcp__distill__auto_optimize content="..."` |
+| Opérations multi-étapes | `mcp__distill__code_execute code="return ctx.files.glob('src/**/*.ts')"` |
+| Avant d'éditer | Utiliser l'outil natif `Read` |
+```
+
+## Template minimal
+
+Si vous préférez une version plus courte :
+
+```markdown
+## Outils MCP
+
+Utilisez Distill pour l'optimisation des tokens :
+- Exploration de code : `mcp__distill__smart_file_read filePath="file.ts"`
+- Sorties volumineuses : `mcp__distill__auto_optimize content="..."`
+- Opérations multi-étapes : `mcp__distill__code_execute code="return ctx.files.glob('**/*.ts')"`
+- Avant d'éditer : Utiliser l'outil natif `Read`
+```
+
+## Référence des économies de tokens
+
+| Outil | Économie | Idéal pour |
+|-------|----------|------------|
+| `smart_file_read` | 50-70% | Lecture de code source |
+| `auto_optimize` | 40-95% | Erreurs de build, logs |
+| `code_execute` | **98%** | Opérations multi-étapes |
+
+## Auto-installation avec la CLI
+
+Au lieu d'ajouter manuellement le template, utilisez la CLI :
+
+### Prérequis : Créer CLAUDE.md
+
+Si vous n'avez pas encore de fichier `CLAUDE.md`, créez-le d'abord avec Claude Code :
+
+```
+/init
+```
+
+### Ajouter les directives Distill
+
+```bash
+distill-mcp setup
+```
+
+Le setup détecte Claude Code et ajoute automatiquement les directives Distill à votre `CLAUDE.md` existant.
+
+### Avec les hooks (optionnel)
+
+Pour une intégration maximale, ajoutez aussi les hooks :
+
+```bash
+distill-mcp setup --hooks
+```
+
+Les hooks ajoutent des rappels automatiques pour utiliser les outils MCP.
+
+## Où placer CLAUDE.md
+
+Le fichier `CLAUDE.md` est automatiquement lu par Claude Code quand vous ouvrez un projet. Placez-le à la racine de votre dépôt.
+
+## Vérification de la configuration
+
+Après avoir ajouté le `CLAUDE.md`, vérifiez que Distill fonctionne :
+
+1. Démarrez une nouvelle conversation
+2. Demandez à Claude de lire un fichier source
+3. Vérifiez s'il utilise `smart_file_read` au lieu de `Read`
+
+Vous pouvez aussi vérifier en demandant de compresser une sortie volumineuse avec `auto_optimize`.

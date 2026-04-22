@@ -1,6 +1,6 @@
 import { Zap, Brain, Wrench, LucideIcon } from 'lucide-react';
 
-export const INSTALL_COMMAND = "bunx distill-mcp setup --claude";
+export const INSTALL_COMMAND = "bunx distill-mcp setup";
 
 export const APP_NAME = "Distill";
 
@@ -23,8 +23,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: Wrench,
-    title: "Universal IDE Support",
-    description: "Works with Claude Code, Cursor, Windsurf, and any MCP-compatible client.",
+    title: "Native Claude Code integration",
+    description: "Marker, PreCompact hook, custom subagent, slash commands. Zero friction, always loaded.",
   },
 ];
 
