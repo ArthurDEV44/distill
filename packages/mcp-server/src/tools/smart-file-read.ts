@@ -23,6 +23,7 @@ import {
 } from "../ast/index.js";
 import { detectLanguageFromPath } from "../utils/language-detector.js";
 import { countTokens } from "../utils/token-counter.js";
+import { maybeWrapInMarker } from "../utils/distill-marker.js";
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache } from "../cache/smart-cache.js";
 import { MAX_OUTPUT_CHARS } from "../constants.js";
@@ -539,11 +540,32 @@ export async function executeSmartFileRead(
     format: input.format,
   })}`;
 
+  // US-008: wrap output in the [DISTILL:COMPRESSED] envelope when the mode is
+  // a compressing mode AND the emitted text is < 50% of the raw file. Gated by
+  // DISTILL_COMPRESSED_MARKERS env var.
+  const originalSize = content.length;
+  const WRAP_MODES = new Set(["skeleton", "extract", "search"]);
+  const wrapIfCompressed = (text: string, mode: string): string => {
+    if (!WRAP_MODES.has(mode)) return text;
+    if (originalSize === 0) return text;
+    const ratio = text.length / originalSize;
+    return maybeWrapInMarker(text, {
+      ratio,
+      method: mode,
+      shouldWrap: ratio < 0.5,
+    });
+  };
+
   // Check cache if enabled
   if (input.cache !== false) {
     const cached = await cache.get<string>(cacheKey);
     if (cached.hit && cached.value) {
-      let cachedText = cached.value + "\n\n_(from cache)_";
+      // Wrap the raw cached payload BEFORE appending the cache annotation so
+      // the ratio denominator matches the live (cacheAndReturn) path. Otherwise
+      // the extra "_(from cache)_" bytes inflate the ratio and can flip the
+      // wrap decision at the 0.5 threshold.
+      const wrappedValue = wrapIfCompressed(cached.value, effectiveMode);
+      let cachedText = wrappedValue + "\n\n_(from cache)_";
       let cachedTruncated = false;
       if (cachedText.length > MAX_OUTPUT_CHARS) {
         cachedTruncated = true;
@@ -572,7 +594,7 @@ export async function executeSmartFileRead(
       text = text.slice(0, MAX_OUTPUT_CHARS - truncMsg.length) + truncMsg;
     }
     return {
-      content: [{ type: "text" as const, text }],
+      content: [{ type: "text" as const, text: wrapIfCompressed(text, mode) }],
       structuredContent: buildStructured(text, mode, truncated, elementCount),
     };
   };
@@ -700,7 +722,11 @@ export const smartFileReadTool: ToolDefinition = {
     "Modes: auto (detect from params), skeleton (signatures, depth 1-3), extract (element by type+name), " +
     "search (find by query), full (structure overview).\n\n" +
     "WHAT TO EXPECT: Extracted content with file metadata and token savings stats. " +
-    "For unsupported languages, returns full file content (graceful fallback, not error).",
+    "For unsupported languages, returns full file content (graceful fallback, not error).\n\n" +
+    "MARKER: When DISTILL_COMPRESSED_MARKERS=1 is set and the emitted text is " +
+    "< 50% of the raw file size, skeleton/extract/search output is wrapped in " +
+    "[DISTILL:COMPRESSED ratio=X.XX method=<mode>] ... [/DISTILL:COMPRESSED]. " +
+    "Full-file and lines modes are never wrapped.",
   inputSchema: smartFileReadSchema,
   outputSchema: smartFileReadOutputSchema,
   annotations: {

@@ -15,6 +15,8 @@ import {
   COLORS,
 } from "./utils.js";
 import { installHooks, updateClaudeMd } from "./hooks.js";
+import { installPrecompactHook, uninstallPrecompactHook } from "./precompact.js";
+import { installAgent, uninstallAgent } from "./agent.js";
 
 export interface SetupOptions {
   claude?: boolean;
@@ -23,6 +25,18 @@ export interface SetupOptions {
   antigravity?: boolean;
   force?: boolean;
   hooks?: boolean;
+  /** US-010: install the Distill PreCompact hook into ~/.claude/settings.json */
+  installPrecompactHook?: boolean;
+  /** US-010: remove the Distill PreCompact hook from ~/.claude/settings.json */
+  uninstallPrecompactHook?: boolean;
+  /** US-016: copy the distill-compressor agent template into ~/.claude/agents/ */
+  installAgent?: boolean;
+  /** US-016: delete the installed distill-compressor agent template */
+  uninstallAgent?: boolean;
+  /** US-010: print intended changes without mutating the filesystem */
+  dryRun?: boolean;
+  /** US-010: override $HOME for the settings.json lookup (testing + chroot) */
+  userDir?: string;
 }
 
 function configureIDE(ide: IDE, config: IDEConfig, force: boolean): boolean {
@@ -233,10 +247,79 @@ async function setupNonInteractive(options: SetupOptions): Promise<void> {
 }
 
 export async function setup(options: SetupOptions = {}): Promise<void> {
-  const hasFlags =
+  // US-010: PreCompact hook install/uninstall short-circuits the IDE flow.
+  // These flags are designed to compose with (e.g. `--claude
+  // --install-precompact-hook`) or run standalone.
+  if (options.installPrecompactHook) {
+    const result = installPrecompactHook({ userDir: options.userDir, dryRun: options.dryRun });
+    if (result.action === "aborted") {
+      error(result.message);
+      process.exitCode = 1;
+    } else if (result.action === "installed") {
+      success(result.message);
+    } else if (result.action === "dry-run") {
+      info(result.message);
+    } else {
+      warn(result.message);
+    }
+  }
+
+  if (options.uninstallPrecompactHook) {
+    const result = uninstallPrecompactHook({ userDir: options.userDir, dryRun: options.dryRun });
+    if (result.action === "aborted") {
+      error(result.message);
+      process.exitCode = 1;
+    } else if (result.action === "uninstalled") {
+      success(result.message);
+    } else if (result.action === "dry-run") {
+      info(result.message);
+    } else {
+      warn(result.message);
+    }
+  }
+
+  if (options.installAgent) {
+    const result = installAgent({
+      userDir: options.userDir,
+      dryRun: options.dryRun,
+      force: options.force,
+    });
+    if (result.action === "aborted") {
+      error(result.message);
+      process.exitCode = 1;
+    } else if (result.action === "installed") {
+      success(result.message);
+    } else if (result.action === "dry-run") {
+      info(result.message);
+    } else {
+      warn(result.message);
+    }
+  }
+
+  if (options.uninstallAgent) {
+    const result = uninstallAgent({ userDir: options.userDir, dryRun: options.dryRun });
+    if (result.action === "aborted") {
+      error(result.message);
+      process.exitCode = 1;
+    } else if (result.action === "uninstalled") {
+      success(result.message);
+    } else if (result.action === "dry-run") {
+      info(result.message);
+    } else {
+      warn(result.message);
+    }
+  }
+
+  const preCompactOnly = options.installPrecompactHook || options.uninstallPrecompactHook;
+  const agentOnly = options.installAgent || options.uninstallAgent;
+  const hasIDEFlags =
     options.claude || options.cursor || options.windsurf || options.antigravity || options.hooks;
 
-  if (hasFlags) {
+  // If the user asked only for PreCompact/agent work, don't also fall into
+  // the interactive IDE wizard.
+  if ((preCompactOnly || agentOnly) && !hasIDEFlags) return;
+
+  if (hasIDEFlags) {
     // Non-interactive mode when flags are provided
     await setupNonInteractive(options);
   } else {
@@ -249,6 +332,10 @@ export function parseSetupArgs(args: string[]): SetupOptions {
   const options: SetupOptions = {};
 
   for (const arg of args) {
+    if (arg.startsWith("--user-dir=")) {
+      options.userDir = arg.slice("--user-dir=".length);
+      continue;
+    }
     switch (arg) {
       case "--claude":
         options.claude = true;
@@ -268,6 +355,21 @@ export function parseSetupArgs(args: string[]): SetupOptions {
         break;
       case "--hooks":
         options.hooks = true;
+        break;
+      case "--install-precompact-hook":
+        options.installPrecompactHook = true;
+        break;
+      case "--uninstall-precompact-hook":
+        options.uninstallPrecompactHook = true;
+        break;
+      case "--install-agent":
+        options.installAgent = true;
+        break;
+      case "--uninstall-agent":
+        options.uninstallAgent = true;
+        break;
+      case "--dry-run":
+        options.dryRun = true;
         break;
     }
   }

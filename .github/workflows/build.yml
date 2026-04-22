@@ -104,3 +104,18 @@ jobs:
 
       - name: Knip
         run: bun run knip
+
+  shellcheck:
+    name: Shellcheck (shell scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # shellcheck is pre-installed on GitHub's ubuntu-latest runners. The
+      # v0.10 PreCompact hook (US-009) is declared /bin/sh and must stay
+      # POSIX-clean. Other scripts under packages/mcp-server/scripts/ have
+      # their own shells — they can be added to this gate when they are
+      # explicitly reviewed for POSIX compliance.
+      - name: Shellcheck (POSIX sh) — precompact hook
+        run: shellcheck -s sh packages/mcp-server/scripts/precompact-hook.sh

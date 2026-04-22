@@ -5,7 +5,7 @@
  * auto-detection, preservePatterns, aggressive mode, and stats accuracy.
  */
 
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
 import { createAutoOptimizeTool } from "./auto-optimize.js";
 
 const tool = createAutoOptimizeTool();
@@ -1151,5 +1151,42 @@ describe("auto_optimize", () => {
       expect(sc?.detectedType).toMatch(/^diff/);
       expect(sc?.savingsPercent as number).toBeGreaterThanOrEqual(30);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US-008: compression marker integration
+// ---------------------------------------------------------------------------
+
+describe("DISTILL:COMPRESSED marker — env-var gated", () => {
+  const ORIGINAL = process.env.DISTILL_COMPRESSED_MARKERS;
+
+  afterEach(() => {
+    if (ORIGINAL === undefined) {
+      delete process.env.DISTILL_COMPRESSED_MARKERS;
+    } else {
+      process.env.DISTILL_COMPRESSED_MARKERS = ORIGINAL;
+    }
+  });
+
+  it("does not wrap output when env var is unset (default)", async () => {
+    delete process.env.DISTILL_COMPRESSED_MARKERS;
+    const { text } = await optimize({ content: SAMPLE_BUILD.repeat(10) });
+    expect(text).not.toContain("[DISTILL:COMPRESSED");
+    expect(text).not.toContain("[/DISTILL:COMPRESSED]");
+  });
+
+  it("wraps output when env var is '1' and savings ≥ 30%", async () => {
+    process.env.DISTILL_COMPRESSED_MARKERS = "1";
+    const { text, sc } = await optimize({ content: SAMPLE_BUILD.repeat(10) });
+    expect(sc?.savingsPercent as number).toBeGreaterThanOrEqual(30);
+    expect(text).toMatch(/^\[DISTILL:COMPRESSED ratio=\d\.\d{2} method=[A-Za-z0-9+_.-]+\]\n/);
+    expect(text).toMatch(/\n\[\/DISTILL:COMPRESSED\]$/);
+  });
+
+  it("does not wrap when savings < 30% (short-input pass-through)", async () => {
+    process.env.DISTILL_COMPRESSED_MARKERS = "1";
+    const { text } = await optimize({ content: "tiny content, below the 500-char threshold" });
+    expect(text).not.toContain("[DISTILL:COMPRESSED");
   });
 });

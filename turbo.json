@@ -18,5 +18,6 @@
       "persistent": true
     }
   },
-  "globalDependencies": [".env"]
+  "globalDependencies": [".env"],
+  "globalEnv": ["DISTILL_COMPRESSED_MARKERS"]
 }

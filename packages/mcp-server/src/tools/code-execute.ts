@@ -161,7 +161,12 @@ const DESCRIPTION =
   "- ctx.pipeline: steps(arr), codebaseOverview(dir?), findUsages(symbol,glob?), analyzeDeps(file,depth?)\n" +
   "- ctx.utils: countTokens(text), detectType(content), detectLanguage(path)\n\n" +
   "WHAT TO EXPECT: Execution result with timing stats. Use 'return' to output results. " +
-  "Timeout default 5s (max 30s). Memory limit 128MB. Output auto-compressed if >4000 tokens.";
+  "Timeout default 5s (max 30s). Memory limit 128MB. Output auto-compressed if >4000 tokens.\n\n" +
+  "MARKER: When DISTILL_COMPRESSED_MARKERS=1 is set, ctx.compress.* helpers " +
+  "wrap their return string in [DISTILL:COMPRESSED ratio=X.XX method=<name>] " +
+  "... [/DISTILL:COMPRESSED] whenever savings are >= 30% (ratio <= 0.7). " +
+  "Sandbox code can console.log or return the wrapped string — the envelope " +
+  "survives to the tool output so the PreCompact hook can preserve the region.";
 
 export const codeExecuteTool: ToolDefinition = {
   name: "code_execute",

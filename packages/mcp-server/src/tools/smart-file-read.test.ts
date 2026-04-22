@@ -5,7 +5,7 @@
  * path security, unsupported language fallback, and structuredContent.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { executeSmartFileRead } from "./smart-file-read.js";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -1346,5 +1346,55 @@ describe("smart_file_read", () => {
         expect(text).toContain("truncated output");
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US-008: compression marker integration
+// ---------------------------------------------------------------------------
+
+describe("smart_file_read — DISTILL:COMPRESSED marker", () => {
+  const ORIGINAL = process.env.DISTILL_COMPRESSED_MARKERS;
+
+  afterEach(() => {
+    if (ORIGINAL === undefined) {
+      delete process.env.DISTILL_COMPRESSED_MARKERS;
+    } else {
+      process.env.DISTILL_COMPRESSED_MARKERS = ORIGINAL;
+    }
+  });
+
+  it("does not wrap skeleton output when env var is unset", async () => {
+    delete process.env.DISTILL_COMPRESSED_MARKERS;
+    const { text } = await read({
+      filePath: "sample.ts",
+      mode: "skeleton",
+      depth: 1,
+      cache: false,
+    });
+    expect(text).not.toContain("[DISTILL:COMPRESSED");
+  });
+
+  it("wraps skeleton output when env var is '1' and output < 50% of source", async () => {
+    process.env.DISTILL_COMPRESSED_MARKERS = "1";
+    const { text } = await read({
+      filePath: "sample.ts",
+      mode: "skeleton",
+      depth: 1,
+      cache: false,
+    });
+    // Fixture sample.ts is large enough and skeleton is concise — should wrap.
+    expect(text).toMatch(/^\[DISTILL:COMPRESSED ratio=\d\.\d{2} method=skeleton\]\n/);
+    expect(text).toMatch(/\n\[\/DISTILL:COMPRESSED\]$/);
+  });
+
+  it("does not wrap full-file mode even when env var is on", async () => {
+    process.env.DISTILL_COMPRESSED_MARKERS = "1";
+    const { text } = await read({
+      filePath: "sample.ts",
+      mode: "full",
+      cache: false,
+    });
+    expect(text).not.toContain("[DISTILL:COMPRESSED");
   });
 });

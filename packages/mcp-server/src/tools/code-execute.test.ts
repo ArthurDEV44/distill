@@ -5,7 +5,7 @@
  * security blocks, timeout, error sanitization, and structuredContent.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { codeExecuteTool } from "./code-execute.js";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -784,6 +784,51 @@ describe("code_execute", () => {
         expect(sc?.success).toBe(true);
         expect(sc?.output).toContain("helper");
       }, 15_000);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // US-008: ctx.compress.* wraps output in [DISTILL:COMPRESSED] when
+  // DISTILL_COMPRESSED_MARKERS is set and savings are ≥ 30%.
+  // -------------------------------------------------------------------------
+  describe("ctx.compress.* — DISTILL:COMPRESSED marker", () => {
+    const ORIGINAL = process.env.DISTILL_COMPRESSED_MARKERS;
+
+    afterEach(() => {
+      if (ORIGINAL === undefined) {
+        delete process.env.DISTILL_COMPRESSED_MARKERS;
+      } else {
+        process.env.DISTILL_COMPRESSED_MARKERS = ORIGINAL;
+      }
+    });
+
+    it("does not wrap ctx.compress.auto output when env var is unset", async () => {
+      delete process.env.DISTILL_COMPRESSED_MARKERS;
+      const { sc } = await exec(`
+        const lines = [];
+        for (let i = 0; i < 60; i++) {
+          lines.push("2024-01-15 INFO request " + i + " from client at 192.168.1." + (i % 255));
+        }
+        return ctx.compress.auto(lines.join("\\n")).compressed;
+      `);
+      expect(sc?.success).toBe(true);
+      expect(String(sc?.output)).not.toContain("[DISTILL:COMPRESSED");
+    });
+
+    it("wraps ctx.compress.auto output when env var is '1' and savings ≥ 30%", async () => {
+      process.env.DISTILL_COMPRESSED_MARKERS = "1";
+      const { sc } = await exec(`
+        const lines = [];
+        for (let i = 0; i < 60; i++) {
+          lines.push("2024-01-15 INFO request " + i + " from client at 192.168.1." + (i % 255));
+        }
+        return ctx.compress.auto(lines.join("\\n")).compressed;
+      `);
+      expect(sc?.success).toBe(true);
+      const output = String(sc?.output);
+      expect(output).toContain("[DISTILL:COMPRESSED ratio=");
+      expect(output).toContain("method=auto");
+      expect(output).toContain("[/DISTILL:COMPRESSED]");
     });
   });
 });

@@ -108,12 +108,15 @@ describe("tools/list — _meta fields", () => {
     }
   });
 
-  it("_meta['anthropic/searchHint'] is a non-empty string on all 3 tools", async () => {
+  it("_meta does not declare anthropic/searchHint (unreachable for alwaysLoad tools)", async () => {
+    // Per claude-code/tools/ToolSearchTool/prompt.ts:112-116, searchHint is a scoring-only
+    // signal inside ToolSearch; deferred-tools prompts render the name alone. For alwaysLoad
+    // tools the hint never influences discovery, so we don't emit it (see CLAUDE.md appendix
+    // row 2 for the full chain).
     const res = await client.listTools();
     for (const tool of res.tools) {
-      const hint = tool._meta?.["anthropic/searchHint"];
-      expect(typeof hint).toBe("string");
-      expect((hint as string).length).toBeGreaterThan(0);
+      expect(tool._meta?.["anthropic/searchHint"]).toBeUndefined();
+      expect("anthropic/searchHint" in (tool._meta ?? {})).toBe(false);
     }
   });
 
@@ -187,7 +190,7 @@ describe("tools/list — annotations", () => {
 });
 
 describe("tools/call — valid invocations", () => {
-  it("auto_optimize returns content array and structuredContent", async () => {
+  it("auto_optimize returns a content array on the wire", async () => {
     const res = await client.callTool({
       name: "auto_optimize",
       arguments: {
@@ -197,11 +200,10 @@ describe("tools/call — valid invocations", () => {
     expect(res.isError).toBeFalsy();
     expect(Array.isArray(res.content)).toBe(true);
     expect((res.content as unknown[]).length).toBeGreaterThan(0);
-    expect(res.structuredContent).toBeDefined();
-    expect(typeof res.structuredContent).toBe("object");
+    expect(res.structuredContent).toBeUndefined();
   });
 
-  it("smart_file_read returns content array and structuredContent", async () => {
+  it("smart_file_read returns a content array on the wire", async () => {
     const res = await client.callTool({
       name: "smart_file_read",
       arguments: {
@@ -211,10 +213,10 @@ describe("tools/call — valid invocations", () => {
     });
     expect(res.isError).toBeFalsy();
     expect(Array.isArray(res.content)).toBe(true);
-    expect(res.structuredContent).toBeDefined();
+    expect(res.structuredContent).toBeUndefined();
   });
 
-  it("code_execute returns content array and structuredContent", async () => {
+  it("code_execute returns a content array on the wire", async () => {
     const res = await client.callTool({
       name: "code_execute",
       arguments: {
@@ -222,7 +224,7 @@ describe("tools/call — valid invocations", () => {
       },
     });
     expect(Array.isArray(res.content)).toBe(true);
-    expect(res.structuredContent).toBeDefined();
+    expect(res.structuredContent).toBeUndefined();
   });
 
   it("content array entries are typed text blocks", async () => {
@@ -256,5 +258,71 @@ describe("tools/call — error paths", () => {
     });
     const text = (res.content as Array<{ text: string }>)[0]?.text ?? "";
     expect(text).toContain("definitely_not_registered");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// US-012: MCP prompts → slash commands (mcp__distill-mcp__<name>)
+// ---------------------------------------------------------------------------
+
+describe("prompts/list — shape", () => {
+  it("advertises exactly three zero-argument prompts", async () => {
+    const res = await client.listPrompts();
+    const names = res.prompts.map((p) => p.name).sort();
+    expect(names).toEqual(["analyze-tokens", "compress-session", "forget-large-results"]);
+  });
+
+  it("each prompt has a non-empty description and zero arguments", async () => {
+    const res = await client.listPrompts();
+    for (const prompt of res.prompts) {
+      expect(typeof prompt.description).toBe("string");
+      expect((prompt.description ?? "").length).toBeGreaterThan(0);
+      expect(Array.isArray(prompt.arguments)).toBe(true);
+      expect(prompt.arguments).toHaveLength(0);
+    }
+  });
+});
+
+describe("prompts/get — single user-role message per prompt", () => {
+  it("compress-session returns guidance referencing auto_optimize + autocompact", async () => {
+    const res = await client.getPrompt({ name: "compress-session" });
+    expect(res.messages).toHaveLength(1);
+    expect(res.messages[0]?.role).toBe("user");
+    const text = (res.messages[0]?.content as { type: string; text: string }).text;
+    expect(text).toContain("auto_optimize");
+    expect(text).toContain("autocompact");
+  });
+
+  it("analyze-tokens returns guidance referencing roughTokenCountEstimation", async () => {
+    const res = await client.getPrompt({ name: "analyze-tokens" });
+    expect(res.messages).toHaveLength(1);
+    expect(res.messages[0]?.role).toBe("user");
+    const text = (res.messages[0]?.content as { type: string; text: string }).text;
+    expect(text).toContain("roughTokenCountEstimation");
+    expect(text).toContain("length/4");
+  });
+
+  it("forget-large-results returns guidance referencing the 25K MCP persistence threshold", async () => {
+    const res = await client.getPrompt({ name: "forget-large-results" });
+    expect(res.messages).toHaveLength(1);
+    expect(res.messages[0]?.role).toBe("user");
+    const text = (res.messages[0]?.content as { type: string; text: string }).text;
+    expect(text).toContain("25K tokens");
+    expect(text).toContain("mcpValidation.ts:16");
+  });
+});
+
+describe("prompts/get — unknown prompt surfaces MCP error", () => {
+  it("throws an MCP error with code -32602 and includes the requested name", async () => {
+    let caught: unknown = null;
+    try {
+      await client.getPrompt({ name: "not-a-real-prompt" });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeDefined();
+    const err = caught as { code?: number; message?: string };
+    expect(err.code).toBe(-32602);
+    expect(err.message).toContain("not-a-real-prompt");
   });
 });

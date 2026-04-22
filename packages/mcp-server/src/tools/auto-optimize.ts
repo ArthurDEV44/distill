@@ -10,6 +10,7 @@ import type { ToolDefinition } from "./registry.js";
 import isSafeRegex from "safe-regex2";
 
 import { detectContentType } from "../utils/content-detector.js";
+import { maybeWrapInMarker } from "../utils/distill-marker.js";
 import type { ContentType } from "../compressors/types.js";
 import { compressContent } from "../compressors/index.js";
 import { compressDiff } from "../compressors/diff.js";
@@ -570,8 +571,21 @@ async function autoOptimize(
     output = output.slice(0, MAX_OUTPUT_CHARS - truncMsg.length) + truncMsg;
   }
 
+  const compressionRatio = result.originalTokens > 0
+    ? Math.min(1, Math.round((result.optimizedTokens / result.originalTokens) * 100) / 100)
+    : 1;
+
+  // US-008: opt-in compression envelope. Wrap only when savings ≥ 30%
+  // (ratio ≤ 0.7). Gated by DISTILL_COMPRESSED_MARKERS env var for v0.9.x
+  // backwards compatibility.
+  const wrappedOutput = maybeWrapInMarker(output, {
+    ratio: compressionRatio,
+    method: result.method,
+    shouldWrap: compressionRatio <= 0.7,
+  });
+
   return {
-    content: [{ type: "text", text: output }],
+    content: [{ type: "text", text: wrappedOutput }],
     structuredContent: {
       detectedType: result.detectedType,
       originalTokens: result.originalTokens,
@@ -579,10 +593,8 @@ async function autoOptimize(
       savingsPercent: result.savingsPercent,
       method: result.method,
       optimizedContent: result.optimizedContent,
-      compressionRatio: result.originalTokens > 0
-        ? Math.min(1, Math.round((result.optimizedTokens / result.originalTokens) * 100) / 100)
-        : 1,
-      outputChars: output.length,
+      compressionRatio,
+      outputChars: wrappedOutput.length,
       truncated,
     },
   };
@@ -608,7 +620,12 @@ export function createAutoOptimizeTool(): ToolDefinition {
       "stacktrace (50-80%), code/semantic (40-60%), config (30-60%). " +
       'Leave strategy as "auto" to detect automatically.\n\n' +
       "WHAT TO EXPECT: Compressed content with stats header. " +
-      "response_format controls verbosity: minimal (savings % + content), normal (stats line + content), detailed (full metadata + content).",
+      "response_format controls verbosity: minimal (savings % + content), normal (stats line + content), detailed (full metadata + content).\n\n" +
+      "MARKER: When DISTILL_COMPRESSED_MARKERS=1 is set and savings are >= 30% " +
+      "(ratio <= 0.7), the compressed text is wrapped in " +
+      "[DISTILL:COMPRESSED ratio=X.XX method=<name>] ... [/DISTILL:COMPRESSED]. " +
+      "The marker is opt-in and designed for use alongside the shipped PreCompact " +
+      "hook so Claude Code's compact-summary step preserves the region verbatim.",
     inputSchema: autoOptimizeSchema,
     outputSchema: autoOptimizeOutputSchema,
     annotations: {

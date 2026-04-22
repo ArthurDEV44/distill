@@ -1,6 +1,17 @@
 import { homedir, platform } from "os";
 import { join } from "path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { fileURLToPath } from "node:url";
+
+/**
+ * Convert a `file://` URL string to a local filesystem path. Delegates to
+ * `node:url.fileURLToPath` so Windows drive letters (`file:///C:/...`) and
+ * percent-encoded paths are handled correctly across platforms.
+ */
+export function fileURLToLocalPath(u: string): string {
+  if (u.startsWith("file://")) return fileURLToPath(u);
+  return u;
+}
 
 export type IDE = "claude" | "cursor" | "windsurf" | "antigravity";
 

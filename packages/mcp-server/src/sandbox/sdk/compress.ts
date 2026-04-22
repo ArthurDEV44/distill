@@ -9,8 +9,26 @@ import { Result, ok, err } from "neverthrow";
 import { compressContent, analyzeContent, semanticCompressor } from "../../compressors/index.js";
 import { getSummarizer } from "../../summarizers/index.js";
 import { countTokens } from "../../utils/token-counter.js";
+import { maybeWrapInMarker } from "../../utils/distill-marker.js";
 import type { CompressResult, LogSummary } from "../types.js";
 import { CompressError, compressError } from "../errors.js";
+
+/**
+ * US-008: wrap ctx.compress* output in the [DISTILL:COMPRESSED] envelope when
+ * savings are >= 30% and the DISTILL_COMPRESSED_MARKERS env var is on. User
+ * sandbox code that logs or returns the wrapped string sees the envelope; the
+ * PreCompact hook (US-009) can then instruct the compact-summary LLM to keep
+ * the region verbatim.
+ */
+function wrapCompressedPayload(payload: string, original: number, compressed: number, method: string): string {
+  if (original <= 0) return payload;
+  const ratio = compressed / original;
+  return maybeWrapInMarker(payload, {
+    ratio,
+    method,
+    shouldWrap: ratio <= 0.7,
+  });
+}
 
 /**
  * Auto-detect content type and apply optimal compression
@@ -27,7 +45,7 @@ export function compressAuto(content: string, hint?: string): CompressResult {
   const compressedTokens = countTokens(result.compressed);
 
   return {
-    compressed: result.compressed,
+    compressed: wrapCompressedPayload(result.compressed, originalTokens, compressedTokens, "auto"),
     stats: {
       original: originalTokens,
       compressed: compressedTokens,
@@ -58,8 +76,11 @@ export function compressLogs(logs: string): LogSummary {
   const summarizer = getSummarizer(logs);
   const result = summarizer.summarize(logs, { detail: "normal" });
 
+  const originalTokens = countTokens(logs);
+  const summaryTokens = countTokens(result.overview);
+
   return {
-    summary: result.overview,
+    summary: wrapCompressedPayload(result.overview, originalTokens, summaryTokens, "logs"),
     stats: {
       totalLines: logs.split("\n").length,
       errorCount: result.errors?.length || 0,
@@ -119,7 +140,7 @@ export function compressDiff(diff: string): CompressResult {
   const compressedTokens = countTokens(compressed);
 
   return {
-    compressed,
+    compressed: wrapCompressedPayload(compressed, originalTokens, compressedTokens, "diff"),
     stats: {
       original: originalTokens,
       compressed: compressedTokens,
@@ -158,7 +179,7 @@ export function compressSemantic(content: string, ratio: number = 0.5): Compress
   const compressedTokens = countTokens(result.compressed);
 
   return {
-    compressed: result.compressed,
+    compressed: wrapCompressedPayload(result.compressed, originalTokens, compressedTokens, "semantic"),
     stats: {
       original: originalTokens,
       compressed: compressedTokens,

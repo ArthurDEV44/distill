@@ -7,13 +7,23 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListToolsRequestSchema,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 
 // Tools
 import { createToolRegistry, type ToolRegistry } from "./tools/registry.js";
 import { autoOptimizeTool } from "./tools/auto-optimize.js";
 import { smartFileReadTool } from "./tools/smart-file-read.js";
 import { codeExecuteTool } from "./tools/code-execute.js";
+
+// Prompts (US-012 / US-013)
+import { buildPromptMessage, findPrompt, listPromptsMetadata } from "./prompts.js";
 
 export interface ServerConfig {
   verbose?: boolean;
@@ -53,37 +63,28 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
   const server = new Server(
     {
       name: "distill-mcp",
-      version: "0.8.1",
+      version: "0.10.0",
     },
     {
       capabilities: {
         tools: {},
+        prompts: {},
       },
       instructions,
     }
   );
 
-  // Per-tool searchHint for Claude Code's ToolSearch discovery
-  // No newlines — Claude Code collapses whitespace but newlines inject lines into the system prompt.
-  const searchHints: Record<string, string> = {
-    auto_optimize: "compress optimize token reduce build logs diff errors stacktrace",
-    smart_file_read: "read code file AST extract function class skeleton signature",
-    code_execute: "execute typescript sandbox batch SDK script multi-operation",
-  };
-
-  // Handle ListTools request — include _meta for always-load and search hints only.
-  // NOTE: maxResultSizeChars is intentionally NOT set. Claude Code reads this property from the
-  // top-level Tool object (not _meta) and clamps all tools to DEFAULT_MAX_RESULT_SIZE_CHARS=50_000
-  // regardless of what the server declares — so emitting it has no effect. The MCP SDK's ToolSchema
-  // also strips unknown top-level properties via Zod, making _meta the only place it could live,
-  // and Claude Code doesn't look there. Output size enforcement is handled in-tool via the 45K
-  // budget cap (see auto-optimize and smart-file-read MAX_OUTPUT_CHARS).
+  // Handle ListTools request — emit only anthropic/alwaysLoad in _meta.
+  // anthropic/searchHint is intentionally NOT emitted: ToolSearch uses it only as a scoring
+  // signal, and the deferred-tools prompt renders the tool name alone per
+  // claude-code/tools/ToolSearchTool/prompt.ts:112-116 — so for alwaysLoad:true tools (which
+  // never hit ToolSearch) the hint is unreachable. Emitting an empty-string would waste bytes
+  // without enabling any downstream behavior.
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.getToolDefinitions().map((tool) => ({
       ...tool,
       _meta: {
         "anthropic/alwaysLoad": true,
-        "anthropic/searchHint": searchHints[tool.name] ?? "",
       },
     })),
   }));
@@ -101,17 +102,31 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
 
     const result = await tools.execute(name, args);
 
-    const response: Record<string, unknown> = {
+    return {
       content: result.content,
       isError: result.isError,
     };
+  });
 
-    // Include structuredContent when available (MCP 2025-06-18)
-    if (result.structuredContent) {
-      response.structuredContent = result.structuredContent;
+  // US-012: MCP prompts → slash commands (mcp__distill-mcp__<name>).
+  // Registry + lookup live in `./prompts.ts` (extracted for unit-test
+  // coverage per US-013). Handlers stay inline here to match the
+  // tool-registration pattern (see CLAUDE.md appendix row #8).
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts: listPromptsMetadata(),
+  }));
+
+  // Handle prompts/get — unknown names surface as -32602 Invalid params.
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name } = request.params;
+    const prompt = findPrompt(name);
+    if (!prompt) {
+      throw new McpError(ErrorCode.InvalidParams, `Unknown prompt: ${name}`);
     }
-
-    return response;
+    return {
+      description: prompt.description,
+      messages: buildPromptMessage(prompt),
+    };
   });
 
   // Set up notification for tool list changes

@@ -25,12 +25,18 @@ ${COLORS.bright}Commands:${COLORS.reset}
   analyze           Analyze files for token usage
 
 ${COLORS.bright}Setup Options:${COLORS.reset}
-  --claude          Configure Claude Code only
-  --cursor          Configure Cursor only
-  --windsurf        Configure Windsurf only
-  --antigravity     Configure Antigravity only
-  --hooks           Install project hooks (enforces MCP tool usage)
-  --force, -f       Overwrite existing configuration
+  --claude                        Configure Claude Code only
+  --cursor                        Configure Cursor only
+  --windsurf                      Configure Windsurf only
+  --antigravity                   Configure Antigravity only
+  --hooks                         Install project hooks (enforces MCP tool usage)
+  --install-precompact-hook       Install the Distill PreCompact hook into ~/.claude/settings.json
+  --uninstall-precompact-hook     Remove the Distill PreCompact hook from ~/.claude/settings.json
+  --install-agent                 Copy the distill-compressor agent template into ~/.claude/agents/
+  --uninstall-agent               Remove the installed distill-compressor agent template
+  --dry-run                       Print intended changes; do not mutate the filesystem
+  --user-dir=<path>               Override HOME when locating ~/.claude/settings.json (for testing)
+  --force, -f                     Overwrite existing configuration
 
 ${COLORS.bright}Server Options:${COLORS.reset}
   --verbose         Enable verbose logging (shows tool calls, timing, tokens)
@@ -46,17 +52,23 @@ ${COLORS.bright}Other Options:${COLORS.reset}
   --help, -h        Show this help message
 
 ${COLORS.bright}Examples:${COLORS.reset}
-  distill-mcp setup                    Interactive setup wizard
-  distill-mcp setup --claude           Configure Claude Code only
-  distill-mcp setup --antigravity      Configure Antigravity only
-  distill-mcp setup --claude --hooks   Configure Claude Code + install hooks
-  distill-mcp setup --hooks            Install hooks only (current project)
-  distill-mcp setup --force            Overwrite existing configurations
-  distill-mcp doctor                   Verify installation
-  distill-mcp serve                    Start MCP server (used by IDE)
-  distill-mcp serve --verbose          Start with verbose logging
-  distill-mcp analyze                  Analyze token usage in codebase
-  distill-mcp analyze -t 5000 --json   Custom threshold, JSON output
+  distill-mcp setup                              Interactive setup wizard
+  distill-mcp setup --claude                     Configure Claude Code only
+  distill-mcp setup --antigravity                Configure Antigravity only
+  distill-mcp setup --claude --hooks             Configure Claude Code + install hooks
+  distill-mcp setup --hooks                      Install hooks only (current project)
+  distill-mcp setup --install-precompact-hook    Wire PreCompact hook into ~/.claude/settings.json
+  distill-mcp setup --install-precompact-hook --dry-run   Preview the JSON diff
+  distill-mcp setup --uninstall-precompact-hook  Remove the Distill PreCompact entry
+  distill-mcp setup --install-agent              Install the distill-compressor subagent template
+  distill-mcp setup --install-agent --force      Overwrite an existing distill-compressor.md
+  distill-mcp setup --uninstall-agent            Remove the installed distill-compressor subagent
+  distill-mcp setup --force                      Overwrite existing configurations
+  distill-mcp doctor                             Verify installation
+  distill-mcp serve                              Start MCP server (used by IDE)
+  distill-mcp serve --verbose                    Start with verbose logging
+  distill-mcp analyze                            Analyze token usage in codebase
+  distill-mcp analyze -t 5000 --json             Custom threshold, JSON output
 
 ${COLORS.bright}Documentation:${COLORS.reset}
   https://distill-mcp.com/docs
