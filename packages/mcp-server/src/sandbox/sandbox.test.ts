@@ -245,6 +245,15 @@ describe("Sandbox Executor", () => {
       expect(result.output).toEqual({ x: 1, y: 2 });
     });
 
+    it("should handle code with no return value (console.log only)", async () => {
+      // Regression: JSON.stringify(undefined) returns undefined (not a string),
+      // which broke countTokens → tiktoken.encode with "Cannot read properties
+      // of undefined (reading 'match')".
+      const result = await executeSandbox('console.log("hi");', defaultContext);
+      expect(result.success).toBe(true);
+      expect(result.stats.tokensUsed).toBe(0);
+    });
+
     it("should terminate infinite loop within timeout in default (QuickJS) mode", async () => {
       const start = Date.now();
       const result = await executeSandbox(

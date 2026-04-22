@@ -149,8 +149,8 @@ export async function executeSandbox(
       };
     }
 
-    const outputStr = JSON.stringify(result.data, null, 2);
-    const tokensUsed = countTokens(outputStr);
+    const outputStr = JSON.stringify(result.data, null, 2) ?? "";
+    const tokensUsed = outputStr.length === 0 ? 0 : countTokens(outputStr);
 
     if (tokensUsed > context.maxOutputTokens) {
       const compressed = compressAuto(outputStr);

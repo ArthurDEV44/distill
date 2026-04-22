@@ -9,6 +9,47 @@ Historical long-form release notes for versions prior to `v0.9.0` live under [`d
 
 ---
 
+## [0.10.1] — 2026-04-22
+
+**Patch release — pre-release smoke-test fixes.** Two user-facing bugs surfaced
+during the v0.10.0 release verification pass, both fixed with regression tests.
+No API or contract changes.
+
+### Fixed
+
+- **`code_execute` now handles code without an explicit `return`.**
+  `executeSandbox` used to crash with `"Cannot read properties of undefined
+  (reading 'match')"` when user code had no return value (e.g.
+  `console.log("hi")`). Root cause: `JSON.stringify(undefined)` returns
+  literal `undefined` (not a string), which then broke
+  `tiktoken.encode(undefined)` inside `countTokens`. The executor now guards
+  the serialization step with `?? ""` and skips token counting for empty
+  output — so `console.log`-only scripts (and empty strings) resolve cleanly
+  with `success: true`, `tokensUsed: 0`, and output `"(no output)"`.
+  (`src/sandbox/executor.ts:152-153`.)
+- **`smart_file_read` skeleton no longer emits `async async` on TypeScript
+  functions.** The TS signature builder already prefixes `async` in the
+  signature string, but the skeleton renderer used to prepend it a second
+  time, producing `export async async createServer(...)`. The renderer now
+  checks for a pre-existing `\basync\b` in the signature before adding the
+  modifier. Affects both top-level functions and class methods.
+  (`src/tools/smart-file-read.ts:395-414`.)
+
+### Tests
+
+- `sandbox.test.ts` — new regression test: `console.log`-only code returns
+  `success: true` with `tokensUsed: 0`.
+- `smart-file-read.test.ts` — new regression assertion: skeleton output never
+  contains `/async\s+async/`.
+- `code-execute.test.ts` — updated `"should handle empty code string
+  gracefully"` to assert the new (correct) behaviour: empty code executes as
+  a no-op and succeeds.
+- Total: 1203 passing (1 skipped) across 46 files. Coverage held within the
+  v0.9.2 floors (lines 72.13%, branches 58.62%, functions 73.46%,
+  statements 71.32%).
+
+---
+
 ## [0.10.0] — 2026-04-22
 
 **Correctness + native-integration release.** Zero changes to the three

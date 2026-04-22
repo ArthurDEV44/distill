@@ -391,6 +391,14 @@ describe("smart_file_read", () => {
       expect(text).toContain("createServer");
     });
 
+    it("should not duplicate 'async' keyword in async function signatures", async () => {
+      // Regression: TS signature builder already emits "async" in the signature
+      // string; the skeleton renderer used to prepend it a second time, yielding
+      // "export async async createServer(...)".
+      const { text } = await read({ filePath: "sample.ts", mode: "skeleton" });
+      expect(text).not.toMatch(/\basync\s+async\b/);
+    });
+
     it("should return class with methods", async () => {
       const { text } = await read({ filePath: "sample.ts", mode: "skeleton" });
       expect(text).toContain("ToolRegistry");

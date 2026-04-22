@@ -607,9 +607,11 @@ describe("code_execute", () => {
 
     it("should handle empty code string gracefully", async () => {
       const { sc } = await exec("");
-      // Empty string passes z.string() validation but fails in the sandbox
+      // Empty string passes z.string() validation and executes as a no-op:
+      // no return, no throw, no tokens consumed.
       expect(sc).toBeDefined();
-      expect(sc?.success).toBe(false);
+      expect(sc?.success).toBe(true);
+      expect(sc?.tokensUsed).toBe(0);
     });
 
     it("should reject non-string code parameter", async () => {

@@ -393,7 +393,8 @@ function formatSkeletonOutput(
   if (topLevelFunctions.length > 0) {
     for (const fn of topLevelFunctions) {
       const exported = fn.isExported ? "export " : "";
-      const asyncMod = fn.isAsync ? "async " : "";
+      const needsAsync = fn.isAsync && !/\basync\b/.test(fn.signature ?? "");
+      const asyncMod = needsAsync ? "async " : "";
       const sig = fn.signature || `function ${fn.name}()`;
       emitWithDoc(`${exported}${asyncMod}${sig}`, fn.documentation);
     }
@@ -408,7 +409,8 @@ function formatSkeletonOutput(
 
       const methods = structure.functions?.filter((f) => f.parent === cls.name) || [];
       for (const m of methods) {
-        const asyncMod = m.isAsync ? "async " : "";
+        const needsAsync = m.isAsync && !/\basync\b/.test(m.signature ?? "");
+        const asyncMod = needsAsync ? "async " : "";
         const sig = m.signature || `${m.name}()`;
         emitWithDoc(`${asyncMod}${sig}`, m.documentation, "  ");
       }
