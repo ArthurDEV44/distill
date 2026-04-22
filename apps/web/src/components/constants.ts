@@ -1,6 +1,6 @@
 import { Zap, Brain, Wrench, LucideIcon } from 'lucide-react';
 
-export const INSTALL_COMMAND = "npx distill-mcp";
+export const INSTALL_COMMAND = "bunx distill-mcp setup --claude";
 
 export const APP_NAME = "Distill";
 

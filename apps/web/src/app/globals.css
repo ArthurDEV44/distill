@@ -14,7 +14,7 @@
 /* Fumadocs custom theme - Step 1: Primary colors only */
 .dark {
   --color-fd-background: #040303;
-  --color-fd-primary: #f4cf8b;
+  --color-fd-primary: #da7446;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -82,6 +82,12 @@
     100% {
       opacity: 0.8;
       filter: blur(30px);
+    }
+  }
+
+  @keyframes distill-blink {
+    50% {
+      opacity: 0;
     }
   }
 }

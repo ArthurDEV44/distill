@@ -69,7 +69,7 @@ export default async function OGImage() {
                 width: "64px",
                 height: "64px",
                 borderRadius: "16px",
-                background: "linear-gradient(135deg, #f4cf8b 0%, #d4a855 100%)",
+                background: "linear-gradient(135deg, #da7446 0%, #c75730 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -95,7 +95,7 @@ export default async function OGImage() {
               style={{
                 fontSize: "48px",
                 fontWeight: 700,
-                color: "#f4cf8b",
+                color: "#da7446",
                 letterSpacing: "-0.02em",
               }}
             >
@@ -119,7 +119,7 @@ export default async function OGImage() {
             Save{" "}
             <span
               style={{
-                background: "linear-gradient(90deg, #f4cf8b 0%, #ffd700 100%)",
+                background: "linear-gradient(90deg, #da7446 0%, #eaae5c 100%)",
                 backgroundClip: "text",
                 color: "transparent",
               }}
@@ -159,7 +159,7 @@ export default async function OGImage() {
                     borderRadius: "9999px",
                     background: "rgba(244, 207, 139, 0.1)",
                     border: "1px solid rgba(244, 207, 139, 0.3)",
-                    color: "#f4cf8b",
+                    color: "#da7446",
                     fontSize: "18px",
                     fontWeight: 500,
                   }}

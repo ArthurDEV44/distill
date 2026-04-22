@@ -19,8 +19,8 @@ export default async function Layout({
       i18n={{
         locale: lang,
         locales: [
-          { locale: "fr", name: "Français" },
           { locale: "en", name: "English" },
+          { locale: "fr", name: "Français" },
         ],
       }}
     >
@@ -39,7 +39,7 @@ export default async function Layout({
               Distill
             </>
           ),
-          url: `/${lang === "fr" ? "" : lang}`,
+          url: `/${lang === "en" ? "" : lang}`,
           children: <DocsLanguageSwitcher />,
         }}
         sidebar={{

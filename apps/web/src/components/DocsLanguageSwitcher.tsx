@@ -5,8 +5,8 @@ import { Languages } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 const locales = [
-  { code: "fr", name: "Français" },
   { code: "en", name: "English" },
+  { code: "fr", name: "Français" },
 ];
 
 export function DocsLanguageSwitcher() {
@@ -16,7 +16,7 @@ export function DocsLanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentLang = (params.lang as string) || "fr";
+  const currentLang = (params.lang as string) || "en";
   const currentLocale = locales.find((l) => l.code === currentLang) ?? locales[0]!;
 
   useEffect(() => {
@@ -39,19 +39,19 @@ export function DocsLanguageSwitcher() {
 
     // Handle docs paths
     if (pathname.includes("/docs")) {
-      if (currentLang === "fr") {
-        // French (default) -> English: add /en prefix
+      if (currentLang === "en") {
+        // English (default, no prefix) -> French: add /fr prefix
         newPath = `/${newLang}${pathname}`;
       } else {
-        // English -> French: remove /en prefix
-        newPath = pathname.replace(/^\/en/, "") || "/docs";
+        // French -> English: remove /fr prefix
+        newPath = pathname.replace(/^\/fr/, "") || "/docs";
       }
     } else {
       // Handle non-docs paths
-      if (currentLang === "fr") {
+      if (currentLang === "en") {
         newPath = `/${newLang}${pathname}`;
       } else {
-        newPath = pathname.replace(/^\/en/, "") || "/";
+        newPath = pathname.replace(/^\/fr/, "") || "/";
       }
     }
 

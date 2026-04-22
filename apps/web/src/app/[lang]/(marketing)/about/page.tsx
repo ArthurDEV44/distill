@@ -1,254 +1,533 @@
 'use client';
 
-import React from 'react';
-import { Suspense } from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Canvas } from '@react-three/fiber';
+import Link from 'next/link';
+import { motion, type Variants } from 'motion/react';
+import {
+  DollarSign,
+  Clock,
+  Zap,
+  Sparkles,
+  Copy,
+  Check,
+  Github,
+  type LucideIcon,
+} from 'lucide-react';
 import Navbar from '@/components/marketing/Navbar';
 import Footer from '@/components/marketing/Footer';
-import NebulaShader from '@/components/canvas/NebulaShader';
-import { Zap, DollarSign, Clock, Sparkles, LucideIcon, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { INSTALL_COMMAND } from '@/components/constants';
+import { useHydrated } from '@/hooks';
+
+const GITHUB_URL = 'https://github.com/ArthurDEV44/distill';
 
 interface Benefit {
   icon: LucideIcon;
   title: string;
+  description: string;
+  metric: string;
+}
+
+interface Tool {
+  name: string;
   description: string;
 }
 
 interface Translations {
   badge: string;
   title: string;
-  titleHighlight: string;
+  titleMuted: string;
   subtitle: string;
-  problemTitle: string;
+
+  problemBadge: string;
+  problemHeading: string;
+  problemHeadingMuted: string;
   problemP1: string;
   problemP1Strong: string;
   problemP2: string;
-  problemP3: string;
   problemP3Strong: string;
-  whatTitle: string;
-  whatP1: string;
-  whatP1Strong: string;
-  whatP2: string;
-  whatP3: string;
-  benefitsTitle: string;
+  problemP3: string;
+
+  whatBadge: string;
+  whatHeading: string;
+  whatHeadingMuted: string;
+  whatIntro: string;
+  whatIntroStrong: string;
+  whatIntroEnd: string;
+  tools: Tool[];
+  whatOutro: string;
+
+  benefitsBadge: string;
+  benefitsHeading: string;
+  benefitsHeadingMuted: string;
   benefits: Benefit[];
-  ctaTitle: string;
+
+  ctaBadge: string;
+  ctaHeading: string;
+  ctaHeadingMuted: string;
   ctaSubtitle: string;
+  ctaPrimary: string;
+  ctaSecondary: string;
+  ctaSecondaryAriaLabel: string;
 }
 
-function CopyCommand() {
+const translations: Record<string, Translations> = {
+  fr: {
+    badge: 'à propos · 01',
+    title: 'Pourquoi',
+    titleMuted: 'Distill ?',
+    subtitle:
+      "Chaque token compte. Distill compresse le contexte LLM en amont, avant qu'il n'entre en mémoire — pour réduire les coûts, accélérer les réponses, et améliorer la qualité des sorties.",
+
+    problemBadge: 'problème · 02',
+    problemHeading: 'Le bruit tue',
+    problemHeadingMuted: 'le signal.',
+    problemP1:
+      "Quand tu travailles avec un assistant de codage IA, tu envoies constamment de gros blocs de contexte : sorties de build, logs, fichiers de code, stacktraces. La plupart est ",
+    problemP1Strong: 'redondant ou inutile',
+    problemP2:
+      "Une sortie d'erreur de build typique, c'est des milliers de tokens de bruit pour 5 à 10 lignes réellement utiles. Tu paies pour du vide — et tu noies le LLM dans du contexte qui l'empêche de se concentrer.",
+    problemP3Strong: 'Distill résout ce problème',
+    problemP3:
+      " en compressant intelligemment ton contexte avant qu'il n'atteigne le modèle. Tu ne gardes que le signal.",
+
+    whatBadge: 'produit · 03',
+    whatHeading: 'Un serveur MCP.',
+    whatHeadingMuted: 'Trois outils.',
+    whatIntro: 'Distill est un ',
+    whatIntroStrong: 'serveur MCP (Model Context Protocol) open-source',
+    whatIntroEnd:
+      ", qui expose trois outils toujours chargés dans Claude Code et tout client compatible.",
+    tools: [
+      {
+        name: 'auto_optimize',
+        description:
+          'Détecte le type de contenu (build, logs, diffs, code, stacktraces) et applique la compression adaptée.',
+      },
+      {
+        name: 'smart_file_read',
+        description:
+          'Lit la structure AST au lieu du fichier brut. 7 langages, 5 modes (auto, full, skeleton, extract, search).',
+      },
+      {
+        name: 'code_execute',
+        description:
+          "Exécute du TypeScript en sandbox QuickJS pour batcher 5 à 10 opérations en un seul appel MCP.",
+      },
+    ],
+    whatOutro:
+      "Pas de clés API. Pas de services cloud. Pas d'auth. Install + usage immédiat.",
+
+    benefitsBadge: 'résultats · 04',
+    benefitsHeading: 'Ce que tu y',
+    benefitsHeadingMuted: 'gagnes.',
+    benefits: [
+      {
+        icon: DollarSign,
+        title: 'Coûts réduits',
+        description:
+          "Jusqu'à 98 % de tokens en moins envoyés au LLM, sans perte de signal sur le contenu important.",
+        metric: '40-98%',
+      },
+      {
+        icon: Clock,
+        title: 'Réponses plus rapides',
+        description:
+          'Moins de contexte = moins de tokens à traiter = time-to-first-token plus court.',
+        metric: 'latence ↓',
+      },
+      {
+        icon: Zap,
+        title: 'Meilleurs résultats',
+        description:
+          "Moins de bruit, plus de signal. Le LLM se concentre sur l'essentiel, la qualité des sorties grimpe.",
+        metric: 'signal ↑',
+      },
+      {
+        icon: Sparkles,
+        title: 'Intégration native',
+        description:
+          'Compatible Claude Code, Cursor, Windsurf, et tout client MCP. Zéro configuration côté API.',
+        metric: 'MCP stdio',
+      },
+    ],
+
+    ctaBadge: 'get started',
+    ctaHeading: 'Prêt à',
+    ctaHeadingMuted: 'optimiser ?',
+    ctaSubtitle: "Une commande suffit pour setup Claude Code avec Distill.",
+    ctaPrimary: 'Lire la doc',
+    ctaSecondary: 'Star on GitHub',
+    ctaSecondaryAriaLabel: 'Voir Distill sur GitHub (ouvre un nouvel onglet)',
+  },
+  en: {
+    badge: 'about · 01',
+    title: 'Why',
+    titleMuted: 'Distill?',
+    subtitle:
+      "Every token counts. Distill compresses LLM context upstream — before it ever enters memory — to cut costs, speed up responses, and sharpen output quality.",
+
+    problemBadge: 'problem · 02',
+    problemHeading: 'Noise kills',
+    problemHeadingMuted: 'signal.',
+    problemP1:
+      'When you work with an AI coding assistant, you constantly send large context blocks: build outputs, logs, code files, stacktraces. Most of it is ',
+    problemP1Strong: 'redundant or useless',
+    problemP2:
+      "A typical build error output is thousands of tokens of noise for 5–10 actually useful lines. You're paying for dead weight — and drowning the LLM in context that prevents it from focusing.",
+    problemP3Strong: 'Distill fixes this',
+    problemP3:
+      ' by compressing your context intelligently before it reaches the model. You keep only the signal.',
+
+    whatBadge: 'product · 03',
+    whatHeading: 'One MCP server.',
+    whatHeadingMuted: 'Three tools.',
+    whatIntro: 'Distill is an ',
+    whatIntroStrong: 'open-source MCP (Model Context Protocol) server',
+    whatIntroEnd:
+      ' that exposes three always-loaded tools inside Claude Code and any MCP-compatible client.',
+    tools: [
+      {
+        name: 'auto_optimize',
+        description:
+          'Detects content type (build, logs, diffs, code, stacktraces) and applies content-aware compression.',
+      },
+      {
+        name: 'smart_file_read',
+        description:
+          'Reads AST structure instead of raw file content. 7 languages, 5 modes (auto, full, skeleton, extract, search).',
+      },
+      {
+        name: 'code_execute',
+        description:
+          'Runs TypeScript in a QuickJS sandbox to batch 5–10 operations in a single MCP call.',
+      },
+    ],
+    whatOutro:
+      'No API keys. No cloud services. No auth. Install and start using it immediately.',
+
+    benefitsBadge: 'results · 04',
+    benefitsHeading: 'What you',
+    benefitsHeadingMuted: 'get.',
+    benefits: [
+      {
+        icon: DollarSign,
+        title: 'Lower costs',
+        description:
+          'Up to 98% fewer tokens sent to the LLM, with no signal loss on the content that actually matters.',
+        metric: '40-98%',
+      },
+      {
+        icon: Clock,
+        title: 'Faster responses',
+        description:
+          'Less context = less tokens to process = shorter time-to-first-token.',
+        metric: 'lower latency',
+      },
+      {
+        icon: Zap,
+        title: 'Sharper results',
+        description:
+          'Less noise, more signal. The LLM focuses on what matters, output quality goes up.',
+        metric: 'higher signal',
+      },
+      {
+        icon: Sparkles,
+        title: 'Native integration',
+        description:
+          'Works with Claude Code, Cursor, Windsurf, and any MCP client. Zero config on the API side.',
+        metric: 'MCP stdio',
+      },
+    ],
+
+    ctaBadge: 'get started',
+    ctaHeading: 'Ready to',
+    ctaHeadingMuted: 'optimize?',
+    ctaSubtitle: 'One command to set up Claude Code with Distill.',
+    ctaPrimary: 'Read the docs',
+    ctaSecondary: 'Star on GitHub',
+    ctaSecondaryAriaLabel: 'View Distill on GitHub (opens in new tab)',
+  },
+};
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+function SectionBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2.5 font-mono text-[11px] text-white/50 tracking-[0.14em] uppercase">
+      <span className="h-px w-5 bg-[#da7446]/70" />
+      {children}
+    </span>
+  );
+}
+
+function InstallCommand() {
   const [copied, setCopied] = useState(false);
-  const command = 'npm install -g distill-mcp';
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(command);
+    navigator.clipboard.writeText(INSTALL_COMMAND);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="relative group/cmd inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md hover:border-[#f4cf8b]/30 transition-all duration-300">
-      <div className="flex items-center gap-2 font-mono text-sm text-neutral-400">
-        <span className="text-[#f4cf8b] select-none">$</span>
-        <span className="group-hover/cmd:text-neutral-200 transition-colors">{command}</span>
-      </div>
-      <div className="h-4 w-px bg-white/10" />
+    <div className="flex w-full items-center gap-3 px-3.5 py-2.5 rounded-md border border-white/10 bg-white/[0.02] font-mono text-[13px]">
+      <span className="text-white/30 select-none">$</span>
+      <span className="flex-1 text-white/80 select-all truncate">
+        {INSTALL_COMMAND}
+      </span>
       <button
         onClick={handleCopy}
-        className="relative flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/5 text-neutral-400 hover:text-white transition-colors focus:outline-none"
-        aria-label="Copy command"
+        className="flex items-center justify-center w-6 h-6 shrink-0 text-white/30 hover:text-white transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
+        aria-label={copied ? 'Command copied to clipboard' : 'Copy install command'}
+        aria-live="polite"
       >
-        {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+        {copied ? (
+          <Check size={13} className="text-[#da7446]" aria-hidden="true" />
+        ) : (
+          <Copy size={13} aria-hidden="true" />
+        )}
       </button>
-      <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-transparent group-hover/cmd:ring-white/10 pointer-events-none" />
     </div>
   );
 }
 
-const translations: Record<string, Translations> = {
-  fr: {
-    badge: 'À propos de Distill',
-    title: 'Pourquoi',
-    titleHighlight: 'Distill ?',
-    subtitle: 'Chaque token compte. Distill optimise le contexte de vos LLM pour réduire les coûts, améliorer la vitesse et obtenir de meilleurs résultats.',
-    problemTitle: 'Le Problème',
-    problemP1: "Lorsque vous travaillez avec des assistants de codage IA, vous envoyez constamment de grandes quantités de contexte : sorties de build, fichiers de logs, fichiers de code, messages d'erreur, et plus encore. La plupart de ce contenu est ",
-    problemP1Strong: 'redondant ou inutile',
-    problemP2: "Une sortie d'erreur de build typique peut contenir des milliers de tokens, mais l'information réelle de l'erreur ne fait que quelques lignes. Vous payez pour des tokens qui n'apportent aucune valeur.",
-    problemP3: " en compressant intelligemment votre contexte avant de l'envoyer au LLM, ne conservant que l'essentiel.",
-    problemP3Strong: 'Distill résout ce problème',
-    whatTitle: "Qu'est-ce que Distill ?",
-    whatP1: "Distill est un ",
-    whatP1Strong: 'serveur MCP (Model Context Protocol)',
-    whatP2: "Il inclut l'analyse de code avec AST, des algorithmes de compression intelligents, la synthèse de logs, la déduplication d'erreurs, et un puissant SDK TypeScript pour les opérations complexes.",
-    whatP3: "Pas de clés API. Pas de services cloud. Pas d'authentification.",
-    benefitsTitle: 'Avantages',
-    benefits: [
-      {
-        icon: DollarSign,
-        title: 'Réduire les coûts',
-        description: "Réduisez vos coûts d'API jusqu'à 98% en envoyant uniquement les informations essentielles à votre LLM.",
-      },
-      {
-        icon: Clock,
-        title: 'Réponses plus rapides',
-        description: 'Moins de contexte signifie un traitement plus rapide. Obtenez des réponses plus vite avec des prompts optimisés.',
-      },
-      {
-        icon: Zap,
-        title: 'Meilleurs résultats',
-        description: "Moins de bruit, plus de signal. Aidez votre IA à se concentrer sur l'essentiel en supprimant le contenu redondant.",
-      },
-      {
-        icon: Sparkles,
-        title: 'Intégration transparente',
-        description: "Fonctionne avec Claude Code, Cursor, Windsurf et tout client compatible MCP, prêt à l'emploi.",
-      },
-    ],
-    ctaTitle: 'Prêt à optimiser ?',
-    ctaSubtitle: 'Commencez en quelques secondes avec une seule commande.',
-  },
-  en: {
-    badge: 'About Distill',
-    title: 'Why',
-    titleHighlight: 'Distill?',
-    subtitle: 'Every token counts. Distill optimizes your LLM context to save costs, improve speed, and get better results.',
-    problemTitle: 'The Problem',
-    problemP1: "When working with AI coding assistants, you constantly send large amounts of context: build outputs, log files, code files, error messages, and more. Most of this content is ",
-    problemP1Strong: 'redundant or unnecessary',
-    problemP2: "A typical build error output might contain thousands of tokens, but the actual error information is just a few lines. You're paying for tokens that don't add value.",
-    problemP3: " by intelligently compressing your context before sending it to the LLM, keeping only what matters.",
-    problemP3Strong: 'Distill solves this',
-    whatTitle: 'What is Distill?',
-    whatP1: "Distill is an open-source ",
-    whatP1Strong: 'MCP (Model Context Protocol) server',
-    whatP2: "It includes AST-aware code parsing, smart compression algorithms, log summarization, error deduplication, and a powerful TypeScript SDK for complex operations.",
-    whatP3: "No API keys. No cloud services. No authentication.",
-    benefitsTitle: 'Benefits',
-    benefits: [
-      {
-        icon: DollarSign,
-        title: 'Reduce Costs',
-        description: 'Cut your API costs by up to 98% by sending only the essential information to your LLM.',
-      },
-      {
-        icon: Clock,
-        title: 'Faster Responses',
-        description: 'Smaller context means faster processing. Get responses quicker with optimized prompts.',
-      },
-      {
-        icon: Zap,
-        title: 'Better Results',
-        description: 'Less noise, more signal. Help your AI focus on what matters by removing redundant content.',
-      },
-      {
-        icon: Sparkles,
-        title: 'Seamless Integration',
-        description: 'Works with Claude Code, Cursor, Windsurf, and any MCP-compatible client out of the box.',
-      },
-    ],
-    ctaTitle: 'Ready to optimize?',
-    ctaSubtitle: 'Get started in seconds with a single command.',
-  },
-};
+interface AboutContentProps {
+  t: Translations;
+  animated: boolean;
+  docsHref: string;
+}
+
+function AboutContent({ t, animated, docsHref }: AboutContentProps) {
+  const Motion = animated ? motion.div : 'div';
+  const motionProps = animated
+    ? {
+        variants: fadeUp,
+        initial: 'hidden' as const,
+        whileInView: 'visible' as const,
+        viewport: { once: true, amount: 0.3 },
+      }
+    : {};
+
+  return (
+    <main className="pt-32 pb-24 px-4 sm:px-6">
+      {/* Hero header */}
+      <Motion
+        {...(animated
+          ? {
+              variants: fadeUp,
+              initial: 'hidden' as const,
+              animate: 'visible' as const,
+            }
+          : {})}
+        className="max-w-3xl mx-auto flex flex-col items-center text-center gap-6"
+      >
+        <SectionBadge>{t.badge}</SectionBadge>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-[-0.035em] leading-[1.05] text-white text-balance">
+          {t.title} <span className="text-white/40">{t.titleMuted}</span>
+        </h1>
+        <p className="text-[15px] md:text-base leading-relaxed text-white/55 max-w-xl text-balance">
+          {t.subtitle}
+        </p>
+      </Motion>
+
+      {/* Problem */}
+      <Motion
+        {...motionProps}
+        className="max-w-3xl mx-auto flex flex-col gap-6 mt-24 md:mt-32"
+      >
+        <SectionBadge>{t.problemBadge}</SectionBadge>
+        <h2 className="text-3xl md:text-4xl lg:text-[2.6rem] font-semibold tracking-[-0.03em] leading-[1.1] text-white max-w-xl">
+          {t.problemHeading} <span className="text-white/40">{t.problemHeadingMuted}</span>
+        </h2>
+        <div className="flex flex-col gap-4 text-[14.5px] leading-[1.65] text-white/60 text-pretty">
+          <p>
+            {t.problemP1}
+            <strong className="text-white font-medium">
+              {t.problemP1Strong}
+            </strong>
+            .
+          </p>
+          <p>{t.problemP2}</p>
+          <p>
+            <strong className="text-white font-medium">
+              {t.problemP3Strong}
+            </strong>
+            {t.problemP3}
+          </p>
+        </div>
+      </Motion>
+
+      {/* What is Distill */}
+      <Motion
+        {...motionProps}
+        className="max-w-3xl mx-auto flex flex-col gap-6 mt-24 md:mt-32"
+      >
+        <SectionBadge>{t.whatBadge}</SectionBadge>
+        <h2 className="text-3xl md:text-4xl lg:text-[2.6rem] font-semibold tracking-[-0.03em] leading-[1.1] text-white max-w-xl">
+          {t.whatHeading} <span className="text-white/40">{t.whatHeadingMuted}</span>
+        </h2>
+        <p className="text-[14.5px] leading-[1.65] text-white/60 text-pretty">
+          {t.whatIntro}
+          <strong className="text-white font-medium">{t.whatIntroStrong}</strong>
+          {t.whatIntroEnd}
+        </p>
+
+        {/* Tool cards — same pattern as Stats tooling cards */}
+        <ul className="flex flex-col gap-3 mt-2">
+          {t.tools.map((tool, index) => {
+            const indexLabel = `${String(index + 1).padStart(2, '0')} / ${String(t.tools.length).padStart(2, '0')}`;
+            return (
+              <li
+                key={tool.name}
+                className="relative flex flex-col gap-4 rounded-lg border border-white/10 bg-white/[0.015] p-5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-[13px] text-white/80 tracking-tight">
+                    {tool.name}
+                  </span>
+                  <span className="font-mono text-[10px] text-white/40 tracking-[0.18em]">
+                    {indexLabel}
+                  </span>
+                </div>
+                <div className="h-px bg-white/[0.06]" aria-hidden="true" />
+                <p className="text-[13.5px] leading-relaxed text-white/55 text-pretty">
+                  {tool.description}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="text-[14.5px] leading-[1.65] text-white/60 text-pretty">
+          <strong className="text-white font-medium">{t.whatOutro}</strong>
+        </p>
+      </Motion>
+
+      {/* Benefits */}
+      <Motion
+        {...motionProps}
+        className="max-w-5xl mx-auto flex flex-col gap-8 mt-24 md:mt-32"
+      >
+        <div className="max-w-3xl mx-auto w-full flex flex-col gap-4 px-0">
+          <SectionBadge>{t.benefitsBadge}</SectionBadge>
+          <h2 className="text-3xl md:text-4xl lg:text-[2.6rem] font-semibold tracking-[-0.03em] leading-[1.1] text-white max-w-xl">
+            {t.benefitsHeading}{' '}
+            <span className="text-white/40">{t.benefitsHeadingMuted}</span>
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2! gap-4">
+          {t.benefits.map((benefit) => (
+            <article
+              key={benefit.title}
+              className="relative flex flex-col gap-3 p-5 rounded-lg border border-white/10 bg-white/[0.015]"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <benefit.icon
+                  size={16}
+                  className="text-white/40"
+                  aria-hidden="true"
+                />
+                <span className="font-mono text-[10px] text-white/50 tracking-[0.12em] uppercase border border-white/10 rounded-sm px-1.5 py-0.5">
+                  {benefit.metric}
+                </span>
+              </div>
+              <h3 className="text-[16px] font-semibold tracking-tight text-white">
+                {benefit.title}
+              </h3>
+              <p className="text-[14px] leading-relaxed text-white/55 text-pretty">
+                {benefit.description}
+              </p>
+            </article>
+          ))}
+        </div>
+      </Motion>
+
+      {/* CTA */}
+      <Motion
+        {...motionProps}
+        className="max-w-5xl mx-auto mt-24 md:mt-32"
+      >
+        <div
+          className="relative overflow-hidden rounded-2xl border border-white/10 px-6 py-12 md:px-10 md:py-14 text-center"
+          style={{
+            backgroundImage:
+              'radial-gradient(ellipse 90% 120% at 50% 0%, rgba(218,116,70,0.10) 0%, transparent 70%)',
+            backgroundColor: 'rgba(255,255,255,0.015)',
+          }}
+        >
+          {/* Faint grid overlay */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage:
+                'linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+              WebkitMaskImage:
+                'radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent 80%)',
+              maskImage:
+                'radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent 80%)',
+            }}
+          />
+
+          <div className="relative z-10 flex flex-col items-center gap-5">
+            <SectionBadge>{t.ctaBadge}</SectionBadge>
+            <h2 className="text-[1.7rem] md:text-[2.2rem] lg:text-[2.6rem] font-semibold tracking-[-0.03em] leading-[1.1] text-white text-balance max-w-xl">
+              {t.ctaHeading}{' '}
+              <span className="text-white/40">{t.ctaHeadingMuted}</span>
+            </h2>
+            <p className="max-w-md text-[14.5px] leading-[1.6] text-white/55 text-balance">
+              {t.ctaSubtitle}
+            </p>
+
+            <div className="flex flex-col items-stretch gap-2.5 w-full max-w-sm mt-2">
+              <div className="flex items-stretch gap-2">
+                <Link
+                  href={docsHref}
+                  className="flex-1 inline-flex items-center justify-center px-5 py-2.5 rounded-md bg-white text-black font-medium text-[14px] tracking-tight hover:bg-white/90 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  {t.ctaPrimary}
+                </Link>
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t.ctaSecondaryAriaLabel}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-white/10 bg-white/[0.02] text-white/80 hover:text-white hover:bg-white/[0.04] hover:border-white/20 transition-colors font-medium text-[14px] tracking-tight focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <Github size={14} aria-hidden="true" />
+                  <span>{t.ctaSecondary}</span>
+                </a>
+              </div>
+              <InstallCommand />
+            </div>
+          </div>
+        </div>
+      </Motion>
+    </main>
+  );
+}
 
 export default function AboutPage() {
   const params = useParams();
-  const lang = (params.lang as string) || 'fr';
-  const t = (translations[lang] || translations.fr)!;
+  const lang = (params.lang as string) || 'en';
+  const t = (translations[lang] || translations.en)!;
+  const docsHref = lang === 'fr' ? '/fr/docs' : '/docs';
+  const mounted = useHydrated();
 
   return (
-    <div className="min-h-screen bg-obsidian text-white selection:bg-indigo-500/30 selection:text-white relative">
-      {/* Background */}
-      <div className="fixed inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
-          <Suspense fallback={null}>
-            <NebulaShader />
-          </Suspense>
-        </Canvas>
-      </div>
-
+    <div className="min-h-screen bg-obsidian text-white selection:bg-[#da7446]/30 selection:text-white relative">
       <div className="relative z-10">
         <Navbar />
-        <main className="pt-32 pb-20 px-6">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="text-center mb-16">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#311c35]/40 border border-[#f4cf8b]/20 backdrop-blur-sm mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#f4cf8b] animate-pulse"></span>
-                <span className="text-[10px] font-mono tracking-[0.2em] text-[#f4cf8b] uppercase">
-                  {t.badge}
-                </span>
-              </span>
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-                {t.title} <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-[#f4cf8b] to-[#311c35]">{t.titleHighlight}</span>
-              </h1>
-              <p className="text-xl text-neutral-300 max-w-2xl mx-auto leading-relaxed">
-                {t.subtitle}
-              </p>
-            </div>
-
-            {/* The Problem */}
-            <section className="mb-20">
-              <h2 className="text-2xl font-semibold text-white mb-6">{t.problemTitle}</h2>
-              <div className="p-8 rounded-2xl bg-[#311c35]/50 border border-[#f4cf8b]/30 backdrop-blur-md">
-                <p className="text-neutral-300 leading-relaxed mb-4">
-                  {t.problemP1}<strong className="text-white">{t.problemP1Strong}</strong>.
-                </p>
-                <p className="text-neutral-300 leading-relaxed mb-4">
-                  {t.problemP2}
-                </p>
-                <p className="text-neutral-300 leading-relaxed">
-                  <strong className="text-[#f4cf8b]">{t.problemP3Strong}</strong>{t.problemP3}
-                </p>
-              </div>
-            </section>
-
-            {/* What is Distill */}
-            <section className="mb-20">
-              <h2 className="text-2xl font-semibold text-white mb-6">{t.whatTitle}</h2>
-              <div className="p-8 rounded-2xl bg-[#311c35]/50 border border-[#f4cf8b]/30 backdrop-blur-md">
-                <p className="text-neutral-300 leading-relaxed mb-4">
-                  {t.whatP1}<strong className="text-white">{t.whatP1Strong}</strong> {lang === 'fr' ? "open-source qui fournit 3 outils de precision pour optimiser l'utilisation des tokens LLM." : "that provides 3 precision tools for optimizing LLM token usage."}
-                </p>
-                <p className="text-neutral-300 leading-relaxed mb-4">
-                  {t.whatP2}
-                </p>
-                <p className="text-neutral-300 leading-relaxed">
-                  <strong className="text-white">{t.whatP3}</strong> {lang === 'fr' ? "Installez et commencez à économiser des tokens." : "Just install and start saving tokens."}
-                </p>
-              </div>
-            </section>
-
-            {/* Benefits Grid */}
-            <section className="mb-20">
-              <h2 className="text-2xl font-semibold text-white mb-8">{t.benefitsTitle}</h2>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {t.benefits.map((benefit, index) => (
-                  <div
-                    key={index}
-                    className="p-6 rounded-2xl bg-[#311c35]/50 border border-[#f4cf8b]/30 backdrop-blur-md"
-                  >
-                    <div className="mb-4 text-[#f4cf8b]">
-                      <benefit.icon size={28} />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{benefit.title}</h3>
-                    <p className="text-sm text-neutral-300 leading-relaxed">{benefit.description}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* CTA */}
-            <section className="text-center">
-              <h2 className="text-2xl font-semibold text-white mb-4">{t.ctaTitle}</h2>
-              <p className="text-neutral-300 mb-8">{t.ctaSubtitle}</p>
-              <CopyCommand />
-            </section>
-          </div>
-        </main>
+        <AboutContent t={t} animated={mounted} docsHref={docsHref} />
         <Footer />
       </div>
     </div>

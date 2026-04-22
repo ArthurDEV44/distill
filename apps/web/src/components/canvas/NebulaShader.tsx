@@ -7,7 +7,7 @@ import * as THREE from 'three';
 
 // Memoized colors (avoid recreating on each render)
 const COLOR_BASE = new THREE.Color('#201c19');
-const COLOR_PRIMARY = new THREE.Color('#f4cf8b');
+const COLOR_PRIMARY = new THREE.Color('#da7446');
 const COLOR_SECONDARY = new THREE.Color('#311c35');
 
 // Define the shader material

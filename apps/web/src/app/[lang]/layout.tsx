@@ -12,7 +12,7 @@ import {
 // Locale whitelist — the single source of truth for supported i18n segments.
 // Unknown values passed to the `[lang]` dynamic route 404 via `notFound()` so
 // a malformed `lang` string cannot reach `<html lang={…}>` on dynamic routes.
-const SUPPORTED_LOCALES = ["fr", "en"] as const;
+const SUPPORTED_LOCALES = ["en", "fr"] as const;
 type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const metadata: Metadata = {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
     languages: {
-      en: "/en",
+      en: "/",
       fr: "/fr",
       "x-default": "/",
     },

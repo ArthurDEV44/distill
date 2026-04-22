@@ -57,7 +57,7 @@ export default async function TwitterImage() {
                 width: "64px",
                 height: "64px",
                 borderRadius: "16px",
-                background: "linear-gradient(135deg, #f4cf8b 0%, #d4a855 100%)",
+                background: "linear-gradient(135deg, #da7446 0%, #c75730 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -83,7 +83,7 @@ export default async function TwitterImage() {
               style={{
                 fontSize: "48px",
                 fontWeight: 700,
-                color: "#f4cf8b",
+                color: "#da7446",
               }}
             >
               Distill
@@ -102,7 +102,7 @@ export default async function TwitterImage() {
             }}
           >
             Save{" "}
-            <span style={{ color: "#f4cf8b" }}>98%</span>{" "}
+            <span style={{ color: "#da7446" }}>98%</span>{" "}
             LLM Tokens
           </div>
 
