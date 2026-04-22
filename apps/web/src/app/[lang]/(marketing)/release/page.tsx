@@ -568,7 +568,7 @@ function ReleaseContent({ t, animated }: ReleaseContentProps) {
       {/* 01 — Security */}
       <Motion
         {...motionProps}
-        className="max-w-5xl mx-auto flex flex-col gap-6 mt-24 md:mt-32"
+        className="max-w-3xl mx-auto flex flex-col gap-6 mt-24 md:mt-32"
       >
         <div className="max-w-3xl flex flex-col gap-4">
           <SectionBadge>{t.securityBadge}</SectionBadge>
@@ -686,7 +686,7 @@ function ReleaseContent({ t, animated }: ReleaseContentProps) {
       {/* CTA */}
       <Motion
         {...motionProps}
-        className="max-w-5xl mx-auto mt-24 md:mt-32"
+        className="max-w-3xl mx-auto mt-24 md:mt-32"
       >
         <div
           className="relative overflow-hidden rounded-2xl border border-white/10 px-6 py-12 md:px-10 md:py-14 text-center"

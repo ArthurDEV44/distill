@@ -414,7 +414,7 @@ function AboutContent({ t, animated, docsHref }: AboutContentProps) {
       {/* Benefits */}
       <Motion
         {...motionProps}
-        className="max-w-5xl mx-auto flex flex-col gap-8 mt-24 md:mt-32"
+        className="max-w-3xl mx-auto flex flex-col gap-8 mt-24 md:mt-32"
       >
         <div className="max-w-3xl mx-auto w-full flex flex-col gap-4 px-0">
           <SectionBadge>{t.benefitsBadge}</SectionBadge>
@@ -453,7 +453,7 @@ function AboutContent({ t, animated, docsHref }: AboutContentProps) {
       {/* CTA */}
       <Motion
         {...motionProps}
-        className="max-w-5xl mx-auto mt-24 md:mt-32"
+        className="max-w-3xl mx-auto mt-24 md:mt-32"
       >
         <div
           className="relative overflow-hidden rounded-2xl border border-white/10 px-6 py-12 md:px-10 md:py-14 text-center"
