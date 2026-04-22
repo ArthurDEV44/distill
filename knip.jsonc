@@ -95,7 +95,6 @@
         "@base-ui/react",
         "class-variance-authority",
         "framer-motion",
-        "glsl-noise",
         "shiki",
         "tw-animate-css",
         "postcss"
