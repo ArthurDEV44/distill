@@ -146,13 +146,66 @@ Puis redemarrez votre IDE et demandez : "Utilise auto_optimize pour compresser c
 
 ## Référence CLI
 
+Binaire : `distill-mcp`. Quatre commandes principales.
+
 ```bash
-distill-mcp setup      # Auto-configurer les IDE
-distill-mcp serve      # Démarrer le serveur MCP
-distill-mcp doctor     # Vérifier l'installation
-distill-mcp analyze    # Analyser l'utilisation des tokens
-distill-mcp --help     # Afficher toutes les options
+distill-mcp serve      # Démarre le serveur MCP sur le transport stdio
+distill-mcp setup      # Configure les IDE et installe hooks/agents
+distill-mcp doctor     # Diagnostique l'installation
+distill-mcp analyze    # Analyse l'utilisation des tokens dans un codebase
+distill-mcp --help     # Affiche toutes les options
+distill-mcp --version  # Affiche la version installée
 ```
+
+### `distill-mcp serve`
+
+| Flag | Effet |
+|------|-------|
+| `--verbose` | Active les logs détaillés sur stderr (stdout reste le canal MCP) |
+
+### `distill-mcp setup`
+
+Cibler un IDE précis :
+
+| Flag | Effet |
+|------|-------|
+| `--claude` | Configure uniquement Claude Code |
+| `--cursor` | Configure uniquement Cursor |
+| `--windsurf` | Configure uniquement Windsurf |
+| `--antigravity` | Configure uniquement Antigravity |
+
+Installer les extensions opt-in (introduites en `v0.10.0`) :
+
+| Flag | Effet |
+|------|-------|
+| `--hooks` | Installe le hook de pré-commit dans le projet courant |
+| `--install-precompact-hook` | Ajoute le hook PreCompact dans `~/.claude/settings.json` (idempotent, atomique via tempfile + rename) |
+| `--uninstall-precompact-hook` | Retire proprement l'entrée PreCompact |
+| `--install-agent` | Copie le template `distill-compressor.md` dans `~/.claude/agents/` |
+| `--uninstall-agent` | Supprime l'agent installé |
+
+Options transverses :
+
+| Flag | Effet |
+|------|-------|
+| `--dry-run` | Affiche les changements sans modifier le filesystem |
+| `--user-dir=<chemin>` | Surcharge `HOME` pour localiser `settings.json` (utile en tests) |
+| `--force`, `-f` | Écrase une configuration existante même si elle diffère du template |
+
+Voir la [page du marqueur et du hook PreCompact](/fr/docs/compressed-marker) pour les détails d'intégration.
+
+### `distill-mcp doctor`
+
+Aucun flag. Vérifie la version Node, la présence de `distill-mcp`, la configuration des IDE détectés et l'état des hooks installés.
+
+### `distill-mcp analyze`
+
+| Flag | Effet |
+|------|-------|
+| `--patterns`, `-p` | Patterns glob à scanner (défaut `**/*.{ts,tsx,js,jsx,py,go,rs}`) |
+| `--threshold`, `-t` | Seuil d'alerte en tokens (défaut `2000`) |
+| `--json`, `-j` | Sortie JSON au lieu du rapport texte |
+| `--output`, `-o` | Écrit le rapport dans un fichier au lieu de stdout |
 
 ## Étapes suivantes
 

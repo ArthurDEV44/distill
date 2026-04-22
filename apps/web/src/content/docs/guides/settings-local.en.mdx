@@ -170,7 +170,7 @@ If you don't want to commit settings, add to `.gitignore`:
 
 ## Environment Variables
 
-Pass environment variables to the MCP server:
+Distill exposes a single environment variable in `v0.10.x` — `DISTILL_COMPRESSED_MARKERS`. It enables the `[DISTILL:COMPRESSED]` marker contract used by the PreCompact hook to preserve compressed regions verbatim through Claude Code autocompact. See the dedicated [marker + PreCompact hook page](/docs/compressed-marker) for the full contract.
 
 ```json
 {
@@ -179,13 +179,16 @@ Pass environment variables to the MCP server:
       "command": "npx",
       "args": ["distill-mcp"],
       "env": {
-        "CTXOPT_DEBUG": "true",
-        "CTXOPT_LOG_LEVEL": "info"
+        "DISTILL_COMPRESSED_MARKERS": "1"
       }
     }
   }
 }
 ```
+
+Accepted values (case-insensitive): `1`, `true`, `yes`. Any other value, or omitting the variable, keeps the default behaviour (output identical to `v0.9.x`).
+
+> The legacy `CTXOPT_DEBUG`, `CTXOPT_LOG_LEVEL`, `DISTILL_DEBUG`, `DISTILL_LOG_LEVEL` variables that may appear in `v0.8.x` guides do not exist in `v0.10.x` code — they are silently ignored.
 
 ## Troubleshooting
 

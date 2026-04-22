@@ -15,6 +15,7 @@
     "guides/settings-local",
     "guides/claude-md-setup",
     "hooks",
+    "compressed-marker",
     "---Référence---",
     "troubleshooting",
     "changelog"

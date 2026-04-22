@@ -1,0 +1,137 @@
+---
+title: Marqueur [DISTILL:COMPRESSED] et hook PreCompact
+description: Contrat opt-in permettant au hook PreCompact de préserver verbatim les régions compressées par Distill pendant l'autocompact de Claude Code.
+---
+
+# Marqueur `[DISTILL:COMPRESSED]` et hook PreCompact
+
+Ajouté en `v0.10.0`. **Opt-in.** Permet à Claude Code de préserver intact, pendant l'autocompact, le texte compressé par Distill — au lieu de le résumer une deuxième fois et de perdre le travail d'économie de tokens.
+
+## Pourquoi ce marqueur existe
+
+Claude Code déclenche un autocompact automatique quand la fenêtre de contexte approche de la saturation. Le LLM de résumé lit alors tout le transcript et produit une version condensée. Sans signal explicite, il traite le texte déjà compressé par `auto_optimize` / `smart_file_read` / `code_execute` comme n'importe quel autre contenu — et le résume à nouveau, souvent en perdant des détails que Distill avait intentionnellement préservés.
+
+Le marqueur est un **envelope en texte brut** placé autour de chaque sortie compressée. Le hook PreCompact transmet au LLM de résumé une consigne explicite : *« tout ce qui est encadré par `[DISTILL:COMPRESSED …]` doit être recopié verbatim, sans résumer »*. C'est le seul canal qui survit à l'autocompact — aucun champ MCP (`structuredContent`, `mcpMeta`) n'est transmis à l'API Anthropic (voir l'appendice « Claude Code Mechanics » dans `CLAUDE.md`, ligne `mcpMeta` exclu des blocs API).
+
+## Format du marqueur
+
+```text
+[DISTILL:COMPRESSED ratio=X.XX method=<name>]
+<payload compressé>
+[/DISTILL:COMPRESSED]
+```
+
+- **`ratio`** : taille compressée / taille originale, clampé à `[0, 1]`, toujours deux décimales (par exemple `0.23` pour 77 % d'économie).
+- **`method`** : nom du compresseur ou du mode à l'origine du payload. Valeurs actuellement émises : `auto`, `logs`, `diff`, `semantic`, `skeleton`, `extract`, `search`, `build+recompressed`. Assaini à `[A-Za-z0-9+_.-]` par `packages/mcp-server/src/utils/distill-marker.ts`.
+
+### Échappement de collision
+
+Si le payload contient déjà la sous-chaîne littérale `[DISTILL:COMPRESSED` ou `[/DISTILL:COMPRESSED]` (par exemple parce qu'un utilisateur manipule un texte qui parle du contrat lui-même), le wrapper bascule sur des jetons de fallback :
+
+```text
+[DISTILL-USER-TEXT:COMPRESSED ratio=X.XX method=<name>]
+<payload>
+[/DISTILL-USER-TEXT:COMPRESSED]
+```
+
+Un consommateur peut ainsi distinguer un texte utilisateur d'un vrai marqueur Distill.
+
+## Activation
+
+Une seule variable d'environnement :
+
+```bash
+DISTILL_COMPRESSED_MARKERS=1
+```
+
+Valeurs acceptées (insensibles à la casse) : `1`, `true`, `yes`. Défaut : off — la sortie est identique à `v0.9.x`, aucune régression sur les intégrations existantes.
+
+Dans `.claude/settings.local.json` :
+
+```json
+{
+  "mcpServers": {
+    "distill": {
+      "command": "npx",
+      "args": ["distill-mcp"],
+      "env": {
+        "DISTILL_COMPRESSED_MARKERS": "1"
+      }
+    }
+  }
+}
+```
+
+## Seuils par outil
+
+Le wrapper ne s'active que si le gain de compression justifie le coût de l'envelope — autrement, le texte brut est retourné tel quel (pas de demi-envelope).
+
+| Outil | Condition d'application |
+|-------|--------------------------|
+| `auto_optimize` | `compressionRatio ≤ 0.7` (≥ 30 % d'économies). Les inputs courts en pass-through et la branche d'erreur ne wrappent jamais. |
+| `smart_file_read` | `text.length < 0.5 × originalFileLength` **ET** mode ∈ `{skeleton, extract, search}`. Les modes `full` et `lines` ne wrappent jamais. Wrap appliqué à la fois au chemin `cacheAndReturn` et au chemin cache-hit. |
+| `code_execute` | Via les helpers `ctx.compress.*` (`compressAuto`, `compressLogs`, `compressDiff`, `compressSemantic`). Activation sous la même règle ≥ 30 % d'économies. |
+
+## Hook PreCompact
+
+### Script shippé
+
+Distill fournit un hook POSIX clé en main à `packages/mcp-server/scripts/precompact-hook.sh`. Il lit sur stdin le payload `PreCompactHookInput` de Claude Code et émet sur stdout une instruction plain-text que Claude Code fusionne dans `newCustomInstructions` (`claude-code/utils/hooks.ts:3991-4024`).
+
+L'instruction indique au LLM de résumé :
+
+> *Preserve any region wrapped in `[DISTILL:COMPRESSED …][/DISTILL:COMPRESSED]` verbatim. Do not re-summarise, re-format, or paraphrase its contents.*
+
+Le script sort en code `0` sur **toutes** les formes d'entrée — y compris JSON malformé ou événement inattendu — pour ne jamais bloquer la compaction. `--help` affiche le contrat complet.
+
+### Installation
+
+```bash
+# Installation idempotente
+distill-mcp setup --install-precompact-hook
+
+# Prévisualiser les changements
+distill-mcp setup --install-precompact-hook --dry-run
+
+# Désinstaller
+distill-mcp setup --uninstall-precompact-hook
+```
+
+Le flag écrit dans `~/.claude/settings.json` via un pattern atomique (tempfile + rename). Si le fichier est malformé, l'outil avorte proprement avec un pointeur ligne/colonne au lieu de corrompre la configuration.
+
+Options transverses : `--dry-run`, `--user-dir=<chemin>` (pour surcharger `HOME` en tests), `--force` pour écraser une entrée existante.
+
+Voir la [référence CLI complète](/fr/docs/installation#distill-mcp-setup) pour tous les flags de `setup`.
+
+## Vérification
+
+```bash
+# Confirmer que le hook est enregistré
+cat ~/.claude/settings.json | jq '.hooks.PreCompact'
+
+# Tester le script en isolation
+echo '{"event":"PreCompact"}' | bash ~/.claude/hooks/distill-precompact.sh
+```
+
+La sortie du script doit contenir la consigne `preserve verbatim`. Absence de sortie = quelque chose a bougé côté upstream — re-lancer l'installation.
+
+## Quand l'utiliser
+
+Activez le marqueur si :
+
+- Vous travaillez sur des sessions longues qui déclenchent régulièrement l'autocompact.
+- Vos prompts contiennent des sorties volumineuses déjà compressées par Distill (build logs, diffs, extraits AST) dont chaque détail compte.
+- Vous mesurez précisément le token-to-insight ratio et voulez capitaliser sur l'investissement initial de compression.
+
+Laissez-le désactivé si :
+
+- Vos sessions sont courtes et ne déclenchent jamais l'autocompact.
+- Vous acceptez qu'un second résumé soit appliqué sur du contenu déjà compressé.
+- Vous testez une intégration `v0.8.x` / `v0.9.x` existante et voulez un comportement strictement identique.
+
+## Références code
+
+- `packages/mcp-server/src/utils/distill-marker.ts` — helper `wrapInMarker`, `maybeWrapInMarker`, parsing de `DISTILL_COMPRESSED_MARKERS`.
+- `packages/mcp-server/scripts/precompact-hook.sh` — hook POSIX shippé.
+- `packages/mcp-server/src/sandbox/sdk/compress.ts` — application du marqueur dans les helpers `ctx.compress.*`.
+- `CLAUDE.md` — section « Compression Marker Contract » pour la spécification formelle, et l'appendice « Claude Code Mechanics — Verified Citations » pour les invariants upstream (ligne `mcpMeta` exclu, ligne `executePreCompactHooks`).

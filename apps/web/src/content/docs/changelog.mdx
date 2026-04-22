@@ -7,6 +7,19 @@ description: Historique des releases de Distill — versions publiées, correcti
 
 Cette page résume les releases publiées de `distill-mcp` côté npm. L'historique complet, orienté commits, vit dans [`CHANGELOG.md`](https://github.com/ArthurDEV44/distill/blob/main/CHANGELOG.md) à la racine du dépôt ; la PRD de chaque version décrit la motivation détaillée story par story.
 
+## v0.10.1 — 22 avril 2026
+
+**Patch release.** Aucun changement de contrat, aucune modification d'API, aucune migration. Deux corrections de bugs remontées juste après la publication de `v0.10.0`.
+
+### Corrections
+
+- **`code_execute` — crash quand le code ne contient pas de `return`.** Le code utilisateur qui se contentait d'écrire `console.log(...)` sans valeur de retour faisait crasher l'outil : `JSON.stringify(undefined)` renvoie `undefined` (pas une chaîne), ce qui cassait `countTokens` en aval. Un garde à `src/sandbox/executor.ts:152-153` convertit désormais le cas `undefined` en chaîne vide avant la sérialisation. Les scripts purement side-effect fonctionnent à nouveau.
+- **`smart_file_read` — `async async` dans les squelettes TypeScript.** Le renderer du mode `skeleton` ajoutait systématiquement le modificateur `async` sur les fonctions asynchrones sans vérifier s'il n'était pas déjà présent dans la signature capturée, produisant par exemple `async async function fetchData(...)`. La ligne de rendu à `src/tools/smart-file-read.ts:395-414` teste maintenant la présence d'un `\basync\b` préexistant avant d'ajouter le modificateur.
+
+### Tests et couverture
+
+1 203 tests passants (1 ignoré) sur 46 fichiers. Couverture `mcp-server` : Lines 72,13 % · Branches 58,62 % · Functions 73,46 % · Statements 71,32 %. Les planchers `v0.9.2` restent respectés avec marge.
+
 ## v0.10.0 — 22 avril 2026
 
 **Release correction + intégration native.** Aucun changement dans le contrat des trois outils (`auto_optimize`, `smart_file_read`, `code_execute`). Aucun changement dans le sandbox, les parsers AST ou les algorithmes de compression. Première release publiée sur npm depuis `v0.8.1` — elle consolide les travaux `v0.9.1` et `v0.9.2` qui étaient restés en état « draft ».

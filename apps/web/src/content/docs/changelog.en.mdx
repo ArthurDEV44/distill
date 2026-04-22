@@ -7,6 +7,19 @@ description: Distill release history — shipped versions, corrections, and new 
 
 This page summarises the published `distill-mcp` npm releases. The full commit-level history lives in [`CHANGELOG.md`](https://github.com/ArthurDEV44/distill/blob/main/CHANGELOG.md) at the repository root; each release's PRD captures the story-by-story motivation.
 
+## v0.10.1 — 2026-04-22
+
+**Patch release.** No contract change, no API change, no migration. Two bug fixes surfaced right after `v0.10.0` shipped.
+
+### Fixes
+
+- **`code_execute` — crash on code without a `return` statement.** User code that only called `console.log(...)` without returning a value crashed the tool: `JSON.stringify(undefined)` returns `undefined` (not a string), which broke the downstream `countTokens` call. A guard at `src/sandbox/executor.ts:152-153` now coerces the `undefined` case to an empty string before serialisation. Pure side-effect scripts work again.
+- **`smart_file_read` — `async async` in TypeScript skeletons.** The `skeleton` renderer unconditionally prepended `async` to asynchronous functions without checking whether the captured signature already contained it, producing output like `async async function fetchData(...)`. The render line at `src/tools/smart-file-read.ts:395-414` now tests for a pre-existing `\basync\b` token before adding the modifier.
+
+### Tests and coverage
+
+1,203 passing tests (1 skipped) across 46 files. `mcp-server` coverage: Lines 72.13% · Branches 58.62% · Functions 73.46% · Statements 71.32%. `v0.9.2` floors remain respected with headroom.
+
 ## v0.10.0 — 2026-04-22
 
 **Correctness + native-integration release.** No change to the three tools' contracts (`auto_optimize`, `smart_file_read`, `code_execute`). No change to the sandbox, the AST parsers, or the compression algorithms. First release published to npm since `v0.8.1` — it consolidates the previously-draft `v0.9.1` and `v0.9.2` work into one shipped version.
