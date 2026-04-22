@@ -9,6 +9,174 @@ Historical long-form release notes for versions prior to `v0.9.0` live under [`d
 
 ---
 
+## [0.10.0] — 2026-04-22
+
+**Correctness + native-integration release.** Zero changes to the three
+tools' contracts (`auto_optimize`, `smart_file_read`, `code_execute`). Zero
+changes to the sandbox engine, the AST parsers, or the compression
+algorithms. Closes the 19-story v0.10 PRD
+(`tasks/prd-distill-v010-claude-code-alignment.md`), derived from a 5-agent
+exploration of `/home/arthur/dev/claude-code/` that surfaced four documented
+misunderstandings of how Claude Code actually consumes MCP tools and three
+high-leverage integration points that Distill was not using.
+
+This is the first release to hit npm since `v0.8.1`. It consolidates the
+previously-draft `v0.9.1` and `v0.9.2` work (below) into a single published
+version; nothing was dropped from those drafts.
+
+### Documentation correctness (EP-001)
+
+Every claim below is backed by a `claude-code/<path>:<line>` citation so
+future maintainers can re-verify against a moving upstream in one pass.
+
+- **MCP persistence threshold corrected.** `CLAUDE.md` previously claimed
+  "tool results > 50K chars are persisted to disk"; the real constraint is
+  `DEFAULT_MAX_MCP_OUTPUT_TOKENS = 25_000` at
+  `claude-code/utils/mcpValidation.ts:16`, gated by the `length/4`
+  heuristic at `:151-163` (≈ 12 500 tokens ≈ 50K chars). Distill's 45K-char
+  internal cap survives the heuristic gate by design. (US-001.)
+- **Autocompact formula corrected.** The reserved-tokens value is
+  `min(maxOutputTokens, 20_000)`, not a hard-coded 20K —
+  `claude-code/services/compact/autoCompact.ts:33-48`. Haiku's
+  `max_output = 4 096` therefore gives a higher trigger threshold
+  (≈ 91.5%) than Sonnet/Opus (≈ 83.5%). (US-002.)
+- **`outputSchema` claim retired.** The obsolete Issue #25081 reference is
+  replaced with the actual behaviour: `outputSchema` is silently ignored
+  during the `tools/list` → internal `Tool` mapping at
+  `claude-code/services/mcp/client.ts:1754-1813` (neither dropped nor
+  rejected — the field is simply not copied). (US-003.)
+- **Citation appendix added to `CLAUDE.md`.** Eleven verified mechanisms
+  (alwaysLoad / searchHint / outputSchema / MCP persistence / autocompact /
+  `structuredContent` drop / PreCompact hook / MCP prompts / custom agent
+  loading / `readOnlyHint` / MCP skills) each pin to a
+  `claude-code/<path>:<line>` anchor with a one-liner reverify script.
+  (US-004.)
+
+### Code alignment cleanup (EP-002)
+
+- **`structuredContent` removed from the CallTool wire response.** The
+  three tools still populate it on their internal `ToolResult` for test
+  assertions and non-Claude-Code MCP clients, but `server.ts` no longer
+  emits it. Claude Code stashes `structuredContent` in `mcpMeta` and
+  explicitly excludes `mcpMeta` from Anthropic-API blocks — so sending it
+  on the wire was pure bandwidth cost for zero model-side value. (US-005.)
+- **`searchHints` map deleted from `server.ts`.** The
+  `anthropic/searchHint` key is rendered only for deferred MCP tools —
+  Distill sets `alwaysLoad: true` on all three tools, so the hint was
+  unreachable by construction. (US-006.)
+- **`annotations: { readOnlyHint: true }`** declared on `smart_file_read`
+  and `auto_optimize` (with matching `title` + `destructiveHint: false` +
+  `idempotentHint: true` + `openWorldHint: false`). Claude Code maps
+  `readOnlyHint` to `isConcurrencySafe()` at
+  `claude-code/services/mcp/client.ts:1795-1800`, enabling parallel
+  dispatch on multi-tool turns. `code_execute` declares
+  `readOnlyHint: false, destructiveHint: true` — it can mutate via
+  `ctx.files` and git. (US-007.)
+
+### PreCompact hook preset (EP-003)
+
+- **`[DISTILL:COMPRESSED ratio=X.XX method=<name>]` marker contract.**
+  Opt-in wire envelope that lets Claude Code's PreCompact hook preserve
+  Distill-compressed regions verbatim during autocompact. Enabled via
+  `DISTILL_COMPRESSED_MARKERS=1`. Thresholds per tool: `auto_optimize`
+  savings ≥ 30%; `smart_file_read` output < 50% of source and mode ∈
+  {skeleton, extract, search}; `code_execute`'s `ctx.compress.*` helpers
+  wrap under the same 30%-savings rule. Collision escape uses
+  `[DISTILL-USER-TEXT:COMPRESSED …]` when the payload already contains
+  the literal marker. (US-008.)
+- **`packages/mcp-server/scripts/precompact-hook.sh`** — shipped
+  POSIX-compliant hook that emits stdout guidance merged by Claude Code
+  into `newCustomInstructions` (per
+  `claude-code/utils/hooks.ts:3991-4024`). Exits 0 on every input shape
+  (including malformed JSON and unexpected events) so it can never block
+  compaction. `shellcheck`-clean. (US-009.)
+- **`distill-mcp setup --install-precompact-hook`** — idempotent,
+  atomic (tempfile + rename), with `--dry-run`, `--uninstall-precompact-hook`,
+  and `--user-dir=<path>` for testing. Aborts on malformed
+  `~/.claude/settings.json` with a line/column pointer; never overwrites a
+  broken file. A `__distill_version` sentinel on the hook entry enables
+  targeted uninstall. (US-010.)
+- **End-to-end hook validation.** Vitest integration test synthesises a
+  `PreCompact` dispatch, pipes a hook-input JSON on stdin to the shipped
+  script, and asserts the stdout shape + instruction text. Runs under
+  CI's Ubuntu runner to validate POSIX-only shell. (US-011.)
+
+### MCP prompts as slash commands (EP-004)
+
+- **Three prompts registered via `prompts/list`:**
+  `/mcp__distill-mcp__compress-session`,
+  `/mcp__distill-mcp__analyze-tokens`,
+  `/mcp__distill-mcp__forget-large-results`. Zero-argument by design;
+  zero token overhead when unused (prompts are lazy-loaded by Claude
+  Code, not injected into the system prompt). Naming convention per
+  `claude-code/services/mcp/client.ts:2043-2060`. (US-012.)
+- **Vitest coverage** on the prompt handlers — every happy and unhappy
+  path including the MCP "unknown prompt" error code. (US-013.)
+- **User docs** (`apps/web`, fr + en) describing each slash command,
+  when to use it, and the expected model behaviour. (US-014.)
+
+### Custom agent preset (EP-005)
+
+- **`packages/mcp-server/assets/agents/distill-compressor.md`** — a
+  read-only subagent template with `name`, `description`, `tools`
+  (Read, Grep, Glob, Bash + `auto_optimize` + `smart_file_read`),
+  `disallowedTools` (`code_execute`), and `requiredMcpServers`
+  (`distill-mcp`). Body covers content-aware compression, AST-based
+  skeleton reads, summarization of long outputs, and the
+  `[DISTILL:COMPRESSED]` marker contract. (US-015.)
+- **`distill-mcp setup --install-agent`** — copies the template into
+  `~/.claude/agents/` with mode 0644, creates `~/.claude/agents/`
+  (0755) if missing, uses atomic tempfile + rename. Idempotent,
+  `--dry-run`-aware, with `--uninstall-agent` and diff-preview on
+  existing differing file (requires `--force` to overwrite). (US-016.)
+
+### MCP skills R&D spike (EP-006)
+
+- **`docs/spikes/mcp-skills-exposure.md` — verdict: NO-GO.** A
+  single-session source-and-binary audit established that external
+  MCP servers cannot produce commands with `loadedFrom === 'mcp'` on
+  the currently-shipped Claude Code. Three independent lines of
+  evidence: (1) all call sites gated by `feature('MCP_SKILLS')` from
+  `bun:bundle` at `services/mcp/client.ts:117-121, :2174, :2348`,
+  (2) the producer module `skills/mcpSkills.ts` is absent from the
+  public source tree and conditionally compiled only when the flag is
+  true, (3) the installed binary v2.1.117 has zero matches for
+  `MCP_SKILLS`, `fetchMcpSkills`, `getMcpSkillCommands`, or
+  `registerMCPSkill`. The spike report documents four upstream
+  preconditions that would flip the decision to GO plus three
+  `strings`-based re-verification commands. v0.11 does not include
+  MCP skills. (US-017.)
+
+### Release coordination (EP-007)
+
+- **Version bump** from `0.8.1` to `0.10.0`. The two `[Unreleased]`
+  `v0.9.1` and `v0.9.2` sections below are rolled into this release —
+  every bullet there shipped under `0.10.0`. (US-018.)
+- **`PostToolUse` matcher docs.** The `apps/web` hooks page now shows
+  a `"matcher": "mcp__distill-mcp__*"` example for auditing or
+  post-processing Distill tool calls, referencing the
+  `updatedMCPToolOutput` return channel per
+  `claude-code/schemas/hooks.ts:19-27`. (US-019.)
+
+### Upgrade notes
+
+- **No migration required.** The three tool signatures and output shapes
+  are unchanged. The marker contract, the PreCompact hook, the slash
+  commands, and the custom agent are all opt-in — existing `v0.8.x` /
+  `v0.9.x` integrators keep vanilla behaviour.
+- `structuredContent` no longer travels on the MCP wire (US-005). It was
+  already dropped before reaching the Anthropic API by Claude Code itself
+  (`mcpMeta` is excluded from API blocks), so no consumer of Claude Code
+  loses information. Non-Claude-Code MCP clients that read
+  `structuredContent` via the SDK surface can still do so via the
+  `ToolResult` returned by the internal registry (kept for tests and
+  SDK-level integrations).
+- Coverage floors ratchet to v0.9.2 baseline −1 pt: Lines 70% / Branches
+  56% / Functions 70% / Statements 69%. Current: Lines 72.15 / Branches
+  58.6 / Functions 73.48 / Statements 71.34.
+
+---
+
 ## [Unreleased] — v0.9.2 draft
 
 Hardening + deviation-cleanup patch release. Zero new tools, zero public

@@ -310,21 +310,63 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ---
 
-## Changelog
+## Release History & Next Version
 
-### v0.3.0 (Current)
-- Hybrid semantic search with Transformers.js
-- `searchToolsHybrid()` for BM25 + embedding similarity
-- `preloadSemanticSearch()` for background model loading
-- Local embeddings with all-MiniLM-L6-v2 (no API keys)
+The full commit-level history lives in [`CHANGELOG.md`](./CHANGELOG.md).
+This section is forward-looking: what the current release ships and what
+the next one is scoped to (or explicitly deferred from).
 
-### v0.2.0
-- BM25 search algorithm for tool discovery
-- `searchToolsWithScores()` API for relevance debugging
+### v0.10.0 — Complete (2026-04-22)
 
-### v0.1.0
-- Initial release
-- 19 optimization tools
+**Correctness + native-integration release.** 19 stories across 7 epics,
+covered by the v0.10 PRD
+(`tasks/prd-distill-v010-claude-code-alignment.md`). Zero changes to the
+three tools' contracts. Consolidates the previously-draft `v0.9.1` and
+`v0.9.2` work, which never shipped to npm.
+
+- Documentation realigned with Claude Code internals, every claim
+  citation-linked to `claude-code/<path>:<line>` (EP-001, US-001…US-004).
+- Dead code paths removed from `server.ts`: the unemitted
+  `structuredContent` branch and the unreachable `searchHints` map.
+  `readOnlyHint` declared on read-only tools (EP-002, US-005…US-007).
+- PreCompact hook preset — shipped POSIX script, setup subcommand,
+  integration test, plus the `[DISTILL:COMPRESSED]` marker contract
+  (EP-003, US-008…US-011).
+- MCP prompts exposed as three `/mcp__distill-mcp__<name>` slash commands
+  (EP-004, US-012…US-014).
+- `distill-compressor` custom subagent template + installer
+  (EP-005, US-015…US-016).
+- MCP skills R&D spike closed with a no-go verdict
+  ([`docs/spikes/mcp-skills-exposure.md`](./docs/spikes/mcp-skills-exposure.md))
+  — the feature is gated behind an upstream `feature('MCP_SKILLS')` flag
+  that is false in the shipped Claude Code binary (EP-006, US-017).
+- Release coordination — version bump, CHANGELOG, user docs for
+  `PostToolUse` matchers (EP-007, US-018…US-019).
+
+### v0.11 — Deferred scope
+
+- **MCP skills exposure — DEFERRED (no-go from the US-017 spike).** Was
+  originally framed as a contingent v0.11 item; the spike established
+  that the mechanism is a compile-time feature flag (`MCP_SKILLS`)
+  compiled out of the public Claude Code binary, and the loader module
+  `skills/mcpSkills.ts` is absent from the open-source tree. The
+  spike report documents four upstream preconditions that would flip
+  the decision to GO and three `strings`-based tripwires for the next
+  audit — see
+  [`docs/spikes/mcp-skills-exposure.md`](./docs/spikes/mcp-skills-exposure.md).
+  v0.11 does not include MCP skills; re-evaluate when any tripwire
+  fires.
+- Open scope for v0.11 itself (TBD in a follow-up PRD): candidates are
+  marker-retention telemetry based on real PreCompact samples,
+  additional MCP prompts if user signal warrants, and a CI check that
+  grep-validates every `claude-code/<path>:<line>` citation in
+  `CLAUDE.md` still resolves.
+
+### Historical (pre-v0.9.0)
+
+Long-form release notes for the earliest versions live under
+[`docs/releases/`](./docs/releases/); the per-release `CHANGELOG.md`
+section is the canonical log for every release from `v0.9.0` forward.
 - 7 language parsers
 - Lazy MCP pattern
 - `code_execute` SDK
