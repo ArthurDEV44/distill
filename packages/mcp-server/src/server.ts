@@ -63,7 +63,7 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
   const server = new Server(
     {
       name: "distill-mcp",
-      version: "0.10.0",
+      version: "0.10.1",
     },
     {
       capabilities: {
