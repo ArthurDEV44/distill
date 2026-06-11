@@ -119,3 +119,33 @@ jobs:
       # explicitly reviewed for POSIX compliance.
       - name: Shellcheck (POSIX sh) — precompact hook
         run: shellcheck -s sh packages/mcp-server/scripts/precompact-hook.sh
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    # Advisory / non-blocking (US-016). `bun audit` runs on every push + PR to
+    # surface known advisories across the dependency tree (FR-10). It does NOT
+    # gate merges: every current advisory is transitive or dev-only and
+    # unfixable without moving pinned deps (web-tree-sitter 0.22.6 /
+    # @sebastianwessel/quickjs 3.0.0 are pinned by contract) or out-of-scope
+    # upstream bumps — the lone "critical" is the Vitest UI dev-server
+    # (GHSA-5xrq-8626-4rwp, never started in CI/prod), and the "high"
+    # path-to-regexp / picomatch advisories arrive via @modelcontextprotocol/sdk,
+    # fumadocs, vitest, knip, and eslint plugins. A maintainer reviews the audit
+    # output; tighten to `bun audit --audit-level=high` gating once the
+    # transitive tree is clean.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: bun audit
