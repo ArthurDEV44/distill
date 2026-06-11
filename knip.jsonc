@@ -1,7 +1,8 @@
 {
   // knip v6 — strict JSON file, comments tolerated only via .jsonc extension.
-  // Scope per PRD US-012: gate on packages/mcp-server/** + apps/web/**.
-  // Other workspaces (eslint-config, typescript-config) are out of scope.
+  // Scope per PRD US-012: gate on packages/mcp-server/**.
+  // The web app moved to the external ArthurDEV44/distill-web repo; the
+  // eslint-config / typescript-config workspaces are out of scope.
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreWorkspaces": [
     "packages/eslint-config",
@@ -67,37 +68,6 @@
         "src/compressors/semantic.ts",
         "src/utils/segment-scorer.ts",
         "src/tools/smart-file-read.ts"
-      ]
-    },
-    "apps/web": {
-      "entry": [
-        // fumadocs source adapter (not a Next.js convention file)
-        "src/lib/**/*.ts",
-        // shadcn/ui component library — pre-installed catalog drawn from on demand.
-        "src/components/ui/**/*.tsx",
-        // SEO/JSON-LD schema components used inline in pages.
-        "src/components/JsonLd.tsx"
-      ],
-      "project": [
-        "src/**/*.{ts,tsx,mdx}"
-      ],
-      "next": {},
-      "ignore": [
-        ".next/**",
-        "public/**",
-        "content/**",
-        // Site copy/constants drawn from by pages on demand; treat as content config.
-        "src/components/constants.ts",
-        "src/hooks/**"
-      ],
-      "ignoreDependencies": [
-        // Indirect / runtime-only dependencies not detected as imports by knip.
-        "@base-ui/react",
-        "class-variance-authority",
-        "framer-motion",
-        "shiki",
-        "tw-animate-css",
-        "postcss"
       ]
     }
   }

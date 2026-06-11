@@ -28,8 +28,9 @@ Turborepo monorepo. Node `>= 20`. ESM only.
   Almost all development happens here.
 - `packages/eslint-config/` — ESLint v9 flat configs (`base.js`, `next.js`).
 - `packages/typescript-config/` — TS presets (`base.json`, `nextjs.json`).
-- `apps/web/` — Next.js 16 landing + fumadocs site. English-first i18n
-  (`*.mdx` = EN default, `*.fr.mdx` = FR).
+
+The landing + fumadocs docs site (formerly `apps/web/`) moved to the external
+private repo `ArthurDEV44/distill-web`, deployed to distill-mcp.com.
 
 ## Environment setup
 

@@ -16,7 +16,8 @@ Distill is an open-source MCP server (`distill-mcp` on npm) that optimizes LLM t
 - `packages/mcp-server/` — **Main package** (published as `distill-mcp`). Almost all development happens here. `SupportedLanguage` / `ContentType` live in `src/ast/types.ts`.
 - `packages/eslint-config/` — ESLint v9 flat configs: `base.js`, `next.js`
 - `packages/typescript-config/` — TypeScript presets: `base.json`, `nextjs.json`
-- `apps/web/` — Next.js 16 landing page + fumadocs docs site. **English-first i18n** (default locale `en`, hidden from URL via `hideLocale: "default-locale"` in `src/lib/i18n.ts`). Docs source files: `*.mdx` = English (default), `*.fr.mdx` = French. Same pattern for `meta.json` / `meta.fr.json`.
+
+The landing page + fumadocs docs site (formerly `apps/web/`) was extracted to the external private repo **`ArthurDEV44/distill-web`** (deployed to distill-mcp.com via the `distill-mcp` Vercel project). It is no longer part of this monorepo. The `eslint-config` `next.js` export and `typescript-config` `nextjs.json` preset remain here but are now only consumed by that external repo's history — they can be pruned in a later cleanup.
 
 ## Commands
 

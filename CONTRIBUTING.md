@@ -27,11 +27,13 @@ bun run dev
 
 ```
 distill/
-├── apps/web/              # Next.js landing page & docs
-├── packages/mcp-server/   # MCP server (npm: distill-mcp)
-├── packages/shared/       # Shared types & utilities
-└── packages/ui/           # React component library
+├── packages/mcp-server/        # MCP server (npm: distill-mcp)
+├── packages/eslint-config/     # Shared ESLint v9 flat configs
+└── packages/typescript-config/ # Shared TS presets
 ```
+
+> The landing page & docs site lives in a separate private repo
+> (`ArthurDEV44/distill-web`), deployed to distill-mcp.com.
 
 ## Development Workflow
 
