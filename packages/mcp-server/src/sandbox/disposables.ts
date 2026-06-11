@@ -117,7 +117,13 @@ export async function createDisposableSandbox(
   // Import QuickJS loader
   const { loadQuickJs } = await import("@sebastianwessel/quickjs");
   const variant = await import("@jitl/quickjs-ng-wasmfile-release-sync");
-  const { runSandboxed } = await loadQuickJs(variant.default);
+  // Type-only cast (US-009): NodeNext resolution splits the variant type
+  // identity between this direct import and the loader's expected param (a
+  // dependency-typing gap). The runtime variant object is unchanged; `unknown`
+  // bridge is TS-required for the non-overlap.
+  const { runSandboxed } = await loadQuickJs(
+    variant.default as unknown as Parameters<typeof loadQuickJs>[0]
+  );
 
   let disposed = false;
 

@@ -104,7 +104,13 @@ let quickJSLoader: ReturnType<typeof loadQuickJs> | null = null;
  */
 async function getQuickJSLoader() {
   if (!quickJSLoader) {
-    quickJSLoader = loadQuickJs(variant);
+    // Type-only cast (US-009): under NodeNext resolution the `@jitl/…` default
+    // import is typed as the module namespace, which no longer overlaps the
+    // variant type `@sebastianwessel/quickjs` expects (a dependency-typing gap,
+    // not a real shape mismatch). The loaded WASM variant value is byte-for-byte
+    // unchanged — this reconciles the type identity only and does NOT alter the
+    // isolation boundary. `unknown` bridge is TS-required for the non-overlap.
+    quickJSLoader = loadQuickJs(variant as unknown as Parameters<typeof loadQuickJs>[0]);
   }
   return quickJSLoader;
 }
