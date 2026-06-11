@@ -4,7 +4,7 @@ import { runServer } from "../dist/server.js";
 import { setup, parseSetupArgs } from "../dist/cli/setup.js";
 import { doctor } from "../dist/cli/doctor.js";
 import { runAnalyze } from "../dist/cli/analyze.js";
-import { getPackageVersion, COLORS, log } from "../dist/cli/utils.js";
+import { getPackageVersion, COLORS } from "../dist/cli/utils.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
