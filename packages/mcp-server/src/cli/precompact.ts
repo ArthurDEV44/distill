@@ -229,7 +229,7 @@ export function installPrecompactHook(opts: PrecompactOptions = {}): PrecompactR
   }
 
   const data: SettingsShape = read.state === "ok" ? read.data : {};
-  const hooks = (data.hooks ?? {}) as NonNullable<SettingsShape["hooks"]>;
+  const hooks = (data.hooks ?? {});
   const preCompact = Array.isArray(hooks.PreCompact) ? hooks.PreCompact : [];
 
   // Idempotence: bail if any existing matcher already wraps our hook.
@@ -297,7 +297,7 @@ export function uninstallPrecompactHook(opts: PrecompactOptions = {}): Precompac
   }
 
   const data = read.data;
-  const hooks = (data.hooks ?? {}) as NonNullable<SettingsShape["hooks"]>;
+  const hooks = (data.hooks ?? {});
   const preCompact = Array.isArray(hooks.PreCompact) ? hooks.PreCompact : [];
 
   // Filter each matcher's hooks[] to drop our entry. Keep the matcher if it
