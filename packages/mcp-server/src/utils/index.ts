@@ -4,6 +4,4 @@ export * from "./signature-grouper.js";
 export * from "./log-parser.js";
 export * from "./token-counter.js";
 export * from "./bm25.js";
-export * from "./embeddings.js";
-export * from "./hybrid-search.js";
 export * from "./distill-marker.js";
