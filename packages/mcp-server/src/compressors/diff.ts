@@ -429,11 +429,12 @@ export function compressDiff(
       compressed = compressSummary(parsed);
       technique = "diff:summary";
       break;
-    case "semantic":
+    case "semantic": {
       const maxTokens = options.maxTokens ?? Math.ceil(originalTokens * 0.5);
       compressed = compressSemantic(parsed, maxTokens);
       technique = "diff:semantic";
       break;
+    }
     default:
       compressed = compressHunksOnly(parsed);
       technique = "diff:hunks-only";

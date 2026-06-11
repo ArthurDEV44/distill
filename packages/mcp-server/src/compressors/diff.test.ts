@@ -42,8 +42,8 @@ describe("diff compressor — regressions (US-019)", () => {
     expect(result.stats.technique).toBe("diff:hunks-only");
     expect(result.filesChanged).toHaveLength(3);
     // Change lines preserved.
-    expect(result.compressed).toMatch(/\+  getUserName/);
-    expect(result.compressed).toMatch(/-  getUserName/);
+    expect(result.compressed).toMatch(/\+ {2}getUserName/);
+    expect(result.compressed).toMatch(/- {2}getUserName/);
     // File status icons present.
     expect(result.compressed).toMatch(/^M src\/services\/users\.ts/m);
     expect(result.compressed).toMatch(/^A src\/tests\/users\.test\.ts/m);

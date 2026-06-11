@@ -243,7 +243,7 @@ export function compressConversation(
       }
       break;
 
-    case "hybrid":
+    case "hybrid": {
       summary = createRollingSummary(toCompress);
       keyPoints = extractKeyPoints(toCompress);
       const keyPointsSection =
@@ -258,6 +258,7 @@ export function compressConversation(
         content: `[Conversation context]\n${summary}${keyPointsSection}`,
       };
       break;
+    }
   }
 
   // Build compressed messages array
