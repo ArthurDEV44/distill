@@ -70,6 +70,20 @@ function payloadCollidesWithMarker(payload: string): boolean {
   return payload.includes(MARKER_OPEN_PREFIX) || payload.includes(MARKER_CLOSE);
 }
 
+/** Zero-width space — breaks token contiguity without deleting characters. */
+const ZERO_WIDTH_SPACE = "\u200B";
+
+/**
+ * Break every literal occurrence of `token` inside the payload by inserting a
+ * zero-width space after its leading `[`, so it can no longer be parsed as an
+ * envelope boundary. Non-destructive (no characters removed).
+ */
+function defangMarkerToken(payload: string, token: string): string {
+  if (!token || !payload.includes(token)) return payload;
+  const broken = `[${ZERO_WIDTH_SPACE}${token.slice(1)}`;
+  return payload.split(token).join(broken);
+}
+
 /**
  * Unconditionally wrap a payload in the Distill compression envelope. Callers
  * normally want `maybeWrapInMarker`, which respects the env-var gate and the
@@ -78,10 +92,26 @@ function payloadCollidesWithMarker(payload: string): boolean {
 export function wrapInMarker(payload: string, opts: MarkerOptions): string {
   const ratio = clampRatio(opts.ratio).toFixed(2);
   const method = sanitizeMethod(opts.method);
-  const [openPrefix, close] = payloadCollidesWithMarker(payload)
+  const collides = payloadCollidesWithMarker(payload);
+  const [openPrefix, close] = collides
     ? [COLLISION_OPEN_PREFIX, COLLISION_CLOSE]
     : [MARKER_OPEN_PREFIX, MARKER_CLOSE];
-  return `${openPrefix} ratio=${ratio} method=${method}]\n${payload}\n${close}`;
+  // Defense-in-depth (US-003): a payload that collided with the primary marker
+  // could ALSO embed the fallback close token, which would forge an early
+  // boundary inside the fallback envelope. Neutralize any such occurrence so
+  // the only literal close token in the output is the real terminator. The
+  // non-collision path needs no defang: by definition the payload contains
+  // neither primary token, so it cannot contain `close` (= MARKER_CLOSE).
+  //
+  // Guarantee boundary: this protects the integrity of the OUTER envelope we
+  // emit (its open/close are unforgeable). Primary tokens embedded in a
+  // collision payload are intentionally left verbatim — that preservation is
+  // the documented v0.10 collision contract (a consumer distinguishes user
+  // text by the OUTER `[DISTILL-USER-TEXT:COMPRESSED]` envelope, not by
+  // scanning for inner primary fragments). Defanging them would break the
+  // verbatim-preservation contract and its existing test.
+  const safePayload = collides ? defangMarkerToken(payload, close) : payload;
+  return `${openPrefix} ratio=${ratio} method=${method}]\n${safePayload}\n${close}`;
 }
 
 /**
