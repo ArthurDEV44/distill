@@ -15,27 +15,9 @@ import {
   brandAsSafePattern,
 } from "../branded-types.js";
 import { fileError, type FileError } from "../errors.js";
-
-/**
- * Blocked file patterns (sensitive files)
- * Uses satisfies to ensure type safety while preserving literal types
- */
-const BLOCKED_PATTERNS = [
-  /\.env($|\.)/i, // Environment files
-  /\.pem$/i, // Private keys
-  /\.key$/i, // Key files
-  /id_rsa/i, // SSH keys
-  /id_ed25519/i, // SSH keys
-  /credentials/i, // Credentials
-  /secrets?\./i, // Secret files
-  /\.keystore$/i, // Java keystores
-  /\.jks$/i, // Java keystores
-  /password/i, // Password files
-  /\.htpasswd/i, // Apache passwords
-  /\.netrc/i, // Network credentials
-  /\.npmrc/i, // NPM credentials
-  /\.pypirc/i, // PyPI credentials
-] as const satisfies readonly RegExp[];
+// US-010: the sensitive-file denylist lives in the shared path-security policy
+// module (single source of truth), re-used here without duplication.
+import { BLOCKED_PATTERNS } from "../../shared/path-security.js";
 
 /**
  * Validation result (legacy interface)
@@ -266,23 +248,10 @@ export function resolveWithinWorkingDir(
   }
 }
 
-/**
- * Check if a path matches any blocked patterns.
- * Useful for pre-validation checks.
- */
-export function isBlockedPath(filePath: string): boolean {
-  const fileName = path.basename(filePath);
-  return BLOCKED_PATTERNS.some(
-    (pattern) => pattern.test(fileName) || pattern.test(filePath)
-  );
-}
-
-/**
- * Get the list of blocked patterns (for documentation/testing).
- */
-export function getBlockedPatterns(): readonly RegExp[] {
-  return BLOCKED_PATTERNS;
-}
+// `isBlockedPath` / `getBlockedPatterns` moved to `shared/path-security.ts`
+// (US-010) — the single source of truth for the blocked-pattern policy. This
+// validator imports `BLOCKED_PATTERNS` from there and keeps only the
+// TOCTOU/realpath validation mechanism.
 
 // ============================================================================
 // TOCTOU-safe file read helpers (US-005)
