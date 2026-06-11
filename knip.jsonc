@@ -18,6 +18,13 @@
     "distill-mcp",
     "expect-type"
   ],
+  // `shellcheck` is an optional, CI-provided binary (pre-installed on GitHub's
+  // ubuntu-latest runners) invoked by the precompact-hook integration test via
+  // execFileSync; it is skipped locally when absent. It is not an npm dependency,
+  // so knip's unlisted-binary detection must ignore it.
+  "ignoreBinaries": [
+    "shellcheck"
+  ],
   "workspaces": {
     "packages/mcp-server": {
       "entry": [
