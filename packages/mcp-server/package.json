@@ -60,8 +60,16 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ArthurDEV44/distill.git",
+    "url": "git+https://github.com/ArthurDEV44/distill.git",
     "directory": "packages/mcp-server"
   },
-  "license": "MIT"
+  "homepage": "https://distill-mcp.com",
+  "bugs": {
+    "url": "https://github.com/ArthurDEV44/distill/issues"
+  },
+  "author": "Arthur Jean (https://github.com/ArthurDEV44)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
 }
