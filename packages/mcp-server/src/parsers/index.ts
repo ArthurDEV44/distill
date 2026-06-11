@@ -4,26 +4,18 @@
  * Auto-detection and routing for various build tool outputs.
  */
 
-import { encodingForModel } from "js-tiktoken";
 import type { BuildParser, ParsedError, ErrorGroup, BuildAnalysisResult, BuildTool } from "./types.js";
 import { typescriptParser } from "./typescript.js";
 import { eslintParser } from "./eslint.js";
 import { genericParser } from "./generic.js";
+// US-006: route through the single canonical tiktoken encoder instead of
+// opening a second gpt-4 encoder instance here.
+import { countTokens } from "../utils/token-counter.js";
 
 export * from "./types.js";
 
 // All available parsers (order matters for detection priority)
 const parsers: BuildParser[] = [typescriptParser, eslintParser, genericParser];
-
-// Token encoder
-const encoding = encodingForModel("gpt-4");
-
-/**
- * Count tokens in a string
- */
-function countTokens(text: string): number {
-  return encoding.encode(text).length;
-}
 
 /**
  * Detect the build tool from output

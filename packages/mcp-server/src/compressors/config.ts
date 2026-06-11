@@ -5,14 +5,10 @@
  * Summarizes nested objects and arrays while preserving structure.
  */
 
-import { encodingForModel } from "js-tiktoken";
 import type { Compressor, CompressOptions, CompressedResult } from "./types.js";
-
-const encoding = encodingForModel("gpt-4");
-
-function countTokens(text: string): number {
-  return encoding.encode(text).length;
-}
+// US-006: route through the single canonical tiktoken encoder instead of
+// opening a separate gpt-4 encoder instance here.
+import { countTokens } from "../utils/token-counter.js";
 
 /**
  * Check if content is valid JSON
