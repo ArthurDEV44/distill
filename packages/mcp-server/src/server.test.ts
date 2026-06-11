@@ -137,6 +137,38 @@ describe("tools/list — outputSchema workaround (Issue #25081)", () => {
   });
 });
 
+describe("tools/list — token-optimal wire preserved under registerTool (US-017)", () => {
+  // The migration registers tools via McpServer.registerTool but OVERRIDES
+  // tools/list to emit the hand-tuned schema. These assertions prove the SDK's
+  // zodToJsonSchema bloat ($schema / additionalProperties / per-enum type) and
+  // the injected execution:{taskSupport} field never reach the wire.
+  it("inputSchema carries no $schema or additionalProperties keys", async () => {
+    const res = await client.listTools();
+    for (const tool of res.tools) {
+      const schema = tool.inputSchema as Record<string, unknown>;
+      expect(schema.$schema).toBeUndefined();
+      expect(schema.additionalProperties).toBeUndefined();
+    }
+  });
+
+  it("no tool carries an execution field on the wire", async () => {
+    const res = await client.listTools();
+    for (const tool of res.tools) {
+      expect((tool as Record<string, unknown>).execution).toBeUndefined();
+    }
+  });
+
+  it("enum-only properties keep the hand-tuned shape (no injected type key)", async () => {
+    const res = await client.listTools();
+    const autoOptimize = res.tools.find((t) => t.name === "auto_optimize");
+    const props = (autoOptimize?.inputSchema as { properties?: Record<string, { enum?: unknown[]; type?: unknown }> })
+      .properties;
+    // `strategy` is an enum-only property in the hand-tuned schema (no `type`).
+    expect(props?.strategy?.enum).toBeDefined();
+    expect(props?.strategy?.type).toBeUndefined();
+  });
+});
+
 describe("tools/list — annotations", () => {
   it("every tool has an annotations object", async () => {
     const res = await client.listTools();
@@ -248,7 +280,11 @@ describe("tools/call — error paths", () => {
     });
     expect(res.isError).toBe(true);
     const text = (res.content as Array<{ text: string }>)[0]?.text ?? "";
-    expect(text.toLowerCase()).toContain("unknown tool");
+    // US-017: CallTool is now dispatched by McpServer.registerTool, which reports
+    // an unregistered name with the SDK's standard "Tool <name> not found" message
+    // (isError:true preserved). The exact wording is SDK-level, not a Distill wire
+    // contract item, so the assertion tracks the new API surface.
+    expect(text.toLowerCase()).toContain("not found");
   });
 
   it("unknown tool surfaces the requested name in the error text", async () => {
