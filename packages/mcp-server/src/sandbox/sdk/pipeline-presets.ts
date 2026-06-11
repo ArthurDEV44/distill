@@ -354,7 +354,7 @@ export function createPipelinePresets(ctx: PipelineContext): PipelinePresets {
 
       const functions: SignatureResult["functions"] = [];
 
-      for (const file of result.value.data as FileContent[]) {
+      for (const file of result.value.data) {
         try {
           const lang = detectLanguageFromPath(file.path);
           const structure = codeParse(file.content, lang);

@@ -43,7 +43,7 @@ function parseImports(content: string, language: string): ImportInfo[] {
 
       const names: string[] = [];
       let isDefault = false;
-      let isNamespace = false;
+      const isNamespace = false;
 
       if (defaultImport) {
         names.push(defaultImport);
@@ -135,7 +135,7 @@ function resolveImportPath(importSource: string, currentFile: string, workingDir
   const extensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs"];
 
   // Try direct path
-  let resolved = path.resolve(currentDir, importSource);
+  const resolved = path.resolve(currentDir, importSource);
 
   // Try with extensions
   for (const ext of extensions) {
@@ -238,7 +238,7 @@ export function createAnalyzeAPI(workingDir: string, callbacks: HostCallbacks) {
       for (const exp of structure.exports) {
         exports.push({
           name: exp.name,
-          type: exp.type as ElementType,
+          type: exp.type,
           isDefault: exp.name === "default",
           line: exp.startLine,
           signature: exp.signature,

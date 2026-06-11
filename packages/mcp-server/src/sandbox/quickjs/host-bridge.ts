@@ -77,7 +77,7 @@ function createHostCallbacks(workingDir: string): HostCallbacks {
         // already proved `validation.resolvedPath` is defined, so this branch
         // always sees a string. Matches the PRD US-002 AC-1 wording.
         const resolved = resolveWithinWorkingDir(
-          validation.resolvedPath!,
+          validation.resolvedPath,
           workingDir
         );
         if (resolved === null) {

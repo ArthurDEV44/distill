@@ -227,8 +227,8 @@ export function createPipelineAPI(workingDir: string, callbacks: HostCallbacks) 
         const key = step.by;
 
         data = [...data].sort((a, b) => {
-          let valA = key ? (a as Record<string, unknown>)[key] : a;
-          let valB = key ? (b as Record<string, unknown>)[key] : b;
+          const valA = key ? (a as Record<string, unknown>)[key] : a;
+          const valB = key ? (b as Record<string, unknown>)[key] : b;
 
           if (typeof valA === "string" && typeof valB === "string") {
             return valA.localeCompare(valB) * direction;
