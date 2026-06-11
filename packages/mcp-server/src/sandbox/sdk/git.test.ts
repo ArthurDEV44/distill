@@ -6,8 +6,11 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { createGitAPILegacy, validateGitCommand } from "./git.js";
+import { createGitAPI, createGitAPILegacy, validateGitCommand, validateGitRef } from "./git.js";
 import { execSync } from "child_process";
+import { existsSync, rmSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
 // Check if git is available in the test environment
 function isGitAvailable(): boolean {
@@ -343,3 +346,79 @@ describe("Git Command Validation", () => {
     });
   });
 });
+
+// =============================================================================
+// US-001: option-fence for guest-supplied refs (close --output= file-write
+// escape). validateGitRef is a pure function — no git repo required.
+// =============================================================================
+describe("validateGitRef (US-001 option fence)", () => {
+  describe("rejects option-like / dangerous values", () => {
+    const blocked = [
+      "--output=/tmp/x", // the confirmed file-write escape
+      "--output=/etc/cron.d/pwn",
+      "-o", // short form
+      "-o/tmp/x",
+      "--exec=evil",
+      "--upload-pack=evil",
+      "--receive-pack=evil",
+      "--no-index", // generic option, caught by the leading-dash rule
+      "-c", // top-level option
+      "HEAD --no-index", // embedded option smuggled via whitespace
+      "HEAD --output=/tmp/x",
+    ];
+
+    for (const ref of blocked) {
+      it(`rejects ${JSON.stringify(ref)}`, () => {
+        const result = validateGitRef(ref);
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.code).toBe("GIT_INVALID_ARG");
+          expect(result.error.message).toContain("not allowed");
+        }
+      });
+    }
+  });
+
+  describe("accepts legitimate refs (no false rejections)", () => {
+    const allowed = ["HEAD", "main", "abc123", "HEAD~3", "HEAD^", "origin/main", "v1.0.0"];
+
+    for (const ref of allowed) {
+      it(`accepts ${JSON.stringify(ref)}`, () => {
+        const result = validateGitRef(ref);
+        expect(result.isOk()).toBe(true);
+      });
+    }
+  });
+});
+
+describe.skipIf(!gitAvailable || !repoRoot)(
+  "Git SDK — diff option-injection regression (US-001)",
+  () => {
+    it("rejects ctx.git.diff('--output=…') and writes no file", () => {
+      const target = join(tmpdir(), "distill-us001-pwn.txt");
+      rmSync(target, { force: true });
+
+      const api = createGitAPI(repoRoot!);
+      const result = api.diff(`--output=${target}`);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("GIT_INVALID_ARG");
+      }
+      // The escape's whole point is the side effect — prove it never happened.
+      expect(existsSync(target)).toBe(false);
+    });
+
+    it("rejects an embedded-option ref ('HEAD --no-index')", () => {
+      const api = createGitAPI(repoRoot!);
+      const result = api.diff("HEAD --no-index");
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("still resolves a legitimate ref ('HEAD')", () => {
+      const api = createGitAPI(repoRoot!);
+      const result = api.diff("HEAD");
+      expect(result.isOk()).toBe(true);
+    });
+  }
+);

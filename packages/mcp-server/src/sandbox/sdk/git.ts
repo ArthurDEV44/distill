@@ -117,6 +117,62 @@ function sanitizeGitArg(arg: string): Result<SanitizedGitArg, GitError> {
 }
 
 /**
+ * Dangerous git option forms that let a caller write/read arbitrary files or
+ * run arbitrary binaries outside the sandbox working dir (`git diff
+ * --output=/path` is the confirmed file-write escape). Kept as an explicit
+ * denylist for a clear diagnostic message; the leading-dash rule in
+ * `validateGitRef` already rejects every option-like value, so this is
+ * defense-in-depth.
+ */
+const DANGEROUS_GIT_OPTIONS = [
+  "--output", // diff/format-patch: writes the output to an arbitrary path
+  "-o", // short form of --output on several porcelain commands
+  "--exec", // format-patch et al.: runs an arbitrary binary
+  "--upload-pack", // fetch/ls-remote: runs an arbitrary binary
+  "--receive-pack", // push: runs an arbitrary binary
+] as const satisfies readonly string[];
+
+function matchesDangerousOption(arg: string): boolean {
+  const lower = arg.toLowerCase();
+  return DANGEROUS_GIT_OPTIONS.some(
+    (opt) => lower === opt || lower.startsWith(`${opt}=`)
+  );
+}
+
+/**
+ * Validate a guest-supplied git ref / commit-ish before it reaches git.
+ *
+ * `sanitizeGitArg` runs on EVERY argument, including the trusted flags the API
+ * methods add themselves (`--numstat`, `--format=…`, `-L…`), so the option
+ * fence cannot live there — it would reject those legitimate internal flags.
+ * Instead every `createGitAPI` method that forwards a guest ref/path routes it
+ * through this validator first. Layered defense (closes US-001 `--output=`
+ * file-write escape):
+ *   1. explicit denylist of dangerous option forms (clear diagnostics),
+ *   2. reject any value starting with `-` (no legitimate ref/pathspec does),
+ *   3. reject embedded whitespace (`"HEAD --no-index"` smuggling),
+ *   4. existing shell-metacharacter / newline sanitization.
+ */
+export function validateGitRef(ref: string): Result<SanitizedGitArg, GitError> {
+  if (matchesDangerousOption(ref)) {
+    return err(gitError.invalidArg(`dangerous git option not allowed: ${ref}`));
+  }
+  // No legitimate ref or pathspec starts with '-'; an option-like value here is
+  // an attempt to smuggle a flag (e.g. --output=) through ctx.git.*.
+  if (ref.startsWith("-")) {
+    return err(gitError.invalidArg(`option-like value not allowed: ${ref}`));
+  }
+  // Refs and SHAs never contain whitespace; reject embedded-option attempts
+  // like "HEAD --no-index" that pack a second token into a single arg.
+  if (/\s/.test(ref)) {
+    return err(
+      gitError.invalidArg(`option-like value not allowed (embedded whitespace): ${ref}`)
+    );
+  }
+  return sanitizeGitArg(ref);
+}
+
+/**
  * Validate git command is not blocked.
  * For 'stash', also checks the subcommand (args[1]).
  */
@@ -393,18 +449,32 @@ export function createGitAPI(workingDir: string) {
     diff(ref?: string): Result<GitDiff, GitError> {
       const refArg = ref || "HEAD";
 
+      // Option-fence the guest-supplied ref before it reaches git. Closes the
+      // `ctx.git.diff("--output=/path")` file-write escape (US-001). Consume the
+      // branded SanitizedGitArg (not the raw `refArg`) so the validated value is
+      // what flows to git — the option-fence holds even if execGit's own
+      // sanitize loop is ever refactored away.
+      const refValidation = validateGitRef(refArg);
+      if (refValidation.isErr()) return err(refValidation.error);
+      const safeRef = refValidation.value;
+
+      // Trailing `--` tells git "no pathspecs follow", so the ref can never be
+      // re-interpreted as an option/pathspec — defense-in-depth on top of
+      // validateGitRef. `git diff <ref> --` is semantically identical to
+      // `git diff <ref>`.
+
       // Get the raw diff
-      const rawResult = execGit(["diff", refArg], workingDir);
+      const rawResult = execGit(["diff", safeRef, "--"], workingDir);
       if (rawResult.isErr()) return err(rawResult.error);
 
       // Get stats
-      const numstatResult = execGit(["diff", "--numstat", refArg], workingDir);
+      const numstatResult = execGit(["diff", "--numstat", safeRef, "--"], workingDir);
       if (numstatResult.isErr()) return err(numstatResult.error);
 
       const { files, additions, deletions } = parseDiffStats(numstatResult.value);
 
       // Get file statuses
-      const nameStatusResult = execGit(["diff", "--name-status", refArg], workingDir);
+      const nameStatusResult = execGit(["diff", "--name-status", safeRef, "--"], workingDir);
       if (nameStatusResult.isErr()) return err(nameStatusResult.error);
 
       const refinedFiles = refineFileStatuses(files, nameStatusResult.value);
