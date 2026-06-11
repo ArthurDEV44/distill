@@ -48,6 +48,19 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Verify npm authentication
+        # Fail early with a clear message when the token is missing/expired,
+        # instead of letting bun publish exit 1 with no diagnostic.
+        run: |
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${NPM_TOKEN}" https://registry.npmjs.org/-/whoami)"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::npm authentication failed (HTTP $CODE). The NPM_TOKEN secret is missing, expired, or lacks publish rights. Generate an Automation token at npmjs.com and update the NPM_TOKEN repository secret."
+            exit 1
+          fi
+          echo "npm authentication OK"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish to npm
         working-directory: packages/mcp-server
         # bun publish resolves the workspace: protocol in devDependencies, which
