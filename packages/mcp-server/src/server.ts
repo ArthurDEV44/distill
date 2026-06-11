@@ -127,7 +127,7 @@ export async function createServer(config: ServerConfig = {}): Promise<ServerIns
   const mcp = new McpServer(
     {
       name: "distill-mcp",
-      version: "0.10.1",
+      version: "0.11.0",
     },
     {
       capabilities: {

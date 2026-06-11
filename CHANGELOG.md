@@ -9,6 +9,40 @@ Historical long-form release notes for versions prior to `v0.9.0` live under [`d
 
 ---
 
+## [0.11.0] - 2026-06-11
+
+**Sandbox hardening, async AST parsing, a lighter install, and MCP Registry publishing.** This release folds in the v0.11 audit-remediation work: the `code_execute` sandbox gains several defense-in-depth layers, Tree-sitter parsing no longer returns empty on cold start, and the package drops a heavy unused dependency. No breaking changes to the 3 tools' input/output contracts.
+
+### Added
+
+- **Async AST router for `smart_file_read` and `code_execute`.** New `parseAsync` / `extractAsync` / `searchAsync` paths await Tree-sitter WASM initialization, so the first call to a freshly loaded language parser returns real results instead of an empty structure.
+- **MCP Server Registry support.** The package now ships an `mcpName` ownership marker and a `server.json`, making `distill-mcp` publishable to the official MCP Server Registry (`registry.modelcontextprotocol.io`).
+- **Release automation.** A GitHub Actions workflow publishes to npm on every `vX.Y.Z` tag.
+
+### Changed
+
+- **Migrated to `McpServer.registerTool`** with a wire-preserving `tools/list` override, keeping the exact on-the-wire tool shape (including `_meta` flags) while moving to the higher-level SDK API.
+- **Decomposed `auto_optimize` and `smart_file_read`** into focused sub-modules for maintainability, with no behavior change.
+- **Unified token counting** through a single canonical counter shared by every compressor.
+
+### Removed
+
+- **Dropped the `@huggingface/transformers` dependency.** The embeddings and hybrid-search modules were dead code, and removing them significantly shrinks the install footprint.
+
+### Security
+
+- **Output sanitizer** that defangs `[DISTILL:COMPRESSED]` and other control tokens in untrusted sandbox output, so model-generated content cannot forge marker boundaries.
+- **Git SDK option-fence** closing a `--output=` argument that could write files outside the intended path.
+- **Neutralized an adversarial fallback-close token** in the compression marker helper.
+- **QuickJS containment smoke tests** asserting the sandbox blocks host access (`fetch`, `fs`, `process`).
+
+### Packaging
+
+- Completed npm metadata: `author`, `homepage`, `bugs`, and `engines` (`node >= 20`).
+- License attribution updated to Arthur Jean.
+
+---
+
 ## [0.10.1] — 2026-04-22
 
 **Patch release — pre-release smoke-test fixes.** Two user-facing bugs surfaced
