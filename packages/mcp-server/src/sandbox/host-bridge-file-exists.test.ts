@@ -54,7 +54,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
     // guest's fileExists call lands.
     fs.symlinkSync("/etc/passwd", target);
 
-    const result = bridge.__hostFileExists("race") as boolean;
+    const result = bridge.__hostFileExists("race");
 
     // The recheck must refuse the out-of-tree realpath. Pre-US-002 this
     // returned `true` (leaking the existence of /etc/passwd).
@@ -66,7 +66,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
     fs.writeFileSync(path.join(workingDir, fileName), "hi");
 
     const bridge = createHostBridge(workingDir);
-    const result = bridge.__hostFileExists(fileName) as boolean;
+    const result = bridge.__hostFileExists(fileName);
 
     expect(result).toBe(true);
   });
@@ -82,7 +82,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
     // sandbox before fileExists is called.
     fs.writeFileSync(path.join(workingDir, fileName), "hello");
 
-    const result = bridge.__hostFileExists(fileName) as boolean;
+    const result = bridge.__hostFileExists(fileName);
 
     expect(result).toBe(true);
   });
@@ -90,7 +90,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
   it("returns false for a never-created in-tree path with no symlink planted (no crash)", () => {
     const bridge = createHostBridge(workingDir);
 
-    const result = bridge.__hostFileExists("nothing-here.txt") as boolean;
+    const result = bridge.__hostFileExists("nothing-here.txt");
 
     expect(result).toBe(false);
   });
@@ -102,7 +102,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
     fs.symlinkSync("/etc/passwd", path.join(workingDir, "direct-escape"));
 
     const bridge = createHostBridge(workingDir);
-    const result = bridge.__hostFileExists("direct-escape") as boolean;
+    const result = bridge.__hostFileExists("direct-escape");
 
     expect(result).toBe(false);
   });
@@ -114,7 +114,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
     // The early-return branch in fileExists should catch this before touching
     // the filesystem.
     expect(() => {
-      const result = bridge.__hostFileExists("../../../etc/passwd") as boolean;
+      const result = bridge.__hostFileExists("../../../etc/passwd");
       expect(result).toBe(false);
     }).not.toThrow();
   });
@@ -129,7 +129,7 @@ describe("host-bridge fileExists — TOCTOU recheck (US-002)", () => {
     expect(() => {
       const result = bridge.__hostFileExists(
         "deeply/nested/missing.txt"
-      ) as boolean;
+      );
       expect(result).toBe(false);
     }).not.toThrow();
   });

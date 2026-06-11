@@ -52,7 +52,7 @@ describe("host-bridge glob walker — symlink safety (US-004)", () => {
     fs.symlinkSync("/etc", path.join(workingDir, "escape"));
 
     const bridge = createHostBridge(workingDir);
-    const results = bridge.__hostGlob("**/*.txt") as string[];
+    const results = bridge.__hostGlob("**/*.txt");
 
     expect(results).toContain("safe.txt");
     // Nothing from /etc should leak through the escape symlink.
@@ -68,7 +68,7 @@ describe("host-bridge glob walker — symlink safety (US-004)", () => {
     fs.symlinkSync(realDir, path.join(workingDir, "linked"));
 
     const bridge = createHostBridge(workingDir);
-    const results = bridge.__hostGlob("**/*.txt") as string[];
+    const results = bridge.__hostGlob("**/*.txt");
 
     // Both the direct path and the symlinked path should surface the file.
     expect(results).toContain(path.join("real", "inner.txt"));
@@ -87,7 +87,7 @@ describe("host-bridge glob walker — symlink safety (US-004)", () => {
 
     const bridge = createHostBridge(workingDir);
     // If the visited-set guard is missing, this throws or hangs.
-    const results = bridge.__hostGlob("**/*.txt") as string[];
+    const results = bridge.__hostGlob("**/*.txt");
     expect(results).toContain(path.join("a", "file.txt"));
   });
 });
