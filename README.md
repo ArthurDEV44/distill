@@ -5,8 +5,10 @@
 **Distill** is an open-source MCP server that optimizes LLM token usage through intelligent context compression. 3 always-loaded tools replace dozens of individual calls. Works with Claude Code, Cursor, and Windsurf.
 
 [![npm version](https://img.shields.io/npm/v/distill-mcp.svg)](https://www.npmjs.com/package/distill-mcp)
+[![CI](https://github.com/ArthurDEV44/distill/actions/workflows/build.yml/badge.svg)](https://github.com/ArthurDEV44/distill/actions/workflows/build.yml)
 [![smithery badge](https://smithery.ai/badge/@ArthurDEV44/distill-mcp)](https://smithery.ai/server/@ArthurDEV44/distill-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/node/v/distill-mcp)](https://www.npmjs.com/package/distill-mcp)
 
 ## Why Distill?
 
@@ -233,4 +235,4 @@ MIT
 
 ---
 
-**[npm](https://www.npmjs.com/package/distill-mcp)** · **[GitHub](https://github.com/ArthurDEV44/distill)** · **[Documentation](./docs)** · **[Discussions](https://github.com/ArthurDEV44/distill/discussions)**
+**[npm](https://www.npmjs.com/package/distill-mcp)** · **[GitHub](https://github.com/ArthurDEV44/distill)** · **[Documentation](https://distill-mcp.com)** · **[Discussions](https://github.com/ArthurDEV44/distill/discussions)**
