@@ -6,7 +6,9 @@
  */
 
 import { Result, ok, err } from "neverthrow";
-import { compressContent, analyzeContent, semanticCompressor } from "../../compressors/index.js";
+import { compressContent, analyzeContent } from "../../compressors/index.js";
+// semanticCompressor is direct-only (not in the compressContent dispatch array) — US-005.
+import { semanticCompressor } from "../../compressors/direct.js";
 import { getSummarizer } from "../../summarizers/index.js";
 import { countTokens } from "../../utils/token-counter.js";
 import { maybeWrapInMarker } from "../../utils/distill-marker.js";
