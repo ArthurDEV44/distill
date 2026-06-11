@@ -7,6 +7,12 @@
 export { executeSandbox } from "./executor.js";
 export { analyzeCode, sanitizeError } from "./security/index.js";
 export { validatePath, validateGlobPattern } from "./security/path-validator.js";
+export {
+  defangControlTokens,
+  wrapUntrustedSandboxOutput,
+  UNTRUSTED_OUTPUT_OPEN,
+  UNTRUSTED_OUTPUT_CLOSE,
+} from "./output-sanitizer.js";
 export type {
   ExecutionContext,
   ExecutionResult,

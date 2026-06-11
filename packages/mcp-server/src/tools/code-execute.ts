@@ -7,7 +7,11 @@
 
 import { z } from "zod";
 import type { ToolDefinition } from "./registry.js";
-import { executeSandbox, DEFAULT_LIMITS } from "../sandbox/index.js";
+import {
+  executeSandbox,
+  DEFAULT_LIMITS,
+  wrapUntrustedSandboxOutput,
+} from "../sandbox/index.js";
 
 /**
  * Input schema with semantic descriptions
@@ -97,7 +101,10 @@ async function executeCodeExecute(
   });
 
   if (!result.success) {
-    const errText = `[ERR] ${result.error}\n\nExecution time: ${result.stats.executionTimeMs}ms`;
+    // The error body can carry guest-influenced text, so it crosses the same
+    // untrusted boundary as a successful return (US-002).
+    const header = `[ERR] execution failed in ${result.stats.executionTimeMs}ms`;
+    const errText = `${header}\n\n${wrapUntrustedSandboxOutput(result.error ?? "Unknown error")}`;
     return {
       content: [{ type: "text", text: errText }],
       isError: true,
@@ -124,7 +131,10 @@ async function executeCodeExecute(
   }
 
   const header = `[OK] ${result.stats.executionTimeMs}ms, ${result.stats.tokensUsed} tokens`;
-  const fullText = `${header}\n\n${output}`;
+  // Wrap the guest return value as untrusted + defang injection control tokens
+  // before it re-enters the model context (US-002). structuredContent.output
+  // below keeps the raw value (off-wire — Claude Code drops structuredContent).
+  const fullText = `${header}\n\n${wrapUntrustedSandboxOutput(output)}`;
 
   return {
     content: [{ type: "text", text: fullText }],
