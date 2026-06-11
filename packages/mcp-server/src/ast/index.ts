@@ -37,6 +37,16 @@ import { rustTreeSitterParser } from "./rust/index.js";
 import { phpTreeSitterParser } from "./php/index.js";
 import { swiftTreeSitterParser } from "./swift/index.js";
 
+// Async parse/extract/search variants. These await Tree-sitter WASM init before
+// parsing, so the FIRST call of a cold session returns the real structure
+// instead of the empty placeholder the sync parsers emit while WASM warms up
+// (US-004). TS/JS use the TS Compiler API (no WASM) and never need these.
+import { parsePythonAsync, extractPythonElement, searchPythonElements } from "./python/index.js";
+import { parseGoAsync, extractGoElement, searchGoElements } from "./go/index.js";
+import { parseRustAsync, extractRustElement, searchRustElements } from "./rust/index.js";
+import { parsePhpAsync, extractPhpElement, searchPhpElements } from "./php/index.js";
+import { parseSwiftAsync, extractSwiftElement, searchSwiftElements } from "./swift/index.js";
+
 /**
  * Registry of language parsers
  */
@@ -127,6 +137,95 @@ export function searchElements(
   }
 
   return parser.searchElements(content, query);
+}
+
+// ============================================================================
+// Async parse path (US-004) — awaits Tree-sitter WASM init so a cold session
+// never returns a silently-empty structure for a populated file.
+// ============================================================================
+
+type AsyncParseFn = (content: string) => Promise<FileStructure>;
+type AsyncExtractFn = (
+  content: string,
+  target: ExtractionTarget,
+  options: ExtractionOptions
+) => Promise<ExtractedContent | null>;
+type AsyncSearchFn = (content: string, query: string) => Promise<CodeElement[]>;
+
+/** Languages whose parser is Tree-sitter WASM-backed (need async init). */
+const asyncParserRegistry: Map<SupportedLanguage, AsyncParseFn> = new Map([
+  ["python", parsePythonAsync],
+  ["go", parseGoAsync],
+  ["rust", parseRustAsync],
+  ["php", parsePhpAsync],
+  ["swift", parseSwiftAsync],
+]);
+
+const asyncExtractorRegistry: Map<SupportedLanguage, AsyncExtractFn> = new Map([
+  ["python", extractPythonElement],
+  ["go", extractGoElement],
+  ["rust", extractRustElement],
+  ["php", extractPhpElement],
+  ["swift", extractSwiftElement],
+]);
+
+const asyncSearcherRegistry: Map<SupportedLanguage, AsyncSearchFn> = new Map([
+  ["python", searchPythonElements],
+  ["go", searchGoElements],
+  ["rust", searchRustElements],
+  ["php", searchPhpElements],
+  ["swift", searchSwiftElements],
+]);
+
+/**
+ * True for languages whose parser requires async Tree-sitter WASM init. TS/JS
+ * (TS Compiler API) and json/yaml/unknown return false — their sync parse is
+ * already complete and correct on the first call.
+ */
+export function isTreeSitterLanguage(language: SupportedLanguage): boolean {
+  return asyncParserRegistry.has(language);
+}
+
+/**
+ * Async counterpart of {@link parseFile}. For the 5 Tree-sitter grammars it
+ * awaits WASM init (so the first cold call returns the real structure, not the
+ * empty placeholder the sync path emits); for everything else it falls through
+ * to the sync path, which has no init to wait for. Throws if WASM init fails —
+ * callers can distinguish "parser unavailable" from "no structure".
+ */
+export async function parseFileAsync(
+  content: string,
+  language: SupportedLanguage,
+  mode: "full" | "quick" = "full",
+  options: ParseOptions = {}
+): Promise<FileStructure> {
+  if (mode === "quick") return quickScan(content, language);
+  const asyncParse = asyncParserRegistry.get(language);
+  if (asyncParse) return asyncParse(content);
+  return parseFile(content, language, mode, options);
+}
+
+/** Async counterpart of {@link extractElement} — awaits Tree-sitter init. */
+export async function extractElementAsync(
+  content: string,
+  language: SupportedLanguage,
+  target: ExtractionTarget,
+  options: ExtractionOptions
+): Promise<ExtractedContent | null> {
+  const asyncExtract = asyncExtractorRegistry.get(language);
+  if (asyncExtract) return asyncExtract(content, target, options);
+  return extractElement(content, language, target, options);
+}
+
+/** Async counterpart of {@link searchElements} — awaits Tree-sitter init. */
+export async function searchElementsAsync(
+  content: string,
+  language: SupportedLanguage,
+  query: string
+): Promise<CodeElement[]> {
+  const asyncSearch = asyncSearcherRegistry.get(language);
+  if (asyncSearch) return asyncSearch(content, query);
+  return searchElements(content, language, query);
 }
 
 /**
