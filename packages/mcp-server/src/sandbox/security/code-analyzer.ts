@@ -51,6 +51,9 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   // of `String.fromCharCode(65)` as a utility is refused. QuickJS WASM is
   // the final containment for fully-obfuscated variants.
   { pattern: /\bString\.fromCharCode\s*\(/, reason: "String.fromCharCode is not allowed (keyword reconstruction vector)" },
+  { pattern: /\bString\.fromCodePoint\s*\(/, reason: "String.fromCodePoint is not allowed (keyword reconstruction vector)" },
+  { pattern: /\batob\s*\(/, reason: "atob is not allowed (base64 keyword reconstruction vector)" },
+  { pattern: /\bbtoa\s*\(/, reason: "btoa is not allowed" },
   { pattern: /\bReflect\.ownKeys\s*\(/, reason: "Reflect.ownKeys is not allowed" },
   { pattern: /\bReflect\.get\s*\(/, reason: "Reflect.get is not allowed" },
   { pattern: /\bReflect\b/, reason: "Reflect is not allowed" },
@@ -125,7 +128,12 @@ export function sanitizeError(error: Error, workingDir: string): string {
   // Remove absolute paths
   message = message.replace(new RegExp(escapeForRegExp(workingDir), "g"), "<workdir>");
   message = message.replace(/\/home\/[^/]+/g, "<home>");
+  message = message.replace(/\/Users\/[^/]+/g, "<home>"); // macOS home
   message = message.replace(/C:\\Users\\[^\\]+/gi, "<home>");
+  // Other absolute host roots that can surface when workingDir lives outside
+  // /home (e.g. /tmp, /var, /opt, macOS /private/tmp). Strip so the host layout
+  // never leaks through error text.
+  message = message.replace(/\/(tmp|var|opt|private|srv)\/[^\s:'")]+/g, "<path>");
 
   // Remove stack traces with host info
   if (error.stack) {
