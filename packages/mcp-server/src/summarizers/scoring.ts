@@ -97,6 +97,11 @@ export function createLogScorer(
   const patternFrequency = calculatePatternFrequency(entries);
   const maxFrequency = Math.max(...patternFrequency.values(), 1);
 
+  // Memoize scoreAll(): scoring is pure over the captured `entries` (which never
+  // change for a given scorer), yet rankEntries/getByLevel/getTopEntries/getStats
+  // each call scoreAll() — so a single summary triggered 3+ full TF-IDF passes.
+  let scoredCache: ScoredLogEntry[] | null = null;
+
   return {
     /**
      * Score a single entry
@@ -144,7 +149,10 @@ export function createLogScorer(
      * Score all entries
      */
     scoreAll(): ScoredLogEntry[] {
-      return entries.map((entry, index) => this.scoreEntry(entry, index));
+      if (scoredCache === null) {
+        scoredCache = entries.map((entry, index) => this.scoreEntry(entry, index));
+      }
+      return scoredCache;
     },
 
     /**

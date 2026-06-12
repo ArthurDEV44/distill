@@ -76,6 +76,14 @@ export function clusterLogs(
 
   if (entries.length === 0) return [];
 
+  // Levenshtein similarity is O(n² · l²) and explodes on large corpora. Above
+  // this many entries, fall back to Jaccard (O(n · vocab)) unless the caller
+  // explicitly requested Levenshtein. Small corpora keep the default behavior.
+  const LEVENSHTEIN_MAX_ENTRIES = 500;
+  const effectiveUseLevenshtein =
+    useLevenshtein &&
+    (options.useLevenshtein === true || entries.length <= LEVENSHTEIN_MAX_ENTRIES);
+
   // Normalize entries for comparison
   const normalizedEntries = entries.map((entry) => ({
     entry,
@@ -98,7 +106,7 @@ export function clusterLogs(
       if (assigned.has(j)) continue;
 
       const other = normalizedEntries[j]!;
-      const similarity = useLevenshtein
+      const similarity = effectiveUseLevenshtein
         ? calculateLevenshteinSimilarity(current.normalized, other.normalized)
         : calculateJaccardSimilarity(current.normalized, other.normalized);
 
