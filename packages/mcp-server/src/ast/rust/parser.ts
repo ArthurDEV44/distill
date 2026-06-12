@@ -58,6 +58,8 @@ import {
 let parserInstance: Parser | null = null;
 let rustLanguage: Language | null = null;
 let initPromise: Promise<void> | null = null;
+// Throttle warm-up failure logging to one message per process.
+let initErrorLogged = false;
 
 /**
  * Get the path to the Rust WASM file
@@ -92,7 +94,20 @@ async function initParser(): Promise<void> {
     const wasmBuffer = readFileSync(wasmPath);
     rustLanguage = await Parser.Language.load(wasmBuffer);
     parserInstance.setLanguage(rustLanguage);
-  })();
+  })().catch((error) => {
+    // Reset so a transient init failure (missing/corrupt WASM, OOM) can be
+    // retried on the next call instead of poisoning every future parse for
+    // the lifetime of the process.
+    initPromise = null;
+    if (!initErrorLogged) {
+      initErrorLogged = true;
+      console.error(
+        "[distill] Tree-sitter Rust parser init failed; parses fall back to empty structure until WASM loads:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+    throw error;
+  });
 
   await initPromise;
 }
