@@ -145,10 +145,15 @@ export class SmartCache {
       tokenCount: options.tokenCount,
     };
 
-    // Remove old entry stats if exists
+    // Remove old entry stats if exists. Clamp at 0: concurrent set()s on the
+    // same key can otherwise double-subtract and drive the counter negative,
+    // which disables memory-based eviction (cache then grows unbounded).
     const existing = this.cache.get(key);
     if (existing) {
-      this.stats.memorySizeBytes -= existing.sizeBytes;
+      this.stats.memorySizeBytes = Math.max(
+        0,
+        this.stats.memorySizeBytes - existing.sizeBytes
+      );
     } else {
       this.stats.entries++;
     }
@@ -237,13 +242,46 @@ export class SmartCache {
   }
 
   private estimateSize(value: unknown): number {
-    // Rough estimation based on JSON serialization
-    try {
-      const json = JSON.stringify(value);
-      return json.length * 2; // UTF-16 encoding
-    } catch {
-      return 1024; // Default 1KB for non-serializable
+    // Estimate the in-memory footprint WITHOUT a full JSON.stringify: serializing
+    // a large nested value (cached file content, a deep FileStructure) only to
+    // measure it allocates throwaway JSON on every set(). A bounded structural
+    // probe is accurate enough for eviction accounting.
+    return this.estimateValueSize(value, 0);
+  }
+
+  private estimateValueSize(value: unknown, depth: number): number {
+    if (value === null || value === undefined) return 8;
+    switch (typeof value) {
+      case "string":
+        return value.length * 2; // UTF-16
+      case "number":
+        return 8;
+      case "boolean":
+        return 4;
+      case "bigint":
+        return 16;
+      case "symbol":
+      case "function":
+        return 0;
     }
+    // Bound deep nesting so a pathological structure can't make this expensive.
+    if (depth >= 4) return 256;
+    if (Array.isArray(value)) {
+      let total = 16;
+      const sample = Math.min(value.length, 50);
+      for (let i = 0; i < sample; i++) {
+        total += this.estimateValueSize(value[i], depth + 1);
+      }
+      // Extrapolate from the sample for very large arrays.
+      return value.length > sample
+        ? Math.round((total * value.length) / sample)
+        : total;
+    }
+    let total = 16;
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      total += k.length * 2 + this.estimateValueSize(v, depth + 1);
+    }
+    return total;
   }
 
   private async ensureCapacity(newEntrySize: number): Promise<void> {
@@ -272,11 +310,16 @@ export class SmartCache {
       }
     }
 
-    if (oldestKey) {
-      const entry = this.cache.get(oldestKey)!;
+    if (oldestKey !== null) {
+      const entry = this.cache.get(oldestKey);
       this.cache.delete(oldestKey);
       this.stats.entries--;
-      this.stats.memorySizeBytes -= entry.sizeBytes;
+      if (entry) {
+        this.stats.memorySizeBytes = Math.max(
+          0,
+          this.stats.memorySizeBytes - entry.sizeBytes
+        );
+      }
       this.stats.evictions++;
     }
   }
