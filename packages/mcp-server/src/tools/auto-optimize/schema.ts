@@ -42,6 +42,13 @@ export const autoOptimizeSchema = {
       description: "Output format for structured sections (plain or markdown)",
       default: "plain",
     },
+    task: {
+      type: "string",
+      description:
+        "What you're trying to do (e.g. 'find the auth timeout bug'). Enables query-aware " +
+        "compression: segments relevant to the task are preferentially preserved. Applies to " +
+        "the semantic/code strategy and the auto-detected prose path.",
+    },
   },
   required: ["content"],
 };

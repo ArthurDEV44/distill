@@ -89,6 +89,9 @@ const autoOptimizeInput = z.object({
   aggressive: z.boolean().optional(),
   preservePatterns: z.array(z.string()).optional(),
   format: z.enum(["plain", "markdown"]).optional(),
+  // F2: query-aware compression hint. Must be enumerated here or registerTool's
+  // objectFromShape strips it before the handler runs (same contract as `hint`).
+  task: z.string().optional(),
 });
 
 const codeExecuteInput = z.object({

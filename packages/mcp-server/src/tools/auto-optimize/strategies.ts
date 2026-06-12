@@ -155,6 +155,7 @@ export function optimizeSemantic(
   content: string,
   aggressive: boolean,
   preservePatterns?: RegExp[],
+  query?: string,
 ): OptimizationResult {
   const originalTokens = countTokens(content);
   const targetRatio = aggressive ? 0.3 : 0.5;
@@ -162,6 +163,7 @@ export function optimizeSemantic(
     detail: aggressive ? "minimal" : "normal",
     targetRatio,
     preservePatterns,
+    query,
   });
 
   return {

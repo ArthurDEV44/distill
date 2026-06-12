@@ -15,6 +15,12 @@ export interface CompressOptions {
   preservePatterns?: RegExp[];
   /** Level of detail in output */
   detail: DetailLevel;
+  /**
+   * F2: the active task/query. Consumed by the semantic compressor for
+   * query-aware segment selection (task-relevant segments are lifted in the
+   * ranking); ignored by compressors that do not rank by importance.
+   */
+  query?: string;
 }
 
 export interface CompressedResult {

@@ -25,6 +25,8 @@ export interface AutoOptimizeArgs {
   preservePatterns?: string[];
   format?: OutputFormat;
   response_format?: ResponseFormat;
+  /** F2: active task/query for query-aware semantic compression. */
+  task?: string;
 }
 
 export interface OptimizationResult {

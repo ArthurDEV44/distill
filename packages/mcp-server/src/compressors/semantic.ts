@@ -29,6 +29,7 @@ export interface SemanticCompressOptions extends CompressOptions {
   targetRatio?: number;
   /** Compression model: 'fast' for rule-based. Default: 'fast' */
   model?: "fast";
+  // `query` (F2 query-aware selection) is inherited from CompressOptions.
 }
 
 /**
@@ -210,6 +211,47 @@ function segmentContent(content: string): Segment[] {
 }
 
 /**
+ * Common English/code stopwords dropped from task terms — they carry no
+ * discriminative signal for query-relevance matching.
+ */
+const QUERY_STOPWORDS = new Set([
+  "the", "and", "for", "are", "but", "not", "you", "all", "any", "can", "has",
+  "with", "this", "that", "from", "what", "when", "where", "which", "how", "why",
+  "find", "fix", "get", "use", "into", "out", "via", "per",
+]);
+
+/**
+ * Strength of the F2 query-relevance boost added to a fully-covering segment's
+ * importance. Base importance is in [0, 1]; 0.5 makes task relevance a strong
+ * signal without letting it fully override structure/keyword scoring (which
+ * keeps the structure-preserving guarantee intact).
+ */
+const QUERY_RELEVANCE_WEIGHT = 0.5;
+
+/** Extract discriminative lowercase terms from a task/query string. */
+function extractQueryTerms(query: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of query.toLowerCase().match(/[a-z0-9_]+/g) ?? []) {
+    if (raw.length < 3 || QUERY_STOPWORDS.has(raw) || seen.has(raw)) continue;
+    seen.add(raw);
+    out.push(raw);
+  }
+  return out;
+}
+
+/** Boost in [0, QUERY_RELEVANCE_WEIGHT] proportional to task-term coverage. */
+function queryRelevanceBoost(text: string, queryTerms: string[]): number {
+  if (queryTerms.length === 0) return 0;
+  const lower = text.toLowerCase();
+  let matched = 0;
+  for (const term of queryTerms) {
+    if (lower.includes(term)) matched++;
+  }
+  return QUERY_RELEVANCE_WEIGHT * (matched / queryTerms.length);
+}
+
+/**
  * Select segments to keep based on importance and target ratio
  */
 function selectSegments(
@@ -344,6 +386,18 @@ export const semanticCompressor: Compressor = {
       const tfidfScore = getSegmentTFIDFScore(i, tfidfMap);
       return scoreSegment(segment, tfidfScore);
     });
+
+    // Step 3b: F2 query-aware boost. When the caller passes the active task,
+    // lift segments covering more task terms so task-relevant context survives
+    // selection. No query → loop is skipped and ranking is unchanged.
+    if (options.query) {
+      const queryTerms = extractQueryTerms(options.query);
+      if (queryTerms.length > 0) {
+        for (const segment of scored) {
+          segment.importance += queryRelevanceBoost(segment.text, queryTerms);
+        }
+      }
+    }
 
     // Step 4: Mark segments that match preserve patterns
     if (options.preservePatterns) {
