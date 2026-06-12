@@ -169,7 +169,9 @@ const DESCRIPTION =
   "- ctx.search: grep(pattern,glob?), symbols(query,glob?), files(pattern), references(symbol,glob?)\n" +
   "- ctx.analyze: dependencies(file), callGraph(fn,file,depth?), exports(file), structure(dir,depth?)\n" +
   "- ctx.pipeline: steps(arr), codebaseOverview(dir?), findUsages(symbol,glob?), analyzeDeps(file,depth?)\n" +
-  "- ctx.utils: countTokens(text), detectType(content), detectLanguage(path)\n\n" +
+  "- ctx.utils: countTokens(text), detectType(content), detectLanguage(path)\n" +
+  "- ctx.conversation: compress(messages,opts?), createMemory, restore (keeps must/never rules)\n" +
+  "- ctx.restore: restore(handle) recovers an auto_optimize original (DISTILL_RETRIEVE=1)\n\n" +
   "WHAT TO EXPECT: Execution result with timing stats. Use 'return' to output results. " +
   "Timeout default 5s (max 30s). Memory limit 128MB. Output auto-compressed if >4000 tokens.\n\n" +
   "MARKER: When DISTILL_COMPRESSED_MARKERS=1 is set, ctx.compress.* helpers " +

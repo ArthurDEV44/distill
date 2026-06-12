@@ -23,9 +23,50 @@ export interface ConversationCompressResult {
   compressedMessages: ConversationMessage[];
   summary?: string;
   keyPoints?: string[];
+  /** F4: binding constraints kept verbatim in the compressed context. */
+  constraintsPreserved?: string[];
   originalTokens: number;
   compressedTokens: number;
   savings: number;
+}
+
+/**
+ * F4: constraint indicators. Negative imperatives and strong requirements are
+ * the highest-risk casualties of lossy conversation compaction (failure mode
+ * #1): they are low-entropy, so summarizers prune them, and the downstream
+ * model then violates a rule it can no longer see. These lines are preserved
+ * VERBATIM rather than summarized. Recall is favored over precision — keeping
+ * an extra line is cheap; dropping a real constraint is a silent failure.
+ */
+const CONSTRAINT_PATTERNS: RegExp[] = [
+  /\b(do not|don['’]t|never|must not|mustn['’]t|cannot|can['’]t|shall not|should not|shouldn['’]t|avoid|forbidden|disallowed|prohibited)\b/i,
+  /\b(must|always|required|require[sd]?|mandatory|only use|use only)\b/i,
+];
+
+function isConstraintLine(line: string): boolean {
+  return CONSTRAINT_PATTERNS.some((p) => p.test(line));
+}
+
+/**
+ * Extract binding-constraint lines from messages, deduped and capped. Leading
+ * list markers are stripped so each entry is a clean verbatim rule.
+ */
+export function extractConstraints(messages: ConversationMessage[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const msg of messages) {
+    for (const raw of msg.content.split("\n")) {
+      const trimmed = raw.trim();
+      if (trimmed.length < 8 || trimmed.length > 240) continue;
+      if (!isConstraintLine(trimmed)) continue;
+      const cleaned = trimmed.replace(/^[-*]\s+/, "").replace(/^\d+\.\s+/, "");
+      const key = cleaned.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(cleaned);
+    }
+  }
+  return out.slice(0, 20);
 }
 
 /**
@@ -261,6 +302,19 @@ export function compressConversation(
     }
   }
 
+  // F4: pin binding constraints from the compressed span verbatim into the
+  // context message, so no strategy can silently drop a "must"/"never"/"do not"
+  // rule the downstream model still has to obey.
+  const constraintsPreserved = extractConstraints(toCompress);
+  if (constraintsPreserved.length > 0) {
+    contextMessage = {
+      ...contextMessage,
+      content:
+        `${contextMessage.content}\n\n[Preserved constraints]\n` +
+        constraintsPreserved.map((c) => `- ${c}`).join("\n"),
+    };
+  }
+
   // Build compressed messages array
   // Order: system messages, context message, last N messages
   const compressedMessages: ConversationMessage[] = [
@@ -285,6 +339,7 @@ export function compressConversation(
     compressedMessages,
     summary,
     keyPoints,
+    constraintsPreserved: constraintsPreserved.length > 0 ? constraintsPreserved : undefined,
     originalTokens,
     compressedTokens,
     savings: Math.max(0, savings), // Ensure non-negative
