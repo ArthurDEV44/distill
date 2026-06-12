@@ -6,6 +6,30 @@
  */
 
 import { countTokens } from "../utils/token-counter.js";
+import {
+  areSavingsStatsEnabled,
+  formatSavingsLine,
+  getSessionStats,
+} from "../stats/session-stats.js";
+
+/**
+ * Derive per-call compression savings from a tool's structuredContent. Tools
+ * that compress content (auto_optimize, smart_file_read) expose `originalTokens`
+ * and `optimizedTokens`; tools that don't (code_execute, whose value is avoided
+ * call overhead, not content compression) omit them and report zero savings.
+ */
+function extractSavings(sc: Record<string, unknown> | undefined): {
+  originalTokens: number;
+  optimizedTokens: number;
+} {
+  if (!sc) return { originalTokens: 0, optimizedTokens: 0 };
+  const o = sc.originalTokens;
+  const c = sc.optimizedTokens;
+  if (typeof o === "number" && typeof c === "number" && Number.isFinite(o) && Number.isFinite(c)) {
+    return { originalTokens: o, optimizedTokens: c };
+  }
+  return { originalTokens: 0, optimizedTokens: 0 };
+}
 
 /**
  * Execution context passed to tool handlers at call time.
@@ -287,16 +311,40 @@ export class ToolRegistry {
     try {
       const executeResult = await tool.execute(ctx.arguments);
 
-      const outputText = executeResult.content.map((c) => c.text).join("\n");
+      // F1: derive compression savings from the tool's structuredContent and
+      // feed the session accumulator. This also fixes the long-standing
+      // tokensSaved=0 hardcode (the verbose `saved:` log was dead because of it).
+      const { originalTokens, optimizedTokens } = extractSavings(executeResult.structuredContent);
+      const tokensSaved = Math.max(0, originalTokens - optimizedTokens);
+
+      const stats = getSessionStats();
+      if (tokensSaved > 0) {
+        stats.record(originalTokens, optimizedTokens);
+      }
+
+      // Opt-in (DISTILL_SAVINGS_STATS): surface a compact savings line to the
+      // model as a separate content block — kept outside any [DISTILL:COMPRESSED]
+      // envelope so it is never mistaken for compressed payload. Default off, so
+      // output stays byte-identical to v0.11.x.
+      let content = executeResult.content;
+      if (tokensSaved > 0 && areSavingsStatsEnabled()) {
+        const line = formatSavingsLine(
+          { originalTokens, optimizedTokens, tokensSaved },
+          stats.snapshot()
+        );
+        content = [...content, { type: "text" as const, text: line }];
+      }
+
+      const outputText = content.map((c) => c.text).join("\n");
       const tokensOut = countTokens(outputText);
 
       result = {
-        content: executeResult.content,
+        content,
         isError: executeResult.isError ?? false,
         structuredContent: executeResult.structuredContent,
         tokensIn,
         tokensOut,
-        tokensSaved: 0,
+        tokensSaved,
         wasFiltered: false,
         metadata: {},
       };
