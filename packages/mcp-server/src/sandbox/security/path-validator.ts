@@ -178,14 +178,17 @@ export function validatePathResult(
 ): Result<ValidatedPath, FileError> {
   const validation = validatePath(filePath, workingDir);
 
-  if (!validation.safe) {
+  // `safe` and `resolvedPath` are not type-linked on PathValidation, so check
+  // both explicitly instead of asserting with `!` — a safe result is always
+  // expected to carry resolvedPath, and this makes that contract enforced.
+  if (!validation.safe || validation.resolvedPath === undefined) {
     return err(
       fileError.pathValidation(filePath, validation.error ?? "Unknown validation error")
     );
   }
 
   // Brand the validated path
-  return ok(brandAsValidatedPath(validation.resolvedPath!));
+  return ok(brandAsValidatedPath(validation.resolvedPath));
 }
 
 /**
