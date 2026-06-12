@@ -9,6 +9,42 @@ Historical long-form release notes for versions prior to `v0.9.0` live under [`d
 
 ---
 
+## [0.11.1] - 2026-06-12
+
+**Security, performance, and stability hardening from a full codebase audit.** No changes to the 3 tools' input/output contracts. Every fix below is backward-compatible.
+
+### Security
+
+- **ReDoS guard on `ctx.search.grep`.** The grep pattern is LLM-authored and runs host-side (outside the QuickJS execution timeout) over up to 500 files. Catastrophic-backtracking or overlong patterns are now rejected via `safe-regex2` (already a dependency, used by `auto_optimize`) before the regex is compiled.
+- **`WORKING_DIR` no longer exposed to guest code.** The sandbox env dropped the absolute host path; the host bridge already resolves paths host-side, so exposing it only gave guest code something to exfiltrate past `sanitizeError`.
+- **`smart_file_read` closes a validate-vs-read TOCTOU.** The separate `fs.access` pre-check is gone; a single guarded read follows the symlink-resolved path that validation approved, applies the blocked-pattern policy to that effective path, and never leaks the absolute host path on error.
+- **Static analyzer blocks more keyword-reconstruction vectors:** `atob`, `btoa`, and `String.fromCodePoint` join `String.fromCharCode` on the layer-1 blocklist (QuickJS WASM remains the final containment).
+- **`sanitizeError` widened** to scrub `/Users` (macOS home), `/tmp`, `/var`, `/opt`, `/private`, and `/srv` roots, not just `/home`.
+- **Language strings validated at the QuickJS guest→host boundary** instead of being blind-cast to `SupportedLanguage`.
+
+### Fixed
+
+- **Tree-sitter parsers recover from a failed init.** Rust, Go, Python, PHP, and Swift parsers now reset their init promise when WASM loading fails, so a transient failure (OOM, missing file) no longer poisons every later parse for the lifetime of the process. The warm-up failure is logged once per process.
+- **Cache memory counter can no longer go negative.** Concurrent writes to the same key could double-subtract `memorySizeBytes` into the negative, silently disabling memory-based eviction (unbounded growth). It is now clamped at 0.
+- **Hardened CLI argument handling.** `main().catch` handles non-`Error` throws and preserves the stack on startup failures; `setup` warns on unknown options instead of ignoring typos; `analyze` rejects a non-numeric or negative `--threshold` (which would otherwise silently match nothing) and keeps the default.
+
+### Performance
+
+- **QuickJS WASM loader is memoized and shared across execution paths.** The production `code_execute` path was re-instantiating the entire WASM module on every call (~50-200ms + GC pressure); a single cached loader now serves both the production and isolation-test paths.
+- **Log scorer memoizes `scoreAll()`**, which was recomputed 3+ times per summary.
+- **Log clustering falls back to Jaccard above 500 entries**, bounding the O(n²) Levenshtein cost on large corpora. Small-corpus behavior is unchanged.
+- **Cache size estimation uses a bounded structural probe** instead of `JSON.stringify`-ing whole cached values just to measure them.
+
+### Changed
+
+- **Renamed the sandbox SDK type `CtxOptSDK` to `DistillSDK`** and removed residual `CtxOpt` branding (including the "Analyzed by" build-summary string).
+
+### Removed
+
+- **Dead `shared/` module** (`utils.ts`, `constants.ts`, `types.ts`, and its barrel) with no consumers. `shared/path-security.ts`, the only used member, stays.
+
+---
+
 ## [0.11.0] - 2026-06-11
 
 **Sandbox hardening, async AST parsing, a lighter install, and MCP Registry publishing.** This release folds in the v0.11 audit-remediation work: the `code_execute` sandbox gains several defense-in-depth layers, Tree-sitter parsing no longer returns empty on cold start, and the package drops a heavy unused dependency. No breaking changes to the 3 tools' input/output contracts.
