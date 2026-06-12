@@ -46,6 +46,9 @@ import {
 import type { HostCallbacks, ExtractionTarget } from "../types.js";
 import { type SupportedLanguage, isSupportedLanguage } from "../../ast/types.js";
 
+// F3: origin store for ctx.restore (in-memory, process-scoped).
+import { getOriginStore } from "../../retrieve/origin-store.js";
+
 // Node modules
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -251,6 +254,13 @@ export function createHostBridge(workingDir: string): QuickJSHostFunctions {
 
     __hostDetectLanguage: (path: string): string => {
       return detectLanguage(path);
+    },
+
+    // Retrieve (F3): look up an auto_optimize original by handle. Returns null
+    // for unknown/evicted handles so guest code can branch without a throw.
+    __hostRestore: (handle: string): string | null => {
+      if (typeof handle !== "string" || handle.length === 0) return null;
+      return getOriginStore().get(handle) ?? null;
     },
 
     // Git

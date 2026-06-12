@@ -16,6 +16,11 @@
 
 import type { ToolDefinition } from "./registry.js";
 import { maybeWrapInMarker } from "../utils/distill-marker.js";
+import {
+  formatRestoreHint,
+  getOriginStore,
+  isRetrieveEnabled,
+} from "../retrieve/origin-store.js";
 import { compressContent } from "../compressors/index.js";
 import { countTokens } from "../utils/token-counter.js";
 import { MAX_OUTPUT_CHARS } from "../constants.js";
@@ -47,7 +52,11 @@ async function autoOptimize(
     preservePatterns: rawPreserve,
     format = "plain",
     response_format: responseFormat = "normal",
+    task,
   } = args;
+
+  // F2: a non-empty task enables query-aware semantic selection.
+  const query = task && task.trim().length > 0 ? task : undefined;
 
   // Handle empty or missing content
   if (!content || content.trim().length === 0) {
@@ -118,7 +127,7 @@ async function autoOptimize(
       break;
     case "code":
     case "semantic":
-      result = optimizeSemantic(content, aggressive, preservePatterns);
+      result = optimizeSemantic(content, aggressive, preservePatterns, query);
       break;
     case "config":
       result = optimizeConfig(content, aggressive);
@@ -127,8 +136,13 @@ async function autoOptimize(
       result = optimizeErrors(content, format);
       break;
     default:
-      // "auto" that didn't resolve to a specific strategy -> generic
-      result = optimizeGeneric(content, aggressive, preservePatterns);
+      // "auto" that didn't resolve to a specific strategy -> generic.
+      // F2: when a task is provided, upgrade the generic prose path to
+      // query-aware semantic selection (the generic line-dedup compressor has
+      // no relevance ranking, so task would otherwise be inert here).
+      result = query
+        ? optimizeSemantic(content, aggressive, preservePatterns, query)
+        : optimizeGeneric(content, aggressive, preservePatterns);
   }
 
   // Format output based on response_format
@@ -183,8 +197,18 @@ async function autoOptimize(
     shouldWrap: compressionRatio <= 0.7,
   });
 
+  // F3: opt-in reversibility. When enabled and compression was meaningful
+  // (savings >= 30%), keep the pre-compression original in the in-memory origin
+  // store and append a recover hint OUTSIDE the marker envelope so the agent can
+  // call ctx.restore(handle) if the lossy pass dropped something it needs.
+  let finalText = wrappedOutput;
+  if (isRetrieveEnabled() && compressionRatio <= 0.7) {
+    const handle = getOriginStore().put(content);
+    finalText = `${wrappedOutput}\n${formatRestoreHint(handle)}`;
+  }
+
   return {
-    content: [{ type: "text", text: wrappedOutput }],
+    content: [{ type: "text", text: finalText }],
     structuredContent: {
       detectedType: result.detectedType,
       originalTokens: result.originalTokens,
@@ -193,7 +217,7 @@ async function autoOptimize(
       method: result.method,
       optimizedContent: result.optimizedContent,
       compressionRatio,
-      outputChars: wrappedOutput.length,
+      outputChars: finalText.length,
       truncated,
     },
   };
@@ -210,6 +234,7 @@ export function createAutoOptimizeTool(): ToolDefinition {
       '- Auto-detect: auto_optimize({ content: "<paste build output>" })\n' +
       '- Force strategy: auto_optimize({ content: "<paste>", strategy: "build" })\n' +
       '- Preserve patterns: auto_optimize({ content: "<paste>", preservePatterns: ["ERROR.*critical"] })\n' +
+      '- Query-aware: auto_optimize({ content: "<paste>", task: "find the auth timeout bug" })\n' +
       '- Control verbosity: auto_optimize({ content: "<paste>", response_format: "minimal" })\n\n' +
       "Strategies and typical savings: build (95%), logs (80-90%), errors (70-90%), diff (60-80%), " +
       "stacktrace (50-80%), code/semantic (40-60%), config (30-60%). " +

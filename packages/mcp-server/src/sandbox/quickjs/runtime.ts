@@ -58,6 +58,9 @@ export interface QuickJSHostFunctions {
   __hostDetectType: (content: string) => string;
   __hostDetectLanguage: (path: string) => string;
 
+  // Retrieve (F3): recover an auto_optimize original by handle (null if unknown).
+  __hostRestore: (handle: string) => string | null;
+
   // Git
   __hostGitDiff: (ref?: string) => unknown;
   __hostGitLog: (limit?: number) => unknown;
@@ -211,6 +214,10 @@ const ctx = {
     detectType: (content) => env.__hostDetectType(content),
     detectLanguage: (path) => env.__hostDetectLanguage(path),
   },
+
+  // F3: recover an auto_optimize original by handle (when DISTILL_RETRIEVE=1).
+  // Returns the original string, or null if the handle is unknown/evicted.
+  restore: (handle) => env.__hostRestore(handle),
 
   git: {
     diff: (ref) => env.__hostGitDiff(ref),
