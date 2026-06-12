@@ -64,18 +64,32 @@ export async function executeSmartFileRead(args: unknown): Promise<ToolResult> {
 
   const resolvedPath = validation.resolvedPath;
 
-  // Check if file exists
+  // Read file content with a single guarded read. No separate fs.access
+  // pre-check: that opened a TOCTOU window (file swapped between access and
+  // read) and double-stat'd. The guard distinguishes "not found" from other
+  // I/O errors and never leaks the absolute host path (uses input.filePath).
+  let content: string;
   try {
-    await fs.access(resolvedPath);
-  } catch {
+    content = await fs.readFile(resolvedPath, "utf-8");
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException | null)?.code;
+    if (code === "ENOENT") {
+      return {
+        content: [{ type: "text", text: `File not found: ${input.filePath}` }],
+        isError: true,
+      };
+    }
+    const reason =
+      code === "EISDIR"
+        ? "path is a directory"
+        : code === "EACCES"
+          ? "permission denied"
+          : "could not be read (not a readable text file?)";
     return {
-      content: [{ type: "text", text: `File not found: ${input.filePath}` }],
+      content: [{ type: "text", text: `Cannot read ${input.filePath}: ${reason}.` }],
       isError: true,
     };
   }
-
-  // Read file content
-  const content = await fs.readFile(resolvedPath, "utf-8");
   const totalLines = content.split("\n").length;
 
   // Detect or force language

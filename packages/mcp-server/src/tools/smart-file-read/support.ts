@@ -118,7 +118,7 @@ export function validatePath(
   }
 
   // Resolve symlinks to prevent escaping the working directory via symlinks
-  let realPath: string;
+  let realPath: string | undefined;
   try {
     realPath = fsSync.realpathSync(normalizedResolved);
     if (!realPath.startsWith(normalizedWorkingDir + path.sep) &&
@@ -132,10 +132,17 @@ export function validatePath(
     // File doesn't exist yet or can't be resolved — fall through to fs.access check later
   }
 
-  // Check for blocked patterns
-  const basename = path.basename(resolvedPath);
+  // Read exactly what was validated: when the symlink resolved, return realPath
+  // so the caller's readFile sees the same path the symlink check approved
+  // (closes the validate-vs-read TOCTOU). Falls back to resolvedPath when the
+  // file does not exist yet (realpathSync threw).
+  const effectivePath = realPath ?? resolvedPath;
+
+  // Check for blocked patterns against the effective (symlink-resolved) path so
+  // a symlink cannot dodge the policy by presenting an innocent basename.
+  const basename = path.basename(effectivePath);
   for (const pattern of BLOCKED_PATTERNS) {
-    if (pattern.test(basename) || pattern.test(resolvedPath)) {
+    if (pattern.test(basename) || pattern.test(effectivePath)) {
       return {
         safe: false,
         error: `Access denied: Cannot read sensitive file '${basename}'. This file type is blocked for security reasons.`,
@@ -143,7 +150,7 @@ export function validatePath(
     }
   }
 
-  return { safe: true, resolvedPath };
+  return { safe: true, resolvedPath: effectivePath };
 }
 
 // Minimal schema for MCP - removes rarely-used properties to save tokens
