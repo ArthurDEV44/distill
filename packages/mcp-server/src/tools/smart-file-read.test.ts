@@ -271,6 +271,9 @@ settings:
 
   "empty.ts": "",
 
+  // Genuinely unsupported language (no AST, not json/yaml) for fallback tests.
+  "unsupported.txt": "just some plain text\nwith no code structure\nand a third line\n",
+
   "large.ts": generateLargeFile(),
 
   // Dedicated file for cache tests (unique content so no prior test can cache it)
@@ -495,16 +498,28 @@ describe("smart_file_read", () => {
     });
   });
 
-  describe("skeleton mode — unsupported language", () => {
-    it("should return empty result for JSON (not an error)", async () => {
-      const { text } = await read({ filePath: "config.json", mode: "skeleton" });
-      expect(text).toContain("No AST support");
-      expect(text).not.toContain("Error");
+  // F5: json/yaml get a structural skeleton (native JSON / indent-based YAML),
+  // not the old "no AST support" full-file fallback.
+  describe("config skeleton — json/yaml", () => {
+    it("should produce a structural skeleton for JSON (not an error)", async () => {
+      const { text, result } = await read({ filePath: "config.json", mode: "skeleton", cache: false });
+      expect(result.isError).toBeUndefined();
+      expect(text).toContain("Config skeleton");
+      expect(text).toContain("test-project");
+      expect(text).not.toContain("No AST support");
     });
 
-    it("should return empty result for YAML (not an error)", async () => {
-      const { text } = await read({ filePath: "data.yaml", mode: "skeleton" });
-      expect(text).toContain("No AST support");
+    it("should produce a structural skeleton for YAML (not an error)", async () => {
+      const { text } = await read({ filePath: "data.yaml", mode: "skeleton", cache: false });
+      expect(text).toContain("Config skeleton");
+      expect(text).toContain("name: test");
+      expect(text).not.toContain("No AST support");
+    });
+
+    it("should still dump the raw file for JSON when mode is explicitly full", async () => {
+      const { text } = await read({ filePath: "config.json", mode: "full", cache: false });
+      expect(text).toContain("no AST support");
+      expect(text).toContain("test-project");
     });
   });
 
@@ -656,10 +671,17 @@ describe("smart_file_read", () => {
   });
 
   describe("unsupported language fallback", () => {
-    it("should return full file for JSON in non-skeleton mode", async () => {
-      const { text, result } = await read({ filePath: "config.json" });
+    it("should return full file for a truly unsupported language (.txt)", async () => {
+      const { text, result } = await read({ filePath: "unsupported.txt", cache: false });
       expect(result.isError).toBeUndefined();
       expect(text).toContain("no AST support");
+      expect(text).toContain("plain text");
+    });
+
+    it("should produce a config skeleton for JSON in auto mode (F5)", async () => {
+      const { text, result } = await read({ filePath: "config.json", cache: false });
+      expect(result.isError).toBeUndefined();
+      expect(text).toContain("Config skeleton");
       expect(text).toContain("test-project");
     });
   });
@@ -898,12 +920,22 @@ describe("smart_file_read", () => {
   describe("markdown format — unsupported language fallback", () => {
     it("should wrap content in code fences for unsupported language", async () => {
       const { text } = await read({
-        filePath: "config.json",
+        filePath: "unsupported.txt",
         format: "markdown",
         cache: false,
       });
       expect(text).toContain("## File:");
       expect(text).toContain("```");
+    });
+
+    it("should render a markdown config skeleton for JSON", async () => {
+      const { text } = await read({
+        filePath: "config.json",
+        format: "markdown",
+        cache: false,
+      });
+      expect(text).toContain("## Config Skeleton:");
+      expect(text).toContain("```json");
     });
   });
 

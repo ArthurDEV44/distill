@@ -26,6 +26,7 @@ import {
 import type { FileStructure, SupportedLanguage } from "../ast/types.js";
 import { detectLanguageFromPath } from "../utils/language-detector.js";
 import { maybeWrapInMarker } from "../utils/distill-marker.js";
+import { countTokens } from "../utils/token-counter.js";
 import type { ToolDefinition } from "./registry.js";
 import { getGlobalCache } from "../cache/smart-cache.js";
 import { MAX_OUTPUT_CHARS } from "../constants.js";
@@ -46,6 +47,7 @@ import {
 import { runSkeleton } from "./smart-file-read/skeleton.js";
 import { runExtract, formatExtractedContent } from "./smart-file-read/extract.js";
 import { runSearch } from "./smart-file-read/search.js";
+import { runConfig } from "./smart-file-read/config.js";
 
 export { smartFileReadSchema } from "./smart-file-read/support.js";
 
@@ -122,7 +124,12 @@ export async function executeSmartFileRead(args: unknown): Promise<ToolResult> {
     else effectiveMode = "full";
   }
 
-  // Helper to build structuredContent for MCP 2025-06-18
+  // Helper to build structuredContent for MCP 2025-06-18.
+  // originalTokens/optimizedTokens feed the F1 session telemetry (off-wire —
+  // structuredContent is dropped by Claude Code, so this adds no wire cost). For
+  // full/lines/no-AST modes the emitted text ~= the raw file, so savings round to
+  // zero and the registry records nothing — only compressing modes count.
+  const originalTokens = countTokens(content);
   const buildStructured = (text: string, mode: string, truncated = false, elementCount = 0) => ({
     filePath: input.filePath,
     language: languageId,
@@ -132,6 +139,8 @@ export async function executeSmartFileRead(args: unknown): Promise<ToolResult> {
     outputChars: text.length,
     truncated,
     elementCount,
+    originalTokens,
+    optimizedTokens: countTokens(text),
   });
 
   // Cache setup
@@ -224,6 +233,15 @@ export async function executeSmartFileRead(args: unknown): Promise<ToolResult> {
     };
   }
 
+  // F5: json/yaml structural skeleton (no AST parser — native JSON + indent-based
+  // YAML). Explicit mode "full" still dumps the raw file; every other mode gets
+  // the key outline. A JSON parse failure returns null → fall through to the
+  // full-file fallback below.
+  if ((language === "json" || language === "yaml") && input.mode !== "full") {
+    const configResult = runConfig(ctx, language);
+    if (configResult) return configResult;
+  }
+
   // Skeleton mode: handle before hasParserSupport (runSkeleton returns empty, not error, for unsupported langs)
   if (effectiveMode === "skeleton") {
     return runSkeleton(ctx);
@@ -277,7 +295,8 @@ export const smartFileReadTool: ToolDefinition = {
   description:
     "Read code with AST extraction — get functions, classes, signatures without loading the full file.\n\n" +
     "WHEN TO USE: Instead of built-in Read when you need specific code elements from supported languages " +
-    "(TypeScript, JavaScript, Python, Go, Rust, PHP, Swift). Saves 50-90% tokens vs full file read.\n\n" +
+    "(TypeScript, JavaScript, Python, Go, Rust, PHP, Swift) or a structural outline of JSON/YAML config " +
+    "files (package.json, tsconfig, manifests). Saves 50-90% tokens vs full file read.\n\n" +
     "HOW TO FORMAT:\n" +
     '- Extract a function: smart_file_read({ filePath: "src/server.ts", mode: "extract", target: { type: "function", name: "createServer" } })\n' +
     '- Code skeleton: smart_file_read({ filePath: "src/server.ts", mode: "skeleton", depth: 2 })\n' +
