@@ -17,6 +17,28 @@ export type SupportedLanguage =
   | "yaml"
   | "unknown";
 
+/** Runtime list of every valid {@link SupportedLanguage}, backing {@link isSupportedLanguage}. */
+const SUPPORTED_LANGUAGES = [
+  "typescript",
+  "javascript",
+  "python",
+  "go",
+  "rust",
+  "php",
+  "swift",
+  "json",
+  "yaml",
+  "unknown",
+] as const satisfies readonly SupportedLanguage[];
+
+/**
+ * Type guard for {@link SupportedLanguage}. Use at untrusted boundaries (e.g. a
+ * language string crossing the QuickJS guest→host bridge) before casting.
+ */
+export function isSupportedLanguage(value: string): value is SupportedLanguage {
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(value);
+}
+
 export type ElementType =
   | "function"
   | "class"

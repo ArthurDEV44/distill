@@ -44,11 +44,18 @@ import {
 
 // Types
 import type { HostCallbacks, ExtractionTarget } from "../types.js";
-import type { SupportedLanguage } from "../../ast/types.js";
+import { type SupportedLanguage, isSupportedLanguage } from "../../ast/types.js";
 
 // Node modules
 import * as fs from "node:fs";
 import * as path from "node:path";
+
+// Guest-provided language strings cross the QuickJS boundary untyped. Normalize
+// to a known SupportedLanguage (falling back to "unknown") before use so an
+// arbitrary value can never be passed downstream as a valid language.
+function safeLang(lang: string): SupportedLanguage {
+  return isSupportedLanguage(lang) ? lang : "unknown";
+}
 
 /**
  * Create host callbacks for file operations with path validation
@@ -220,17 +227,17 @@ export function createHostBridge(workingDir: string): QuickJSHostFunctions {
 
     // Code
     __hostCodeParse: (content: string, lang: string) => {
-      return codeParse(content, lang as SupportedLanguage);
+      return codeParse(content, safeLang(lang));
     },
 
     __hostCodeExtract: (content: string, lang: string, targetJson: unknown) => {
       const target: ExtractionTarget =
         typeof targetJson === "string" ? JSON.parse(targetJson) : targetJson;
-      return codeExtract(content, lang as SupportedLanguage, target);
+      return codeExtract(content, safeLang(lang), target);
     },
 
     __hostCodeSkeleton: (content: string, lang: string): string => {
-      return codeSkeleton(content, lang as SupportedLanguage);
+      return codeSkeleton(content, safeLang(lang));
     },
 
     // Utils
