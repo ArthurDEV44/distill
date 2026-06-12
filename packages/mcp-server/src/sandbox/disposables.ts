@@ -5,6 +5,8 @@
  * @module
  */
 
+import { getQuickJSLoader } from "./quickjs/loader.js";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -114,16 +116,10 @@ export function createTimeout(ms: number): DisposableTimer {
 export async function createDisposableSandbox(
   options: SandboxRuntimeOptions
 ): Promise<DisposableSandboxRuntime> {
-  // Import QuickJS loader
-  const { loadQuickJs } = await import("@sebastianwessel/quickjs");
-  const variant = await import("@jitl/quickjs-ng-wasmfile-release-sync");
-  // Type-only cast (US-009): NodeNext resolution splits the variant type
-  // identity between this direct import and the loader's expected param (a
-  // dependency-typing gap). The runtime variant object is unchanged; `unknown`
-  // bridge is TS-required for the non-overlap.
-  const { runSandboxed } = await loadQuickJs(
-    variant.default as unknown as Parameters<typeof loadQuickJs>[0]
-  );
+  // Shared memoized loader: instantiates the WASM module at most once per
+  // process (see quickjs/loader.ts). Previously this re-ran loadQuickJs(variant)
+  // on every call, re-instantiating the full WASM runtime per code_execute.
+  const { runSandboxed } = await getQuickJSLoader();
 
   let disposed = false;
 
@@ -165,8 +161,11 @@ export async function createDisposableSandbox(
               debug: (...args: unknown[]) =>
                 logs.push(`[DEBUG] ${args.map(String).join(" ")}`),
             },
+            // Note: WORKING_DIR is intentionally NOT exposed to the guest env.
+            // The host bridge functions resolve all paths host-side; leaking the
+            // absolute host path would let guest code exfiltrate it via the
+            // return value, bypassing sanitizeError (which only scrubs errors).
             env: {
-              WORKING_DIR: options.workingDir,
               ...(hostFunctions as Record<string, unknown>),
             },
           }

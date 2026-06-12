@@ -7,8 +7,9 @@
  * @see https://github.com/sebastianwessel/quickjs
  */
 
-import variant from "@jitl/quickjs-ng-wasmfile-release-sync";
-import { loadQuickJs, type SandboxOptions } from "@sebastianwessel/quickjs";
+import { type SandboxOptions } from "@sebastianwessel/quickjs";
+
+import { getQuickJSLoader } from "./loader.js";
 
 /**
  * Options for creating a QuickJS sandbox runtime
@@ -96,27 +97,13 @@ export interface QuickJSHostFunctions {
   __hostConversationExtractCodeRefs: (messages: unknown[]) => unknown;
 }
 
-// Singleton for the loaded QuickJS runtime (expensive to load)
-let quickJSLoader: ReturnType<typeof loadQuickJs> | null = null;
-
 /**
- * Get or create the QuickJS loader (singleton pattern)
- */
-async function getQuickJSLoader() {
-  if (!quickJSLoader) {
-    // Type-only cast (US-009): under NodeNext resolution the `@jitl/…` default
-    // import is typed as the module namespace, which no longer overlaps the
-    // variant type `@sebastianwessel/quickjs` expects (a dependency-typing gap,
-    // not a real shape mismatch). The loaded WASM variant value is byte-for-byte
-    // unchanged — this reconciles the type identity only and does NOT alter the
-    // isolation boundary. `unknown` bridge is TS-required for the non-overlap.
-    quickJSLoader = loadQuickJs(variant as unknown as Parameters<typeof loadQuickJs>[0]);
-  }
-  return quickJSLoader;
-}
-
-/**
- * Create a QuickJS sandbox runtime with the given options
+ * Create a QuickJS sandbox runtime with the given options.
+ *
+ * Used by the isolation test-suite to exercise QuickJS containment (layer 2)
+ * independently of the static analyzer (layer 1). The production path is
+ * `createDisposableSandbox` (disposables.ts); both share the memoized loader
+ * from `./loader.js`.
  */
 export async function createQuickJSRuntime(options: QuickJSRuntimeOptions) {
   const { runSandboxed } = await getQuickJSLoader();
@@ -149,10 +136,11 @@ export async function createQuickJSRuntime(options: QuickJSRuntimeOptions) {
           debug: (...args) => logs.push(`[DEBUG] ${args.map(String).join(" ")}`),
         },
 
-        // Expose host functions via env
-        // The env object is accessible as `env` in the sandbox
+        // Expose host functions via env. The env object is accessible as `env`
+        // in the sandbox. WORKING_DIR is intentionally NOT exposed — the host
+        // bridge resolves paths host-side, so leaking the absolute host path
+        // would only give guest code something to exfiltrate.
         env: {
-          WORKING_DIR: options.workingDir,
           ...hostFunctions,
         },
       };
