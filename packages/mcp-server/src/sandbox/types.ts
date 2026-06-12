@@ -64,7 +64,13 @@ export interface LogSummary {
 }
 
 /**
- * Code element from AST parsing
+ * Code element from AST parsing — deliberately a MINIMAL projection of the
+ * richer `CodeElement` in `../../ast/types.ts` (which carries ~20 fields:
+ * parameters, children, decorators, visibility, generics, …). This is NOT an
+ * accidental duplicate: the sandbox SDK exposes only the fields guest code
+ * needs, keeping the objects that cross the QuickJS WASM boundary small. The
+ * `toCodeElement` projection in `sdk/code.ts` maps the AST element down to this
+ * shape. If you add a field here, also map it there.
  */
 export interface CodeElement {
   type: ElementType;
@@ -76,7 +82,9 @@ export interface CodeElement {
 }
 
 /**
- * File structure from parsing
+ * File structure from parsing — minimal SDK projection of the AST
+ * `FileStructure` (which also carries `totalLines` and `enums`). See the note
+ * on {@link CodeElement} above.
  */
 export interface FileStructure {
   language: SupportedLanguage;
@@ -98,9 +106,9 @@ export interface ExtractionTarget {
 }
 
 /**
- * SDK functions available in sandbox
+ * SDK functions available in sandbox (the `ctx` object guest code receives).
  */
-export interface CtxOptSDK {
+export interface DistillSDK {
   compress: {
     auto: (content: string, hint?: string) => CompressResult;
     logs: (logs: string) => LogSummary;

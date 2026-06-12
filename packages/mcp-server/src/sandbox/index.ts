@@ -16,7 +16,7 @@ export {
 export type {
   ExecutionContext,
   ExecutionResult,
-  CtxOptSDK,
+  DistillSDK,
   CodeAnalysis,
   CompressResult,
   LogSummary,

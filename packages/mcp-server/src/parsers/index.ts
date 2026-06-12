@@ -218,7 +218,7 @@ export function generateSummary(
     }
   }
 
-  parts.push(`*Analyzed by CtxOpt (${buildTool})*`);
+  parts.push(`*Analyzed by Distill (${buildTool})*`);
 
   return parts.join("\n");
 }
