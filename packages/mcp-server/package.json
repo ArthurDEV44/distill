@@ -1,6 +1,6 @@
 {
   "name": "distill-mcp",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "mcpName": "io.github.ArthurDEV44/distill",
   "description": "Distill - MCP Server for LLM token optimization and context compression",
   "type": "module",

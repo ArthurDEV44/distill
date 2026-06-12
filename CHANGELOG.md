@@ -9,6 +9,22 @@ Historical long-form release notes for versions prior to `v0.9.0` live under [`d
 
 ---
 
+## [0.11.2] - 2026-06-12
+
+**Five opt-in capabilities that strengthen the core promise: measurable, query-aware, recoverable, structure-preserving compression.** Every addition is backward-compatible. Default output is byte-identical to v0.11.1 unless a feature is explicitly enabled.
+
+### Added
+
+- **Session token-savings telemetry.** The registry now derives savings from each tool's `originalTokens`/`optimizedTokens` and feeds a process-scoped session accumulator, fixing the long-standing `tokensSaved = 0` hardcode (the verbose `saved:` log was dead because of it). Set `DISTILL_SAVINGS_STATS=1` to append a compact savings line (per call + session total) to tool output.
+- **JSON/YAML structural skeletons in `smart_file_read`.** Config files (`package.json`, `tsconfig`, k8s manifests, OpenAPI specs) now return a key-outline skeleton instead of a full-file dump: native `JSON.parse` for a typed tree, an indent-based walk for YAML, no new dependency. Explicit `mode: "full"` still returns the raw file.
+- **Query-aware semantic compression.** `auto_optimize` accepts an optional `task` param. When set, the semantic compressor lifts segments covering more task terms in its selection ranking (a LongLLMLingua-style lever), so task-relevant context survives compression. With no `task`, behavior is unchanged.
+- **Opt-in reversibility (`ctx.restore`).** A bounded in-memory origin store (process-scoped, no disk state) keeps pre-compression originals keyed by a content-derived handle. With `DISTILL_RETRIEVE=1`, `auto_optimize` emits the handle and `code_execute` exposes `ctx.restore(handle)` to recover the original when a lossy pass dropped something the agent needs.
+- **Constraint preservation in conversation compaction.** `ctx.conversation.compress` now extracts binding constraints (`must`, `never`, `do not`, `always`, `required`) and pins them verbatim in a `[Preserved constraints]` block, so lossy summarization can no longer silently drop a rule the downstream model still has to obey.
+
+### Fixed
+
+- **`ToolResult.tokensSaved` is now populated** instead of always 0, re-enabling the verbose `saved:` diagnostic line.
+
 ## [0.11.1] - 2026-06-12
 
 **Security, performance, and stability hardening from a full codebase audit.** No changes to the 3 tools' input/output contracts. Every fix below is backward-compatible.
