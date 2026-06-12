@@ -7,6 +7,7 @@
  */
 
 import { Result, ok, err } from "neverthrow";
+import isSafeRegex from "safe-regex2";
 import * as fs from "fs";
 import * as path from "path";
 import type {
@@ -33,6 +34,8 @@ import {
 const MAX_RESULTS = 100;
 const MAX_FILES_TO_SEARCH = 500;
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+// ReDoS guard: cap pattern length for the host-side grep regex.
+const MAX_PATTERN_LENGTH = 1000;
 
 /**
  * Simple glob pattern matcher
@@ -180,6 +183,20 @@ export function createSearchAPI(workingDir: string, callbacks: HostCallbacks) {
       // Find matching files
       const files = walkDirectory(workingDir, filePattern, workingDir);
       const allMatches: GrepMatch[] = [];
+
+      // ReDoS guard: the pattern is LLM-authored sandbox input and runs
+      // host-side (outside the QuickJS execution timeout) against up to
+      // MAX_FILES_TO_SEARCH files. Reject overlong or catastrophic-backtracking
+      // patterns before compilation. safe-regex2 is already a dependency
+      // (see tools/auto-optimize/strategies.ts).
+      if (pattern.length > MAX_PATTERN_LENGTH || !isSafeRegex(pattern)) {
+        return err(
+          searchError.invalidRegex(
+            pattern,
+            "Pattern rejected: exceeds length limit or carries catastrophic-backtracking risk (ReDoS)."
+          )
+        );
+      }
 
       // Create regex from pattern
       let regex: RegExp;
