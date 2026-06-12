@@ -123,6 +123,14 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("Error:", error.message);
+  // Robust against non-Error throws (e.g. a string rejection from QuickJS) and
+  // preserve the stack for diagnosing startup failures.
+  const message =
+    error instanceof Error
+      ? error.stack || error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error);
+  console.error("Error:", message || "Unknown error");
   process.exit(1);
 });

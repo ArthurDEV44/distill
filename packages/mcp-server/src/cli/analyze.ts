@@ -289,7 +289,16 @@ export async function runAnalyze(args: string[]): Promise<void> {
     } else if (arg === "--threshold" || arg === "-t") {
       const thresholdArg = args[++i];
       if (thresholdArg) {
-        threshold = parseInt(thresholdArg, 10);
+        const parsed = parseInt(thresholdArg, 10);
+        // Guard NaN/negative: an invalid threshold would silently match nothing
+        // (tokens > NaN is always false). Keep the default and warn instead.
+        if (Number.isNaN(parsed) || parsed < 0) {
+          console.error(
+            `Invalid --threshold value "${thresholdArg}"; using default ${threshold}.`
+          );
+        } else {
+          threshold = parsed;
+        }
       }
     } else if (arg === "--json" || arg === "-j") {
       json = true;

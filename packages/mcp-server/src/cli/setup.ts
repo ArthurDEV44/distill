@@ -371,6 +371,10 @@ export function parseSetupArgs(args: string[]): SetupOptions {
       case "--dry-run":
         options.dryRun = true;
         break;
+      default:
+        // Surface typos instead of silently ignoring them (e.g. `--clade`).
+        warn(`Unknown setup option ignored: ${arg}`);
+        break;
     }
   }
 
