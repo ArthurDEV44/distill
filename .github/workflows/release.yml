@@ -1,18 +1,24 @@
 name: Release
 
-# Publishes the distill-mcp package to npm when a version tag is pushed.
+# Publishes distill-mcp to npm via npm Trusted Publishing (OIDC) when a version
+# tag is pushed. No long-lived npm token: GitHub proves this workflow's identity
+# over OIDC and npm mints a short-lived credential for this single publish, with
+# a verifiable provenance attestation. Setup once on npmjs.com:
+# package distill-mcp > Settings > Trusted Publishing > GitHub Actions,
+# repo ArthurDEV44/distill, workflow release.yml.
+#
 # Flow: bump the version + push to main (CI runs full tests), then push a
-# matching `vX.Y.Z` tag to trigger this workflow. The GitHub Release and its
-# notes are authored separately (by hand), not by this workflow.
+# matching vX.Y.Z tag to trigger this workflow. The GitHub Release and its notes
+# are authored by hand, not by this workflow.
 on:
   push:
     tags:
       - "v*"
 
-# Least-privilege: this workflow only reads the repo and publishes to npm
-# with NPM_TOKEN. It does not write to the repo or create releases.
 permissions:
   contents: read
+  # Required for OIDC Trusted Publishing and provenance attestation.
+  id-token: write
 
 jobs:
   publish:
@@ -26,6 +32,12 @@ jobs:
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -43,27 +55,13 @@ jobs:
           fi
           echo "Tag matches package version: $PKG"
 
-      - name: Configure npm registry auth
-        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Upgrade npm for Trusted Publishing
+        # OIDC Trusted Publishing requires npm >= 11.5.1; the bundled npm is older.
+        run: npm install -g npm@latest
 
-      - name: Verify npm authentication
-        # Fail early with a clear message when the token is missing/expired,
-        # instead of letting bun publish exit 1 with no diagnostic.
-        run: |
-          CODE="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${NPM_TOKEN}" https://registry.npmjs.org/-/whoami)"
-          if [ "$CODE" != "200" ]; then
-            echo "::error::npm authentication failed (HTTP $CODE). The NPM_TOKEN secret is missing, expired, or lacks publish rights. Generate an Automation token at npmjs.com and update the NPM_TOKEN repository secret."
-            exit 1
-          fi
-          echo "npm authentication OK"
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm
-        working-directory: packages/mcp-server
-        # bun publish resolves the workspace: protocol in devDependencies, which
-        # npm publish does not. --access public is explicit and harmless for the
-        # unscoped distill-mcp package.
-        run: bun publish --access public
+      - name: Publish to npm (Trusted Publishing + provenance)
+        # Run from the repo root with --workspace so npm resolves the workspace:
+        # protocol in devDependencies (a publish from inside the package dir cannot).
+        # OIDC auth and provenance are picked up automatically from id-token; no
+        # token is configured anywhere.
+        run: npm publish --workspace packages/mcp-server --provenance --access public
